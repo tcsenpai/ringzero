@@ -1,11 +1,11 @@
-# ringzero architecture (as of Snapshots v1)
+# ringzero architecture (as of the embedder milestone, edition ringzero Qwen35@2b-Qwen3@0.6b)
 
 ## Diagram
 
 ```mermaid
 flowchart TB
     subgraph FW["Firmware + boot"]
-        BIOS["SeaBIOS / OVMF"] --> LIM["Limine v11<br/>paging, HHDM, MP, framebuffer,<br/>kernel ELF + model.asmbin module"]
+        BIOS["SeaBIOS / OVMF"] --> LIM["Limine v11<br/>paging, HHDM, MP, framebuffer,<br/>kernel ELF + model.asmbin + embed.asmbin modules"]
     end
     LIM --> KMAIN
 
@@ -23,12 +23,15 @@ flowchart TB
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
         LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, tokenizer split,<br/>feed / generate, live token array"]
         SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay, eviction"]
+        EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
+        IDX["memidx.rs: memory index (RAM)<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion"]
         ENG["engine.rs<br/>FFI, output capture"]
     end
 
     subgraph A["NASM engine (ring 0, AVX2/FMA/F16C)"]
-        TR["transformer.asm<br/>Qwen3.5: 6 full-attn + 18 DeltaNet layers"]
+        TR["transformer.asm<br/>Qwen3.5-2B: 6 full-attn + 18 DeltaNet layers<br/>Qwen3-Embedding-0.6B: 28 full-attn layers<br/>(one g_ctx loaded at a time)"]
         KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(RINGZERO_KV=f32: FP32, 768 MiB)"]
+        EKV["embedder arena<br/>KV 28 layers x 1024 tokens FP16, 113 MiB"]
         MM["matmul.asm Q8_0"]
         MA["math.asm"]
         TOK["tokenizer.asm BPE"]
@@ -44,8 +47,15 @@ flowchart TB
         ACPI["ICH9 PM (S5), 8042 reset"]
     end
 
-    KMAIN --> IDT & MEM & SMP & CON & LLM & AG & SH
+    KMAIN --> IDT & MEM & SMP & CON & LLM & EMB & AG & SH
     SH -- "!cmd" --> SYS
+    SH -- "/embed /index /search" --> IDX
+    AG -- "search_memory tool<br/>(between 2B forward calls)" --> IDX
+    IDX -- "embed doc / query" --> EMB
+    IDX -- "tp_matmul_q8_0 over the rows" --> WK
+    EMB -- "load embedder g_ctx, forward per token,<br/>2B g_ctx back before return" --> TR
+    EMB -- "encode_plain (embedder BPE)" --> TOK
+    TR -- "embedder forward" --> EKV
     SH -- "plain text" --> AG
     SH -- "/ctx /compact /history" --> CM
     SH -- "/undo /redo /tree /branch /switch<br/>/save /load /drop /snap, prompt" --> SNAP
@@ -112,13 +122,29 @@ sequenceDiagram
 
 Legend:
 
-- **Boot**: Limine loads the kernel and the 1.9 GiB model as a module. `kmain` brings up the IDT, memory,
-  SMP (APs enter the asm worker loop), checks the engine ABI, runs the golden self-test and the bench, then
-  `agent::init` prefills the system prompt + tool list once (743 tokens, about 15 s) and snapshots the
-  engine state. Then `shell::run`.
+- **Boot**: Limine loads the kernel, the 1.9 GiB model and the 613 MiB embedder as modules. `kmain` brings up
+  the IDT, memory, SMP (APs enter the asm worker loop), checks the engine ABI, `model_init`s the 2B, then the
+  embedder into its own context (embed.rs) and embeds one string through the swap, runs the 2B's golden
+  self-test (after that swap round trip) and the bench, then `agent::init` prefills the system prompt + tool
+  list once (832 tokens, about 17 s) and snapshots the engine state. Then `shell::run`.
+- **Embedder** (embed.rs): Qwen3-Embedding-0.6B (Qwen3 dense, 28 layers, dim 1024) exported as .asmbin v3 runs
+  on the same asm engine. All engine model state is `g_ctx` (640 B) plus matmul.asm's scale mode, so the
+  embedder is a second saved `g_ctx` with its own arena (1024-token KV, 113 MiB). `with_embedder` swaps it in for
+  one whole `embed()` call and restores the 2B's before returning: outside it the 2B context is always loaded,
+  so snapshots, `llm::REC` and the agent never see the embedder, and its position-0 forward clears no 2B state.
+  `embed(text, is_query)`: queries get `Instruct: {task}\nQuery:` (English task line), every input gets
+  `<|endoftext|>` (151643), the vector is the last token's `x * w_final` (the RMSNorm scale cancels in the L2
+  normalization, so the forward skips the lm_head), cut to the Matryoshka dim and L2-normalized.
+- **Memory index** (memidx.rs, RAM only): up to 4096 texts (2 KiB each, 1 MiB in all) with their embeddings as
+  Q8_0 rows (int8 + fp16 block scales, the engine's weight layout; dim 1024 by default, `/index dim N` on an empty
+  index). A search embeds the query and scores every row with one `tp_matmul_q8_0` on all cores, ranks by
+  cosine, and runs BM25 (k1 1.5, b 0.75, IT/EN stopwords) over the texts. BM25 joins the ranking (RRF, k 60) only
+  when the query looks like an identifier or path (`a/b.c`, `HL-L2350DW`, `casa-wifi`, letters+digits, all caps)
+  or when its top hit has every query term and at least 1.5x the second score. Used by `/index`, `/search` and the
+  agent's `search_memory` tool; the API (add, search, text, len, clear, set_dim) is what agentd will reuse.
 - **Shell**: plain text goes to the agent; `!cmd` runs a machine command (mem, cpu, cores, log, uptime,
   kbd, set, park, stats, poweroff, reboot), `/cmd` a session command (help, clear, ctx, compact, history,
-  think, temp, undo, redo, retry, tree, branch, switch, save, load, drop, snap, bench, fill, gen; help and
+  think, temp, undo, redo, retry, tree, branch, switch, save, load, drop, snap, embed, index, search, bench, fill, gen; help and
   stats answer to both). Tab completes command names and first
   arguments, a bare `/` or `!` (pause or Enter) lists the commands, up/down recall the last 16 lines. Input from COM1 and PS/2 is polled into
   a type-ahead ring; 0x03 / Ctrl+C sets a flag that `llm::feed` and `llm::generate` check between tokens.
@@ -158,13 +184,13 @@ Legend:
 
 1. Firmware (SeaBIOS or UEFI/OVMF) starts Limine from the ISO (El Torito: `limine-bios-cd.bin`
    for BIOS, `limine-uefi-cd.bin` / `BOOTX64.EFI` for UEFI).
-2. Limine reads `limine.conf`, loads `/boot/kernel` (ELF, linked at `0xffffffff80000000`) and
-   `/boot/model.asmbin` as a module, sets a GOP/VBE framebuffer, builds 4-level paging with the
+2. Limine reads `limine.conf`, loads `/boot/kernel` (ELF, linked at `0xffffffff80000000`),
+   `/boot/model.asmbin` and `/boot/embed.asmbin` as modules (found by path), sets a GOP/VBE framebuffer, builds 4-level paging with the
    HHDM (base revision 3), starts every AP and parks it, then jumps to `kmain` on the BSP in
    long mode with a Limine stack. The IDT is undefined at this point.
 3. `kmain` (kernel/src/main.rs): console on COM1 + framebuffer, IDT, CPUID check, `enable_avx_fpu`,
-   TSC calibration (PIT ch2), arena + model identity maps, AP release, `model_init`, golden
-   self-test, bench, agent prefix prefill + snapshot (kernel/src/agent.rs), then the shell
+   TSC calibration (PIT ch2), memory map log, arena + model + embedder identity maps, AP release, `model_init`
+   (2B), `embed::init` (embedder context) + boot embedding, golden self-test, bench, agent prefix prefill + snapshot (kernel/src/agent.rs), then the shell
    (kernel/src/shell.rs).
 
 ## Memory
@@ -175,14 +201,16 @@ Legend:
 - Physical memory is reached through the HHDM (`phys + hhdm_offset`). In base revision 3 the
   HHDM covers usable, bootloader, kernel/module and framebuffer regions only; MMIO
   (LAPIC, IOAPIC, PCI BARs) must be mapped by us.
-- The model is a Limine module: physically contiguous, already in RAM, mapped in the HHDM.
-  `model_init` (M1) gets its HHDM virtual address. With `-m 4G` on q35 the model lands below
-  4 GiB and 2 GiB of usable RAM remain above 4 GiB (`0x100000000`), which is where the
-  engine's arena (`sys_mmap_anon`) will come from.
+- The models are Limine modules: physically contiguous, already in RAM, mapped in the HHDM. The guest has
+  6 GiB since the embedder (`GUEST_MEM`, docs/EMBEDDER_RESULT.md): on q35 the 2B lands below 4 GiB
+  (`0x65b8000`, 1922 MiB), the embedder at the top of RAM (`0x1d9a9d000`, 613 MiB), and the usable run
+  `0x100000000 + 3482 MiB` in between is the engine's arena (`sys_mmap_anon`): 2B 406 MiB, embedder 113 MiB,
+  snapshot pool 1 GiB, about 2 GiB free. With 4 GiB the same layout leaves 1434 MiB and the pool drops to 512 MiB.
 - The engine treats a negative `sys_mmap_anon` result as an error (transformer.asm:529), and HHDM
   addresses are negative. So the arena (largest usable region, bump allocator, kernel/src/mem.rs) and
-  the model are **identity-mapped in the lower half with 2 MiB pages**, added to Limine's page tables
+  both models are **identity-mapped in the lower half with 2 MiB pages**, added to Limine's page tables
   before the APs start (they share CR3). `model_init` gets the model's physical (= identity) address.
+- The memory index (rows 4.25 MiB, texts 1 MiB, BM25 scratch) is static data in the kernel image (`.bss`).
 - No heap and no general frame allocator yet. The snapshot pool (1 GiB taken from the arena at boot, 1 MiB
   chunks, bitmap) is the only memory that is freed and reused.
 
@@ -192,6 +220,9 @@ Legend:
 Rust kernel (ring 0, soft-float)          NASM engine (ring 0, AVX2/FMA/F16C)
   kmain ---- calls ---------------------->  silu_mul_avx2, argmax_f32 (M0 self-test)
                                              model_init, transformer_forward, tok_* (M1)
+  embed.rs: model_init (2nd), g_ctx swap,
+            matmul_set_fp16 --------------->  transformer_forward on the embedder context
+  memidx.rs: tp_matmul_q8_0 ------------->  index rows x query (engine/smp.asm, all cores)
   sys_mmap_anon / sys_munmap   <-- imports -- transformer.asm   (mem.rs)
   sys_write_all / str_len      <-- imports -- tokenizer.asm     (engine.rs)
   tp_matmul_q8_0 / tp_gqa_attn /
@@ -228,4 +259,4 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 | `sample_top_p_bits` float shim (engine/cpu.asm) | NASM |
 | SMP dispatch (`tp_*`), worker loop, AP entry, parking (engine/smp.asm, adapted from the asm OS) | NASM |
 | Console, IDT, CPU checks, TSC calibration, memory maps, AP release, generation loop | Rust |
-| Shell (! and / commands, completion, history), keyboard layouts, kernel log, agent (prompt, tools, parser, loop), context compaction, transcript, tokenizer pre-split, state snapshots (pool, point tree, undo, branches) | Rust |
+| Shell (! and / commands, completion, history), keyboard layouts, kernel log, agent (prompt, tools, parser, loop), context compaction, transcript, tokenizer pre-split, state snapshots (pool, point tree, undo, branches), embedder context swap and pooling, memory index (Q8_0 rows, BM25, fusion) | Rust |

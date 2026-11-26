@@ -17,7 +17,11 @@ unsafe extern "C" {
     pub fn tok_write_stdout(token: u64);
     /// cpu.asm shim: floats as raw bits (soft-float Rust cannot pass xmm args).
     pub fn sample_top_p_bits(logits: *const f32, probs: *mut f32, n: u64, rng: *mut u64, temp: u32, topp: u32) -> u64;
-    static g_ctx: [u64; 80];
+    /// the engine's whole model state (640 B, engine/constants.inc CTX_*); embed.rs swaps it between models
+    pub static mut g_ctx: [u64; 80];
+    /// global Q8_0 scale mode of matmul.asm (not in g_ctx): set again after every context swap
+    pub fn matmul_set_fp16(is_fp16: u64);
+    pub fn tp_matmul_q8_0(w: *const u8, x: *const f32, out: *mut f32, m: u64, k: u64);
     /// bytes per KV cache element: 2 (FP16, default build) or 4 (RINGZERO_KV=f32)
     pub static kv_elt_bytes: u64;
 }

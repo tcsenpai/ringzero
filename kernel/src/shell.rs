@@ -4,7 +4,7 @@
 // commands, up/down walk the history. Input is polled into a type-ahead ring; Ctrl-C (0x03) sets a
 // flag the generation loop checks between tokens.
 use crate::log::SBuf;
-use crate::{agent, console, kbd, llm, smp, snap, sys};
+use crate::{agent, console, embed, kbd, llm, memidx, smp, snap, sys};
 use crate::{print, println};
 use core::fmt::Write;
 use core::sync::atomic::Ordering::Relaxed;
@@ -123,6 +123,9 @@ const CMDS: &[Cmd] = &[
     c("load", SLASH, &[], "NAME  go to a saved point"),
     c("drop", SLASH, &[], "NAME|#ID  delete a branch, a save or a point"),
     c("snap", SLASH, &[], "snapshot status: point, pool, timings"),
+    c("embed", SLASH, &["-q", "-v"], "[-q] [-v] TEXT  embed TEXT (-q: as a query, -v: print all values)"),
+    c("index", SLASH, &["add", "stats", "clear", "dim"], "add TEXT | stats | clear | dim N  the memory index (RAM)"),
+    c("search", SLASH, &[], "QUERY  top 5 in the memory index (embedding + gated BM25)"),
     c("bench", SLASH, &[], "64-token decode bench (the conversation is restored after)"),
     c("fill", SLASH, &[], "<tokens>  prefill + decode speed at that context fill"),
     c("gen", SLASH, &[], "<n> <text>  debug: greedy ids + logit margins"),
@@ -141,7 +144,8 @@ fn find(pre: u8, name: &str) -> Option<&'static Cmd> {
 }
 
 fn help() {
-    println!("Type a message to talk to the system agent (Qwen3.5-2B in ring 0, with tools). Ctrl-C stops it.");
+    println!("Type a message to talk to the system agent (Qwen3.5-2B in ring 0, with tools; Qwen3-Embedding-0.6B for /embed,");
+    println!("/index, /search and its search_memory tool). Ctrl-C stops the agent.");
     for (pre, label) in [(BANG, "!  machine commands"), (SLASH, "/  session commands")] {
         println!("{}:", label);
         for c in CMDS.iter().filter(|c| c.pre & pre != 0) {
@@ -431,6 +435,94 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
     ok
 }
 
+/// `/embed [-q] [-v] TEXT`
+fn embed_cmd(mut a: &str) {
+    let (mut q, mut v) = (false, false);
+    loop {
+        match a.split_once(' ') {
+            Some(("-q", r)) => (q, a) = (true, r.trim_start()),
+            Some(("-v", r)) => (v, a) = (true, r.trim_start()),
+            _ => break,
+        }
+    }
+    if a.is_empty() {
+        println!("usage: /embed [-q] [-v] TEXT");
+        return;
+    }
+    let mut e = [0.0f32; embed::DIM];
+    smp::park_phase(true);
+    let r = embed::embed(a, q, embed::DIM, &mut e);
+    smp::park_phase(false);
+    match r {
+        Ok(i) => {
+            let n = embed::sqrt(e.iter().map(|&x| x as f64 * x as f64).sum());
+            print!("[embed] {} dim {}, norm {:.6} (pooled |x*w| {:.3}), {} tok in {}.{:03} ms, first:", if q { "query" } else { "doc" },
+                embed::DIM, n, i.raw_norm, i.n_tok, i.us / 1000, i.us % 1000);
+            e[..8].iter().for_each(|x| print!(" {:.5}", x));
+            println!("");
+            if v {
+                print!("EMB");
+                e.iter().for_each(|x| print!(" {:.7}", x));
+                println!("");
+            }
+        }
+        Err(m) => println!("[embed] {}", m),
+    }
+}
+
+fn index_cmd(a: &str) {
+    let (sub, rest) = a.split_once(' ').map(|(x, y)| (x, y.trim())).unwrap_or((a, ""));
+    match sub {
+        "add" if !rest.is_empty() => {
+            smp::park_phase(true);
+            let r = memidx::add(rest);
+            smp::park_phase(false);
+            match r {
+                Ok(x) => println!("[index] #{} added ({} tok embedded in {}.{:03} ms, {} entries)", x.id, x.info.n_tok,
+                    x.info.us / 1000, x.info.us % 1000, memidx::len()),
+                Err(m) => println!("[index] {}", m),
+            }
+        }
+        "stats" | "" => {
+            let mut o = SBuf::<512>::new();
+            memidx::stats(&mut o);
+            println!("[index] {}", o.as_str());
+        }
+        "clear" => {
+            memidx::clear();
+            println!("[index] cleared");
+        }
+        "dim" => match rest.parse::<usize>().map_err(|_| "usage: /index dim N").and_then(memidx::set_dim) {
+            Ok(()) => println!("[index] dim {}", memidx::dim()),
+            Err(m) => println!("[index] {}", m),
+        },
+        _ => println!("usage: /index add TEXT | stats | clear | dim N"),
+    }
+}
+
+fn search_cmd(q: &str) {
+    if q.is_empty() {
+        println!("usage: /search QUERY");
+        return;
+    }
+    let mut h = [memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb }; 5];
+    smp::park_phase(true);
+    let r = memidx::search(q, &mut h);
+    smp::park_phase(false);
+    match r {
+        Ok(f) => {
+            for (i, x) in h[..f.n].iter().enumerate() {
+                let t = memidx::text(x.id);
+                println!("{}. #{:<4} cos {:.3}  bm25 {:>5.2}  {:<8} {}", i + 1, x.id, x.cos, x.bm25, x.via.name(), &t[..agent::floor_char(t, 100)]);
+            }
+            println!("[search] {} entries, dim {}, query {} tok embedded in {}.{:03} ms, search {} us, BM25 {}",
+                memidx::len(), memidx::dim(), f.embed.n_tok, f.embed.us / 1000, f.embed.us % 1000, f.search_us,
+                if f.gate.is_empty() { "not used (embedding order)" } else { f.gate });
+        }
+        Err(m) => println!("[search] {}", m),
+    }
+}
+
 fn show(f: fn(&mut SBuf<1024>)) {
     let mut o = SBuf::<1024>::new();
     f(&mut o);
@@ -563,6 +655,9 @@ pub fn run() -> ! {
                 };
                 println!("[park] {}", desc);
             }
+            "embed" => embed_cmd(arg),
+            "index" => index_cmd(arg),
+            "search" => search_cmd(arg),
             "undo" => snap::undo(arg.parse::<usize>().unwrap_or(1)),
             "redo" => snap::redo(arg.parse::<usize>().unwrap_or(1)),
             "retry" => agent::retry(),

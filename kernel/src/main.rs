@@ -1,16 +1,19 @@
-// ringzero kernel, milestones M2+M3 (+M2.5: 32k FP16 KV, ! and / shell, context compaction): boot under Limine, IDT, engine arena, APs in the asm worker loop,
-// Qwen3.5-2B golden self-test, system-agent prefix prefill + snapshot, then the shell on COM1 + PS/2.
+// ringzero kernel (edition "ringzero Qwen35@2b-Qwen3@0.6b"): boot under Limine, IDT, engine arena, APs in the asm worker
+// loop, Qwen3.5-2B + Qwen3-Embedding-0.6B on the same engine (context swap, embed.rs), Qwen3.5-2B golden self-test,
+// system-agent prefix prefill + snapshot, then the shell on COM1 + PS/2.
 #![no_std]
 #![no_main]
 
 mod agent;
 mod console;
+mod embed;
 mod engine;
 mod idt;
 mod kbd;
 mod llm;
 mod log;
 mod mem;
+mod memidx;
 mod shell;
 mod smp;
 mod snap;
@@ -88,7 +91,7 @@ extern "C" fn kmain() -> ! {
     idt::init();
 
     klog!(b'I', "==============================================");
-    klog!(b'I', " ringzero Qwen35@2b  (Rust no_std kernel + NASM LLM engine in ring 0)");
+    klog!(b'I', " ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)  (Rust no_std kernel + NASM LLM engine in ring 0)");
     klog!(b'I', "==============================================");
     if let Some(b) = BOOTLOADER.get_response() {
         klog!(b'I', "boot: {} {}, base revision {:?}", b.name(), b.version(), BASE_REVISION.loaded_revision());
@@ -130,6 +133,19 @@ extern "C" fn kmain() -> ! {
     let (mut usable, mut reclaim, mut modk, mut top) = (0u64, 0u64, 0u64, 0u64);
     let mut largest = (0u64, 0u64);
     for e in mm.entries() {
+        let ty = match e.entry_type {
+            EntryType::USABLE => "usable",
+            EntryType::BOOTLOADER_RECLAIMABLE => "bootloader-reclaimable",
+            EntryType::EXECUTABLE_AND_MODULES => "kernel+modules",
+            EntryType::FRAMEBUFFER => "framebuffer",
+            EntryType::ACPI_RECLAIMABLE => "acpi-reclaimable",
+            EntryType::ACPI_NVS => "acpi-nvs",
+            EntryType::BAD_MEMORY => "bad",
+            _ => "reserved",
+        };
+        if e.length >= MIB {
+            klog!(b'I', "mmap: {:#011x}-{:#011x} {:>5} MiB {}", e.base, e.base + e.length, e.length / MIB, ty);
+        }
         match e.entry_type {
             EntryType::USABLE => {
                 usable += e.length;
@@ -162,11 +178,15 @@ extern "C" fn kmain() -> ! {
         mem::base(), largest.1 / MIB, mem::page_size(mem::base()) / 1024, mem::page_size(hhdm + mem::base()) / 1024);
     // the model too: lower-half identity map with 2 MiB pages, before the APs start (shared CR3)
     let mods = MODULES.get_response().map(|r| r.modules()).unwrap_or(&[]);
-    let model_phys = mods.first().map(|m| {
+    let named = |s: &[u8]| mods.iter().find(|m| m.path().to_bytes().ends_with(s));
+    let (model, emb) = (named(b"/model.asmbin").or(mods.first()), named(b"/embed.asmbin"));
+    let map = |m: &&limine::file::File| {
         let p = m.addr() as u64 - hhdm;
         mem::map_low(p, m.size());
         p
-    });
+    };
+    let model_phys = model.map(map);
+    let emb_phys = emb.map(map);
 
     // ---- SMP ----
     match MP.get_response() {
@@ -205,12 +225,23 @@ extern "C" fn kmain() -> ! {
     // ---- engine ABI test, model, golden self-test, REPL ----
     let ok = engine::selftest();
     klog!(b'I', "engine: M0 ABI self-test {}", if ok { "PASS" } else { "FAIL" });
-    let (Some(m), Some(mp)) = (mods.first(), model_phys) else { panic!("no model module") };
+    let (Some(m), Some(mp)) = (model, model_phys) else { panic!("no model module") };
     klog!(b'I', "mem:  model identity-mapped at {:#x}, page size {} KiB (HHDM view: {} KiB)",
         mp, mem::page_size(mp) / 1024, mem::page_size(m.addr() as u64) / 1024);
-    sys::MODEL_BYTES.store(m.size(), core::sync::atomic::Ordering::Relaxed);
+    sys::MODEL_BYTES.store(m.size() + emb.map_or(0, |e| e.size()), core::sync::atomic::Ordering::Relaxed);
     if llm::init(mp as *const u8, m.size()) {
-        llm::selftest();
+        // the embedder gets its own g_ctx (embed.rs) before the snapshot pool takes the rest of the arena
+        match (emb, emb_phys) {
+            (Some(e), Some(ep)) => {
+                klog!(b'I', "mem:  embedder identity-mapped at {:#x} ({} MiB)", ep, e.size() / MIB);
+                if embed::init(ep as *const u8, e.size()) {
+                    embed::boot_check();
+                }
+            }
+            _ => klog!(b'W', "embed: no embed.asmbin module, /embed /index /search and search_memory are off"),
+        }
+        klog!(b'I', "index: memory index self-test (fp16, Q8_0 rows, ln, identifier gate) {}", if memidx::selftest() { "PASS" } else { "FAIL" });
+        llm::selftest(); // the 2B's golden test runs after the context swap round trip of the boot check
         klog!(b'I', "bench: 64-token decode, prompt \"Explain how a CPU cache works in 3 concise sentences.\"");
         llm::bench();
         klog!(b'I', "agent: tool-call parser self-test {}", if agent::selftest() { "PASS" } else { "FAIL" });

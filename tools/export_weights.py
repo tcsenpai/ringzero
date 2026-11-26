@@ -1,5 +1,7 @@
 # VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT);
-# Qwen3.5 v3 export from our fork github.com/tcsenpai/llm.asm (scripts/export_weights.py). Unmodified below.
+# Qwen3.5 v3 export from our fork github.com/tcsenpai/llm.asm (scripts/export_weights.py). Unmodified below except the
+# ringzero changes marked "ringzero": --v3 writes a Qwen3 checkpoint as v3 (Qwen3-Embedding-0.6B, weights without
+# the "model." prefix) for the QWEN35 kernel build.
 """
 Export Qwen3-0.6B or Qwen3.5-2B (BF16 safetensors + tokenizer.json) into a compact,
 64-byte aligned, directly mmap-able .asmbin file for pure x86-64 asm-llm.
@@ -445,7 +447,7 @@ def is_qwen35(cfg: dict) -> bool:
     return "linear_attention" in layer_types or tcfg.get("model_type", "").startswith("qwen3_5")
 
 
-def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scale_dtype: str = "fp16"):
+def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scale_dtype: str = "fp16", force: bool = False):
     t0 = time.time()
     use_fp16 = scale_dtype == "fp16"
     version = VERSION_V3
@@ -454,8 +456,8 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
     tcfg = cfg.get("text_config", cfg)
     layer_types = tcfg.get("layer_types") or ["full_attention"] * int(tcfg["num_hidden_layers"])
     is35 = is_qwen35(cfg)
-    assert is35, "the v3 writer is for Qwen3.5 (Qwen3 exports as v1/v2)"
-    pre = "model.language_model." if is35 else "model."
+    assert is35 or force, "the v3 writer is for Qwen3.5 (Qwen3 exports as v1/v2; ringzero: --v3 forces it)"
+    pre = "model.language_model." if is35 else "model."  # ringzero: "" for unprefixed weights, set below
     print(f"Architecture: {'qwen35 (hybrid DeltaNet + gated attention)' if is35 else 'qwen3 (dense full attention)'}")
 
     dim = int(tcfg["hidden_size"])
@@ -490,6 +492,8 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
     tok_path = os.path.join(model_dir, "tokenizer.json")
     tok_cfg = os.path.join(model_dir, "tokenizer_config.json")
     hdr, data_offset = load_safetensors_header(st_path)
+    if not is35 and pre + "embed_tokens.weight" not in hdr and "embed_tokens.weight" in hdr:
+        pre = ""  # ringzero: Qwen3-Embedding stores the bare Qwen3Model (no "model." prefix)
 
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     tok_blob = build_tokenizer_blob(tok_path, vocab_size, tok_cfg)
@@ -680,11 +684,12 @@ def main():
     ap.add_argument("--out", default="models/qwen3-0.6b-q8_0.asmbin", help="Output .asmbin path")
     ap.add_argument("--max-seq-len", type=int, default=4096)
     ap.add_argument("--scale-dtype", choices=["fp16", "fp32"], default="fp16", help="Per-block Q8_0 scale dtype (fp16 -> v2 compact, fp32 -> v1 legacy)")
+    ap.add_argument("--v3", action="store_true", help="ringzero: write a Qwen3 checkpoint as v3 (for the QWEN35 kernel build)")
     args = ap.parse_args()
     with open(os.path.join(args.model_dir, "config.json"), "r") as f:
         cfg = json.load(f)
-    if is_qwen35(cfg):  # Qwen3 keeps the original v1/v2 writer
-        export_model_v3(args.model_dir, args.out, args.max_seq_len, scale_dtype=args.scale_dtype)
+    if is_qwen35(cfg) or args.v3:  # Qwen3 keeps the original v1/v2 writer unless --v3
+        export_model_v3(args.model_dir, args.out, args.max_seq_len, scale_dtype=args.scale_dtype, force=args.v3)
     else:
         export_model(args.model_dir, args.out, args.max_seq_len, scale_dtype=args.scale_dtype)
 

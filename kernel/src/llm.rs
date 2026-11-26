@@ -383,17 +383,25 @@ fn chunk_end(s: &[u8], i: usize) -> usize {
     if j == n || j - i == 1 { j } else { j - 1 }
 }
 
+fn plain(seg: &[u8], out: &mut [u32], n: &mut usize) {
+    let mut i = 0;
+    while i < seg.len() {
+        let j = chunk_end(seg, i);
+        let room = (out.len() - *n) as u64;
+        *n += unsafe { tok_encode_bpe(seg[i..].as_ptr(), (j - i) as u64, out[*n..].as_mut_ptr(), room) } as usize;
+        i = j;
+    }
+}
+
+/// Tokenize text without special tokens (pre-split + the loaded model's BPE): the embedder's input (embed.rs).
+pub fn encode_plain(text: &[u8], out: &mut [u32]) -> usize {
+    let mut n = 0;
+    plain(text, out, &mut n);
+    n
+}
+
 /// Tokenize text with special tokens into out. Returns the token count.
 pub fn encode(text: &[u8], out: &mut [u32]) -> usize {
-    fn plain(seg: &[u8], out: &mut [u32], n: &mut usize) {
-        let mut i = 0;
-        while i < seg.len() {
-            let j = chunk_end(seg, i);
-            let room = (out.len() - *n) as u64;
-            *n += unsafe { tok_encode_bpe(seg[i..].as_ptr(), (j - i) as u64, out[*n..].as_mut_ptr(), room) } as usize;
-            i = j;
-        }
-    }
     let (mut n, mut i, mut seg) = (0, 0, 0);
     while i < text.len() {
         if let Some((len, id)) = if text[i] == b'<' { special_at(&text[i..]) } else { None } {

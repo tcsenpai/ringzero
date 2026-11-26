@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""boottest.py ISO bios|uefi OUTDIR [SMP] [CMD ...] : boot ISO in QEMU/KVM headless, log serial with
-host timestamps, type each CMD at the ringzero prompt (one per prompt), stop at the prompt after the
+"""boottest.py ISO bios|uefi OUTDIR [SMP] [CMD ...] : boot ISO in QEMU/KVM headless (guest RAM MEM=6G, the
+default since the embedder), log serial with host timestamps, type each CMD at the ringzero prompt (one per prompt), stop at the prompt after the
 last CMD (or at PANIC/EXCEPTION/M0 FAIL, or 900 s), save a screenshot as PNG."""
 import os, re, shutil, socket, subprocess, sys, time
 from screenshot import mon, ppm_to_png
@@ -9,10 +9,12 @@ iso, mode, out = sys.argv[1], sys.argv[2], sys.argv[3]
 smp = sys.argv[4] if len(sys.argv) > 4 else "8"
 cmds = sys.argv[5:]
 shutil.rmtree(out, ignore_errors=True); os.makedirs(out)
+mem = os.environ.get("MEM", "6G")
 avail = int(next(l for l in open("/proc/meminfo") if l.startswith("MemAvailable")).split()[1]) // 1024
-if avail < 6144: sys.exit(f"refusing to start a 4 GiB guest: only {avail} MiB available (want > 6144)")
+want = int(mem.rstrip("G")) * 1024 + 2048
+if avail < want: sys.exit(f"refusing to start a {mem} guest: only {avail} MiB available (want > {want})")
 ser_path, mon_path = f"{out}/ser", f"{out}/mon"
-cmd = ["qemu-system-x86_64", "-enable-kvm", "-cpu", "host", "-M", "q35", "-m", "4G", "-smp", smp,
+cmd = ["qemu-system-x86_64", "-enable-kvm", "-cpu", "host", "-M", "q35", "-m", mem, "-smp", smp,
        "-cdrom", iso, "-boot", "d", "-vga", "std", "-display", "none", "-no-reboot",
        "-serial", f"unix:{ser_path},server,nowait", "-monitor", f"unix:{mon_path},server,nowait"]
 if mode == "uefi":

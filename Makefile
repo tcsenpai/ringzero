@@ -2,6 +2,9 @@
 LIMINE_TAG ?= v11.2.1-binary
 LIMINE_URL ?= https://codeberg.org/Limine/Limine.git
 MODEL      ?= models/qwen35-2b-q8_0-v3.asmbin
+EMBED      ?= models/qwen3-embed-0.6b-q8_0-v3.asmbin
+# guest RAM: 6 GiB since the embedder (see docs/EMBEDDER_RESULT.md, memory map)
+GUEST_MEM  ?= 6G
 OVMF_CODE  ?= /usr/share/edk2/ovmf/OVMF_CODE.fd
 OVMF_VARS  ?= /usr/share/edk2/ovmf/OVMF_VARS.fd
 QEMU_DISPLAY ?= none
@@ -9,15 +12,19 @@ QEMU_DISPLAY ?= none
 BUILD  := build
 KERNEL := kernel/target/x86_64-unknown-none/release/ringzero-kernel
 ISO    := $(BUILD)/ringzero.iso
-QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp 8 \
+QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp 8 \
           -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot
 
 .PHONY: kernel iso model run-bios run-uefi run-remote clean
 .DELETE_ON_ERROR:
 
-# Qwen3.5-2B from Hugging Face -> $(MODEL) (HF_DIR=dir reuses a download, see tools/fetch_model.sh)
+# Qwen3.5-2B -> $(MODEL) and Qwen3-Embedding-0.6B -> $(EMBED) from Hugging Face, each skipped when the .asmbin
+# exists (HF_DIR / EMBED_HF_DIR = dir reuses a download, see tools/fetch_model.sh)
+EMBED_HF_DIR ?=
 model:
 	tools/fetch_model.sh $(MODEL)
+	HF_DIR="$(EMBED_HF_DIR)" HF_REPO=Qwen/Qwen3-Embedding-0.6B EXPORT_ARGS="--v3 --max-seq-len 1024" \
+	    HF_FILES="config.json model.safetensors tokenizer.json tokenizer_config.json" tools/fetch_model.sh $(EMBED)
 
 kernel:
 	cd kernel && cargo build --release -j 8
@@ -32,6 +39,7 @@ iso: kernel $(BUILD)/limine/limine
 	mkdir -p $(BUILD)/iso_root/boot/limine $(BUILD)/iso_root/EFI/BOOT
 	cp $(KERNEL) $(BUILD)/iso_root/boot/kernel
 	cp --reflink=auto $(MODEL) $(BUILD)/iso_root/boot/model.asmbin
+	cp --reflink=auto $(EMBED) $(BUILD)/iso_root/boot/embed.asmbin
 	cp limine.conf $(addprefix $(BUILD)/limine/,limine-bios.sys limine-bios-cd.bin limine-uefi-cd.bin) \
 	   $(BUILD)/iso_root/boot/limine/
 	cp $(BUILD)/limine/BOOTX64.EFI $(BUILD)/iso_root/EFI/BOOT/
@@ -68,8 +76,8 @@ $(BUILD)/it-ringzero: tools/keymaps/it-altgr
 
 run-remote: iso $(filter $(BUILD)/%,$(VNC_KEYMAP))
 	@avail=$$(awk '/MemAvailable/ {print int($$2/1024)}' /proc/meminfo); \
-	 if [ $$avail -lt 6144 ]; then echo "refusing: only $$avail MiB available (want > 6144)"; exit 1; fi
-	qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp $(REMOTE_SMP) \
+	 if [ $$avail -lt 8192 ]; then echo "refusing: only $$avail MiB available (want > 8192 for a $(GUEST_MEM) guest)"; exit 1; fi
+	qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp $(REMOTE_SMP) \
 	    -cdrom $(ISO) -boot d -no-reboot -vga std \
 	    -object secret,id=vncpw,data=$(VNC_PASS) -display vnc=0.0.0.0:$(REMOTE_VNC),password-secret=vncpw -k $(VNC_KEYMAP) \
 	    -chardev socket,id=ser0,host=0.0.0.0,port=$(REMOTE_PORT),server=on,wait=off,logfile=$(BUILD)/$(REMOTE_NAME)-serial.log,logappend=on \

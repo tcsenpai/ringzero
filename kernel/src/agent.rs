@@ -19,7 +19,7 @@ or to act on it, and never invent numbers. Reply in English or in Italian, match
 user's latest message, briefly, in plain text without markdown headers.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
-const TOOLS: [&str; 8] = [
+const TOOLS: [&str; 9] = [
     r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: free, used and total RAM in MiB.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does.", "parameters": {"type": "object", "properties": {}}}}"#,
@@ -28,6 +28,7 @@ const TOOLS: [&str; 8] = [
     r#"{"type": "function", "function": {"name": "poweroff", "description": "Shut down the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "reboot", "description": "Reboot the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "set_setting", "description": "Change a system setting. temperature: sampling temperature, 0 = greedy. cores: CPU cores used for inference. keyboard: PS/2 keyboard layout, us or it.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "enum": ["temperature", "cores", "keyboard"]}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
+    r#"{"type": "function", "function": {"name": "search_memory", "description": "Search the memory index (notes about the user and this machine) by meaning and keywords. Returns the best matching notes with scores.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "what to look for, as a question or keywords"}}, "required": ["query"]}}}"#,
 ];
 
 enum Ty {
@@ -36,7 +37,7 @@ enum Ty {
 }
 
 // (name, params (name, type, required)), same order and content as TOOLS
-const SPECS: [(&str, &[(&str, Ty, bool)]); 8] = [
+const SPECS: [(&str, &[(&str, Ty, bool)]); 9] = [
     ("meminfo", &[]),
     ("cpuinfo", &[]),
     ("list_cores", &[]),
@@ -45,6 +46,7 @@ const SPECS: [(&str, &[(&str, Ty, bool)]); 8] = [
     ("poweroff", &[]),
     ("reboot", &[]),
     ("set_setting", &[("key", Ty::Str(&["temperature", "cores", "keyboard"]), true), ("value", Ty::Str(&[]), true)]),
+    ("search_memory", &[("query", Ty::Str(&[]), true)]),
 ];
 
 const TEMPLATE_TOOLS_HEAD: &str = "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>";
@@ -392,6 +394,20 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
                 if c.name == "poweroff" { sys::poweroff() } else { sys::reboot() }
             }
             let _ = write!(o, "cancelled: the user answered no, the machine stays on");
+        }
+        "search_memory" => {
+            // embedder context swap between two 2B forward calls (embed.rs): the 2B state is not touched
+            let mut h = [crate::memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: crate::memidx::Via::Emb }; 3];
+            match crate::memidx::search(arg(c, "query").unwrap_or(""), &mut h) {
+                Ok(f) => {
+                    for (i, x) in h[..f.n].iter().enumerate() {
+                        let _ = write!(o, "{}{}. (score {:.2}) {}", if i > 0 { "\n" } else { "" }, i + 1, x.cos, crate::memidx::text(x.id));
+                    }
+                }
+                Err(e) => {
+                    let _ = write!(o, "{}", e);
+                }
+            }
         }
         "set_setting" => {
             let (k, v) = (arg(c, "key").unwrap_or(""), arg(c, "value").unwrap_or(""));
