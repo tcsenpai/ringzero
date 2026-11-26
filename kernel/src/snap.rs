@@ -1004,8 +1004,10 @@ pub fn new_line() {
     }
     s.names[s.head].node = ROOT;
     s.cur = ROOT;
+    // a refused save (pool full) leaves live == ROOT with the engine state ahead of it: restore then too
+    let ahead = s.unsaved;
     s.unsaved = false;
-    if s.live == NIL || s.live != ROOT {
+    if s.live == NIL || s.live != ROOT || ahead {
         restore(ROOT);
     }
 }

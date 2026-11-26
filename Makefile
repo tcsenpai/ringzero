@@ -7,7 +7,7 @@ LIMINE_URL ?= https://codeberg.org/Limine/Limine.git
 #   q4all  every projection Q4_0, embed/lm_head Q8_0 (smallest, lowest quality; docs/M7_Q4_RESULT.md)
 #   (norms, conv1d, A_log, dt_bias, in_proj_a/b stay f32 in all of them)
 #   2b q8 (default)  6G guest | 2b q4/q4all: the Q4 kernel test bench, not a product target
-#   4b q4            Qwen3.5-4B, 3.1 GiB module, 6G guest | 4b q4all 2.5 GiB, 6G | 4b q8 4.2 GiB module, 8G guest
+#   4b q4            Qwen3.5-4B, 3.1 GiB module | 4b q4all 2.5 GiB | 4b q8 4.2 GiB module: all 8G guests
 #   9b               not built: docs/FEASIBILITY-q4-qwen35-9b.md
 # MODEL=path/to/file.asmbin boots any exported file. `make model` fetches + exports only the selected one.
 MODEL      ?= 2b
@@ -34,9 +34,12 @@ MODEL_HF_FILES := config.json model.safetensors.index.json tokenizer.json tokeni
                   model.safetensors-00001-of-00002.safetensors model.safetensors-00002-of-00002.safetensors
 ifeq ($(QUANT),q8)
 # 4.1 GiB weights: the module needs a contiguous run above 4 GiB (docs/M7_Q4_RESULT.md, memory)
-GUEST_MEM  ?= 8G
 MIN_AVAIL_MB ?= 11264
 endif
+# every 4B option: 8G. At 6G the 4B q4all panics at boot ("snapshot pool: no room for the prefix") since the
+# M5 / M5b arena users; 8G gives the 1024 MiB pool (docs/MODEL_CHOICE.md)
+GUEST_MEM  ?= 8G
+MIN_AVAIL_MB ?= 10240
 endif
 else
 MODEL_FILE := $(MODEL)
