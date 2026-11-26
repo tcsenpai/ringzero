@@ -28,4 +28,57 @@ fn main() {
     println!("cargo:rerun-if-changed={}", engine.join("constants.inc").display());
     println!("cargo:rustc-link-arg=-T{}", manifest.join("linker.ld").display());
     println!("cargo:rerun-if-changed={}", manifest.join("linker.ld").display());
+    upy(&manifest, &out);
+}
+
+// ---- M5: MicroPython (ports/embed package from `make upy`) + lib/libm_dbl + kernel/upy glue, freestanding ----
+fn upy(manifest: &std::path::Path, out: &std::path::Path) {
+    let top = manifest.join("../build/micropython");
+    let pkg = manifest.join("../build/upy/micropython_embed");
+    let glue = manifest.join("upy");
+    assert!(pkg.join("genhdr").exists(), "MicroPython embed package missing: run `make upy` first");
+    let ls = |d: PathBuf, skip: &[&str]| -> Vec<PathBuf> {
+        let mut v: Vec<PathBuf> = std::fs::read_dir(&d).unwrap().map(|e| e.unwrap().path())
+            .filter(|p| p.extension().is_some_and(|x| x == "c") && !skip.iter().any(|s| p.ends_with(s))).collect();
+        v.sort();
+        v
+    };
+    let mut srcs = ls(pkg.join("py"), &[]);
+    srcs.extend(ls(pkg.join("shared/runtime"), &[]));
+    srcs.extend(ls(top.join("lib/libm_dbl"), &["thumb_vfp_sqrt.c"]));
+    srcs.extend(ls(glue.clone(), &[])); // glue.c, libc.c (they replace port/embed_util.c and port/mphalport.c)
+    let cc = env::var("CC").unwrap_or("cc".into());
+    let gcc_inc = String::from_utf8(Command::new(&cc).arg("-print-file-name=include").output().expect("cc").stdout).unwrap();
+    // -mcmodel=kernel: the image lives at 0xffffffff80000000; no red zone (interrupts share the stack);
+    // SSE2 stays on for doubles (the kernel enables SSE/AVX at boot, Rust itself is soft-float: no floats cross the FFI)
+    let flags = ["-std=gnu11", "-O2", "-ffreestanding", "-nostdinc", "-mcmodel=kernel", "-mno-red-zone", "-fno-pic", "-fno-pie",
+        "-fno-stack-protector", "-fno-common", "-fno-asynchronous-unwind-tables", "-fno-math-errno", "-DNDEBUG", "-D_LIBC_LIMITS_H_", "-w"]; // gcc's own limits.h, no libc one behind it
+    let incs = [PathBuf::from(gcc_inc.trim()), glue.join("include"), glue.clone(), pkg.clone(), pkg.join("port")];
+    let (mut objs, mut bad) = (Vec::new(), Vec::new());
+    for chunk in srcs.chunks(16) {
+        let kids: Vec<_> = chunk.iter().map(|s| {
+            let o = out.join(format!("upy_{}_{}.o", s.parent().unwrap().file_name().unwrap().to_str().unwrap(),
+                s.file_stem().unwrap().to_str().unwrap()));
+            let mut c = Command::new(&cc);
+            c.args(flags);
+            incs.iter().for_each(|i| { c.arg("-isystem").arg(i); });
+            c.arg("-c").arg(s).arg("-o").arg(&o);
+            objs.push(o);
+            (s.clone(), c.spawn().expect("cc"))
+        }).collect();
+        for (s, mut k) in kids {
+            if !k.wait().unwrap().success() {
+                bad.push(s.display().to_string());
+            }
+        }
+    }
+    assert!(bad.is_empty(), "cc failed on {}", bad.join(" "));
+    let lib = out.join("libupy.a");
+    let _ = std::fs::remove_file(&lib);
+    assert!(Command::new("ar").arg("crs").arg(&lib).args(&objs).status().expect("ar").success());
+    println!("cargo:rustc-link-search=native={}", out.display());
+    println!("cargo:rustc-link-lib=static=upy");
+    println!("cargo:rerun-if-changed={}", glue.display());
+    println!("cargo:rerun-if-changed={}", pkg.join("genhdr").display());
+    println!("cargo:rerun-if-env-changed=RINGZERO_UPY_HEAP_MIB");
 }

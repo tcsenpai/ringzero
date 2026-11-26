@@ -1,4 +1,4 @@
-# ringzero architecture (as of M4 disk + filesystem, edition ringzero Qwen35@2b-Qwen3@0.6b)
+# ringzero architecture (as of M4 disk + filesystem + M5 MicroPython, edition ringzero Qwen35@2b-Qwen3@0.6b)
 
 ## Diagram
 
@@ -40,6 +40,12 @@ flowchart TB
         TOK["tokenizer.asm BPE"]
         WK["smp.asm<br/>tp_* dispatch + worker loop on APs 1..7"]
         CPU["cpu.asm<br/>enable_avx_fpu, float shims"]
+    end
+
+    subgraph P["MicroPython 1.29 (C, ring 0, SSE2 doubles; M5)"]
+        UPY["upy.rs: !py, run_code tool,<br/>time budget + Ctrl-C (upy_check), stdout capture"]
+        GLUE["kernel/upy/glue.c<br/>fresh interpreter per run on a 1 MiB stack,<br/>VM hook -> KeyboardInterrupt / hard abort, cut traceback"]
+        UVM["py/ core (ports/embed): compiler, bytecode VM,<br/>GC heap 8 MiB, mpz ints, math via libm_dbl;<br/>mini libc (libc.c + mem* from compiler_builtins)"]
     end
 
     subgraph D["Devices (QEMU q35)"]
@@ -95,6 +101,16 @@ flowchart TB
     SMP --> LAPIC
     SYS --> ACPI
     LOG -.->|klog! prints| CON
+    KMAIN -- "upy::init: heap + stack" --> UPY
+    UPY -- "sys_mmap_anon (before the snapshot pool)" --> MEM
+    SH -- "!py CODE, !py -f PATH" --> UPY
+    AG -- "run_code tool (5 s budget, 6 KiB output)" --> UPY
+    UPY -- "-f: read script" --> FS
+    UPY -- "upy_exec" --> GLUE --> UVM
+    UVM -- "every 256 jumps: upy_poll -> upy_check" --> UPY
+    UPY -- "Ctrl-C poll every 10 ms" --> SH
+    UVM -- "print -> upy_out" --> UPY
+    UPY --> CON
 ```
 
 Data flow of `how much free memory?` (plain text goes to the agent):
@@ -226,6 +242,10 @@ Legend:
   both models are **identity-mapped in the lower half with 2 MiB pages**, added to Limine's page tables
   before the APs start (they share CR3). `model_init` gets the model's physical (= identity) address.
 - The memory index (rows 4.25 MiB, texts 1 MiB, BM25 scratch) is static data in the kernel image (`.bss`).
+- MicroPython (M5) takes 8 MiB GC heap + 1 MiB stack from the arena right after the kernel heap, before the
+  models and the snapshot pool (arena use 520 -> 529 MiB). Its C code (~286 KB of text) is linked into the
+  kernel image with `-mcmodel=kernel -mno-red-zone`, uses SSE2 for doubles (the Rust side stays soft-float,
+  no float crosses the FFI) and runs on the BSP between model calls, on its own stack.
 - No heap and no general frame allocator yet. The snapshot pool (1 GiB taken from the arena at boot, 1 MiB
   chunks, bitmap) is the only memory that is freed and reused.
 

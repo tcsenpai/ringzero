@@ -19,7 +19,7 @@ or to act on it, and never invent numbers. Reply in English or in Italian, match
 user's latest message, briefly, in plain text without markdown headers.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
-const TOOLS: [&str; 14] = [
+const TOOLS: [&str; 15] = [
     r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: free, used and total RAM in MiB.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does.", "parameters": {"type": "object", "properties": {}}}}"#,
@@ -34,6 +34,7 @@ const TOOLS: [&str; 14] = [
     r#"{"type": "function", "function": {"name": "write_file", "description": "Create or replace a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}}"#,
     r#"{"type": "function", "function": {"name": "mkdir", "description": "Create a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "rm", "description": "Delete a file or an empty directory (asks the user).", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "run_code", "description": "Run Python code (MicroPython) and return what it prints.", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}}"#,
 ];
 
 enum Ty {
@@ -42,7 +43,7 @@ enum Ty {
 }
 
 // (name, params (name, type, required)), same order and content as TOOLS
-const SPECS: [(&str, &[(&str, Ty, bool)]); 14] = [
+const SPECS: [(&str, &[(&str, Ty, bool)]); 15] = [
     ("meminfo", &[]),
     ("cpuinfo", &[]),
     ("list_cores", &[]),
@@ -57,6 +58,7 @@ const SPECS: [(&str, &[(&str, Ty, bool)]); 14] = [
     ("write_file", &[("path", Ty::Str(&[]), true), ("content", Ty::Str(&[]), true)]),
     ("mkdir", &[("path", Ty::Str(&[]), true)]),
     ("rm", &[("path", Ty::Str(&[]), true)]),
+    ("run_code", &[("code", Ty::Str(&[]), true)]), // M5
 ];
 
 const TEMPLATE_TOOLS_HEAD: &str = "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>";
@@ -424,6 +426,7 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
                 let _ = write!(o, "error: {}", e);
             }
         }
+        "run_code" => crate::upy::tool(arg(c, "code").unwrap_or(""), o), // M5
         "set_setting" => {
             let (k, v) = (arg(c, "key").unwrap_or(""), arg(c, "value").unwrap_or(""));
             if shell::set_setting(k, v, o) {

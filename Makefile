@@ -21,7 +21,7 @@ ISO    := $(BUILD)/ringzero.iso
 QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp 8 \
           -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot $(call DRIVE,$(DISK))
 
-.PHONY: kernel iso model disk run-bios run-uefi run-remote run-local clean
+.PHONY: kernel upy iso model disk run-bios run-uefi run-remote run-local clean
 .DELETE_ON_ERROR:
 
 # Qwen3.5-2B -> $(MODEL) and Qwen3-Embedding-0.6B -> $(EMBED) from Hugging Face, each skipped when the .asmbin
@@ -32,8 +32,24 @@ model:
 	HF_DIR="$(EMBED_HF_DIR)" HF_REPO=Qwen/Qwen3-Embedding-0.6B EXPORT_ARGS="--v3 --max-seq-len 1024" \
 	    HF_FILES="config.json model.safetensors tokenizer.json tokenizer_config.json" tools/fetch_model.sh $(EMBED)
 
-kernel:
+kernel: upy
 	cd kernel && cargo build --release -j 8
+
+# M5: MicroPython (MIT), fetched at a pinned tag + commit and turned into the ports/embed package that
+# kernel/build.rs compiles freestanding (config: kernel/upy/mpconfigport.h). Needs python3 on the build box.
+UPY_TAG    ?= v1.29.0
+UPY_COMMIT ?= 0fd6c573ea815774668bbb16b8e197c8822368b2
+UPY_URL    ?= https://github.com/micropython/micropython.git
+UPY_STAMP  := $(BUILD)/upy/micropython_embed/genhdr/qstrdefs.generated.h
+upy: $(UPY_STAMP)
+$(BUILD)/micropython/py/py.mk:
+	rm -rf $(BUILD)/micropython
+	git -c advice.detachedHead=false clone -q --depth=1 --branch $(UPY_TAG) $(UPY_URL) $(BUILD)/micropython
+	test "$$(git -C $(BUILD)/micropython rev-parse HEAD)" = "$(UPY_COMMIT)" || { echo "MicroPython $(UPY_TAG) is not commit $(UPY_COMMIT)"; exit 1; }
+$(UPY_STAMP): $(BUILD)/micropython/py/py.mk kernel/upy/mpconfigport.h kernel/upy/micropython_embed.mk
+	$(MAKE) -s -C kernel/upy -f micropython_embed.mk MICROPYTHON_TOP=$(abspath $(BUILD)/micropython) \
+	    BUILD=$(abspath $(BUILD)/upy/build-embed) PACKAGE_DIR=$(abspath $(BUILD)/upy/micropython_embed)
+	touch $@
 
 $(BUILD)/limine/limine:
 	rm -rf $(BUILD)/limine
