@@ -1,0 +1,4 @@
+full template block: 942 tok = 25.5s @37tok/s
+  of which 13 tool JSON lines: 715 tok; fixed template preamble+system: 227 tok
+compact signatures instead of JSON (same preamble): 391 tok = 10.6s
+7-tool subset JSON: 647 tok

@@ -1,0 +1,15 @@
+[
+ {"type":"function","function":{"name":"ls","description":"List a directory.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}},
+ {"type":"function","function":{"name":"cat","description":"Read a file.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}},
+ {"type":"function","function":{"name":"write_file","description":"Create or overwrite a file.","parameters":{"type":"object","properties":{"path":{"type":"string"},"content":{"type":"string"}},"required":["path","content"]}}},
+ {"type":"function","function":{"name":"mkdir","description":"Create a directory.","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}},
+ {"type":"function","function":{"name":"rm","description":"Delete a file or directory.","parameters":{"type":"object","properties":{"path":{"type":"string"},"recursive":{"type":"boolean"}},"required":["path"]}}},
+ {"type":"function","function":{"name":"meminfo","description":"RAM total/free.","parameters":{"type":"object","properties":{}}}},
+ {"type":"function","function":{"name":"cpuinfo","description":"CPU model and features.","parameters":{"type":"object","properties":{}}}},
+ {"type":"function","function":{"name":"list_cores","description":"List CPU cores and their state.","parameters":{"type":"object","properties":{}}}},
+ {"type":"function","function":{"name":"read_log","description":"Last n lines of the system log.","parameters":{"type":"object","properties":{"n":{"type":"integer"}}}}},
+ {"type":"function","function":{"name":"poweroff","description":"Shut down the machine.","parameters":{"type":"object","properties":{}}}},
+ {"type":"function","function":{"name":"reboot","description":"Reboot the machine.","parameters":{"type":"object","properties":{}}}},
+ {"type":"function","function":{"name":"set_setting","description":"Set a system setting (e.g. hostname, language, timezone).","parameters":{"type":"object","properties":{"key":{"type":"string"},"value":{"type":"string"}},"required":["key","value"]}}},
+ {"type":"function","function":{"name":"run_code","description":"Run code. wasm = WAT text; script = tiny Python-like language.","parameters":{"type":"object","properties":{"language":{"type":"string","enum":["wasm","script"]},"code":{"type":"string"}},"required":["language","code"]}}}
+]

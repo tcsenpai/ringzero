@@ -282,3 +282,9 @@ Mycelium's state must remain predictable and auditable at all times.
 
 > The state of Mycelium after any operation must be explainable to another agent with zero context.
 <!-- myc:agents-end -->
+
+## AIOS project rules
+
+- `docs/ARCHITECTURE.md` holds the OS architecture diagram (mermaid) and must stay current: every change that adds, removes or rewires a component updates the diagram in the same commit.
+- Build and run on the Fedora box (ssh fedoralan), never QEMU on the Mac. Keep Fedora RAM under 90%: one QEMU guest at a time, check `free -m` first.
+- Commit subjects use one of: feat, fix, refactor, docs, style, test, build.
