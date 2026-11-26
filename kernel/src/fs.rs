@@ -296,17 +296,85 @@ fn mtime(d: fatfs::DateTime) -> u32 {
 
 /// (size, mtime) of a file.
 pub fn meta(path: &str) -> Result<(u64, u32), &'static str> {
+    match entry(path)? {
+        (false, size, mt) => Ok((size, mt)),
+        _ => Err("not found"),
+    }
+}
+
+/// (is_dir, size, mtime) of a file or a directory; / is a directory.
+pub fn entry(path: &str) -> Result<(bool, u64, u32), &'static str> {
     let rel = check(path)?;
+    if rel.is_empty() {
+        fs()?;
+        return Ok((true, 0, 0));
+    }
     let (dir, name) = rel.rsplit_once('/').unwrap_or(("", rel));
     let root = fs()?.root_dir();
     let d = if dir.is_empty() { root } else { root.open_dir(dir).map_err(err)? };
     for e in d.iter() {
         let e = e.map_err(err)?;
-        if e.is_file() && e.file_name().eq_ignore_ascii_case(name) {
-            return Ok((e.len(), mtime(e.modified())));
+        if e.file_name().eq_ignore_ascii_case(name) {
+            return Ok((e.is_dir(), e.len(), mtime(e.modified())));
         }
     }
     Err("not found")
+}
+
+// ---- M5b: what the WASI runtime (wasm.rs) needs beyond the shell commands ----
+
+/// A directory's entries as (name, is_dir, size).
+pub fn list(path: &str) -> Result<Vec<(String, bool, u64)>, &'static str> {
+    let rel = check(path)?;
+    let root = fs()?.root_dir();
+    let d = if rel.is_empty() { root } else { root.open_dir(rel).map_err(err)? };
+    let mut v = Vec::new();
+    for e in d.iter() {
+        let e = e.map_err(err)?;
+        let name = e.file_name();
+        if name != "." && name != ".." {
+            v.push((name, e.is_dir(), e.len()));
+        }
+    }
+    Ok(v)
+}
+
+/// Open or create a file (parents must exist), emptied if `trunc`.
+pub fn touch(path: &str, trunc: bool) -> Result<(), &'static str> {
+    let rel = check(path)?;
+    let mut f = fs()?.root_dir().create_file(rel).map_err(err)?;
+    if trunc {
+        f.truncate().map_err(err)?;
+    }
+    f.flush().map_err(err)
+}
+
+/// Write at `off` in an existing file (a gap past the end is zero-filled); returns the size after.
+pub fn write_at(path: &str, off: u64, data: &[u8]) -> Result<u64, &'static str> {
+    let mut f = fs()?.root_dir().open_file(check(path)?).map_err(err)?;
+    let size = f.seek(SeekFrom::End(0)).map_err(err)?;
+    let mut gap = off.saturating_sub(size);
+    if gap == 0 {
+        f.seek(SeekFrom::Start(off)).map_err(err)?;
+    }
+    while gap > 0 {
+        let k = gap.min(512);
+        f.write_all(&[0u8; 512][..k as usize]).map_err(err)?;
+        gap -= k;
+    }
+    f.write_all(data).map_err(err)?;
+    f.flush().map_err(err)?;
+    Ok(size.max(off + data.len() as u64))
+}
+
+/// Rename or move a file or a directory (the target must not exist).
+pub fn rename(from: &str, to: &str) -> Result<(), &'static str> {
+    let (a, b) = (check(from)?, check(to)?);
+    if a.is_empty() || b.is_empty() {
+        return Err("refusing to rename /");
+    }
+    let root = fs()?.root_dir();
+    root.rename(a, &root, b).map_err(err)
 }
 
 /// Every file on the volume outside /sys (agentd's own files), as (path, size, mtime).

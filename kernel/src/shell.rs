@@ -119,6 +119,8 @@ const CMDS: &[Cmd] = &[
     c("df", BANG, &[], "disk size and free space"),
     c("sync", BANG, &[], "flush the disk (poweroff and reboot do it too)"),
     c("py", BANG, &["-f"], "CODE | -f PATH  run MicroPython (one line echoes values; 10 s budget, Ctrl-C stops it)"),
+    c("wasm", BANG, &[], "PATH|NAME [ARGS] [< FILE]  run a WASI program (NAME = /bin/NAME.wasm, else a coreutils tool; 60 s budget, Ctrl-C stops it)"),
+    c("run", BANG, &[], "NAME [ARGS] [< FILE]  same as !wasm"),
     c("poweroff", BANG, &[], "power off now"),
     c("reboot", BANG, &[], "reboot now"),
     c("clear", SLASH, &[], "clear the screen, new conversation"),
@@ -829,6 +831,7 @@ pub fn run() -> ! {
             "drop" => snap::drop_cmd(arg),
             "ls" | "cat" | "write" | "mkdir" | "rm" | "df" | "sync" => fs_cmd(c.name, arg),
             "py" => crate::upy::shell_cmd(arg), // M5
+            "wasm" | "run" => crate::wasm::shell_cmd(arg), // M5b
             "poweroff" => sys::poweroff(),
             "reboot" => sys::reboot(),
             _ => {}

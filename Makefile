@@ -21,7 +21,7 @@ ISO    := $(BUILD)/ringzero.iso
 QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp 8 \
           -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot $(call DRIVE,$(DISK))
 
-.PHONY: kernel upy iso model disk run-bios run-uefi run-remote run-local clean
+.PHONY: kernel upy iso model disk wasm-apps run-bios run-uefi run-remote run-local clean
 .DELETE_ON_ERROR:
 
 # Qwen3.5-2B -> $(MODEL) and Qwen3-Embedding-0.6B -> $(EMBED) from Hugging Face, each skipped when the .asmbin
@@ -80,6 +80,17 @@ $(BUILD)/%.img:
 	 truncate -s $(DISK_MB)M $@.tmp && \
 	 { mkfs.vfat -F 32 -n RINGZERO $@.tmp >/dev/null || mformat -F -v RINGZERO -i $@.tmp ::; } && mv -n $@.tmp $@ && \
 	 echo "created $@ ($(DISK_MB) MiB FAT32)"
+
+# M5b: WASI programs for /bin, built or fetched by tools/wasm_apps.sh into WASM_DIR, then copied onto the disk
+# with mtools. Nothing is formatted: other files stay, same-name files in /bin are replaced. Refuses while a
+# guest has the image open (stop it first: !poweroff).
+WASM_DIR ?= $(BUILD)/wasm
+wasm-apps: $(DISK)
+	@if pgrep -f "file=$(DISK),[i]f=none" >/dev/null; then echo "refusing: a guest has $(DISK) open"; exit 1; fi
+	tools/wasm_apps.sh $(WASM_DIR)
+	mmd -i $(DISK) ::/bin 2>/dev/null || true
+	mcopy -o -i $(DISK) $(WASM_DIR)/*.wasm ::/bin/
+	mdir -i $(DISK) ::/bin
 
 run-bios: iso $(DISK)
 	$(QEMU)

@@ -6,7 +6,7 @@ to it on the same engine for a memory index. The inference engine is the NASM
 assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
-Status: **M4.7 constrained tool calls + hibernation** (with M5 MicroPython; edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
+Status: **M4.7 constrained tool calls + hibernation** (with M5 MicroPython and M5b WASI; edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
 uptime, settings, poweroff/reboot with confirmation) in its native tool format. `!cmd` runs a machine
@@ -73,6 +73,21 @@ status line (6 KiB cap). Included: builtins, f-strings, big ints, double floats,
 `array`, `collections`, `struct`, `errno`; no `import` from files, no `input()`, no I/O modules yet. Results:
 [docs/M5_MICROPYTHON_RESULT.md](docs/M5_MICROPYTHON_RESULT.md).
 
+WASI (M5b): programs compiled to `wasm32-wasip1` run from the disk on [wasmi](https://github.com/wasmi-labs/wasmi)
+2.0.3, an interpreter linked into the kernel (no_std), with WASI preview1 host functions mapped onto the FAT32
+volume. `!wasm PATH|NAME [ARGS...] [< FILE]` (`!run` is the same command) runs one: a bare NAME is
+`/bin/NAME.wasm`, else the uutils coreutils tool NAME (`!run ls -l /` runs `coreutils.wasm` with argv[0] `ls`);
+`"..."` keeps spaces in an argument, `< FILE` is stdin (without it stdin is at end of file). The program sees `/`
+as its preopened directory (fd 3, cwd `/`): `..` above `/` is refused, `/sys` (agentd's files) is read-only.
+stdout and stderr go to the console; each run is a fresh instance and ends with a status line (exit code, time,
+fuel, memory). The memory cap is 256 MiB per instance (`RINGZERO_WASM_MIB=512 make iso` for another), the time
+budget 60 s at the shell and 10 s for the agent, and Ctrl-C stops a program (checked every 10 M fuel, about
+10 ms). WASI calls not implemented (sockets, links) return ENOSYS, logged once per run. The agent has a
+`run_wasm(path, args)` tool with the captured output (6 KiB cap) and the status line. `make wasm-apps` builds
+or fetches the test programs (rztest, uutils coreutils, ripgrep, QuickJS-ng) and copies them to `/bin` on the
+disk with mtools. Speed: about 10x slower than native on a CPU bench. Results:
+[docs/M5B_WASI_RESULT.md](docs/M5B_WASI_RESULT.md).
+
 Constrained tool calls (M4.7a): once the model emits `<tool_call>`, the kernel holds every next token to a
 grammar built from the tool schemas, in the native format `<function=NAME><parameter=KEY>VALUE</parameter>...
 </function></tool_call>`: a known tool name, its own parameter names (each once), enum values (`set_setting`
@@ -107,14 +122,15 @@ Only the model goes back: tool side effects stay, and `/undo` says so. Design:
 [docs/design/SNAPSHOTS.md](docs/design/SNAPSHOTS.md).
 
 Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to the
-remote instance: [docs/M47_RESULT.md](docs/M47_RESULT.md) (earlier: [M5 MicroPython](docs/M5_MICROPYTHON_RESULT.md), [M4.5](docs/M45_RESULT.md), [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
+remote instance: [docs/M47_RESULT.md](docs/M47_RESULT.md) (earlier: [M5b WASI](docs/M5B_WASI_RESULT.md), [M5 MicroPython](docs/M5_MICROPYTHON_RESULT.md), [M4.5](docs/M45_RESULT.md), [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
 [M2+M3](docs/M2M3_RESULT.md), [M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
 
 ## Build and run
 
 On a Linux box with `cargo` (rustup, toolchain pinned in `kernel/rust-toolchain.toml`),
 `nasm`, `xorriso`, `git`, `cc` (gcc), `python3` (MicroPython's header generator), `qemu-system-x86_64` with KVM, OVMF for UEFI, and
-[uv](https://docs.astral.sh/uv/) for the model export.
+[uv](https://docs.astral.sh/uv/) for the model export. `make wasm-apps` also needs `rustup target add wasm32-wasip1`,
+`curl` and mtools.
 
 Quickstart:
 
@@ -124,6 +140,7 @@ make model               # Qwen/Qwen3.5-2B (~4.5 GB) -> models/qwen35-2b-q8_0-v3
                          # each skipped when the .asmbin is there
 make iso                 # kernel + Limine + both models -> build/ringzero.iso
 make disk                # build/disk.img, 512 MiB FAT32 (mkfs.vfat, mtools fallback); never overwrites it
+make wasm-apps           # WASI programs -> build/wasm -> /bin on the disk (guest stopped; keeps every other file)
 make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[main]>), VNC HOST:5901 (password aios)
 make run-local           # or: the same VM in a QEMU window on the box's desktop (own disk build/disk-local.img)
 ```
@@ -134,7 +151,10 @@ is in the memory index). Tell it "mi chiamo Cris e il mio numero preferito e 471
 `/facts`; `!poweroff`, boot again and ask "come mi chiamo?": the facts and the memory index are still there, and
 the second boot loads the prompt state from the disk cache, and resumes the conversation from the
 hibernation image (`/snap` shows the same state hash before the poweroff and after the boot). Python: `!py 17*23`,
-`!write /hello.py print("ciao", 2**64)` then `!py -f /hello.py`, or ask "quanto fa 17*23? usa python".
+`!write /hello.py print("ciao", 2**64)` then `!py -f /hello.py`, or ask "quanto fa 17*23? usa python". WASI (after
+`make wasm-apps`): `!wasm rztest check A "B C"` (the runtime's checks), `!run ls -l /bin`, `!run wc -l < /notes/todo.txt`,
+`!wasm rg -n latte /notes`, `!write /a.js console.log(6*7)` then `!wasm qjs /a.js`, or ask "usa run_wasm per
+contare le righe di /notes/todo.txt con wc".
 
 Remote instance on the Fedora box (Tailscale HOST-ADDRESS):
 
@@ -218,11 +238,13 @@ Memory index, from the shell:
 | `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log; record stores in /sys/mem (M4.5) |
 | `kernel/src/gram.rs` | tool-call grammar: byte automaton from the tool schemas, vocab trie, logit mask (M4.7a) |
 | `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
+| `kernel/src/wasm.rs` | WASI runtime (M5b): `!wasm`/`!run`, `run_wasm`, wasmi engine per run, fuel slices (budget, Ctrl-C), WASI preview1 host functions over fs.rs; the wasm memory slot is in `mem.rs` |
+| `tools/wasm_apps.sh`, `tools/wasm/rztest/` | `make wasm-apps`: builds rztest (our WASI checks, also `bench`, `loop`, `mem`, `escape`), uutils coreutils and ripgrep for wasm32-wasip1, fetches QuickJS-ng's `qjs-wasi.wasm` |
 | `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
 | `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
-| `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot) |
+| `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot; `"CMD ^C3"` sends Ctrl-C 3 s after CMD) |
 | `tools/tooleval.py` | tool-call A/B (M4.7a): the spike prompts + in-OS prompts with `!set constrain on|off`, scored (calls, malformed, schema errors, grammar lines, decode speed) |
 | `tools/accept.py` | drives the shell over TCP (answers y/N prompts, sends Ctrl-C, waits idle, powers off), saves a transcript |
 | `tools/uxtest.py` | types steps byte by byte over TCP (Tab completion, suggestions, long pasted lines), waits for a quiet prompt |
@@ -250,6 +272,8 @@ so GPL-2.0-only Linux driver code stays borrowable.
 | `linked_list_allocator` | 0.10.6 | Apache-2.0 OR MIT | kernel heap |
 | `virtio-drivers` (rcore-os) | 0.13.0 | MIT | virtio-blk + PCI transport |
 | `fatfs` (rafalh/rust-fatfs, git rev 38b3a79, 0.4.0 unreleased) | 0.4.0 | MIT | FAT32 |
+| `wasmi` + `wasmi_core`, `wasmi_ir`, `wasmi_collections` | 2.0.3 | MIT OR Apache-2.0 (used under MIT) | WASI runtime: wasm interpreter (M5b) |
+| transitive (wasmi): `wasmparser` 0.228, `libm` 0.2.16, `spin` 0.9.9 | | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT (`wasmparser`), MIT | wasm decoding and validation, float math |
 | transitive: `bitflags` 2.13, `lock_api` 0.4, `scopeguard` 1.2, `log` 0.4, `spinning_top` 0.2, `safe-mmio` 0.3, `thiserror` 2.0, `enumn` 0.1 (+ build-time `proc-macro2`, `quote`, `syn`, `unicode-ident`) | | MIT OR Apache-2.0 (`unicode-ident`: + Unicode-3.0) | |
 | transitive: `zerocopy` 0.8 | | BSD-2-Clause OR Apache-2.0 OR MIT | virtio-drivers |
 | `mkfs.vfat` (dosfstools) / `mtools` (host, `make disk`, not vendored) | | GPL-3.0-or-later (host tools, not linked) | disk image |
@@ -258,6 +282,9 @@ so GPL-2.0-only Linux driver code stays borrowable.
 | MicroPython (fetched at build by `make upy`, pinned tag + commit check, https://github.com/micropython/micropython) | v1.29.0, commit 0fd6c57 | MIT | Python interpreter (`py/` core via `ports/embed`) |
 | MicroPython `lib/libm_dbl` (musl 1.1.16 libm, same fetch) | v1.29.0 | MIT | double-precision math for MicroPython |
 | llm.asm engine by alesha-pro (vendored, https://github.com/alesha-pro/llm.asm) | fork commit 1c73255 | MIT | inference |
+| uutils coreutils (`make wasm-apps`: built from crates.io for wasm32-wasip1, feature `feat_wasm`; not vendored, on the disk only) | 0.13.0 | MIT | `/bin/coreutils.wasm` |
+| ripgrep (same, from crates.io) | 15.2.0 | Unlicense OR MIT | `/bin/rg.wasm` |
+| QuickJS-ng (`qjs-wasi.wasm` from its GitHub release, not vendored, on the disk only) | v0.18.0 | MIT | `/bin/qjs.wasm` |
 | `huggingface_hub` (`hf` CLI via uvx, not vendored), `numpy` (exporter, via uv) | latest | Apache-2.0, BSD-3-Clause | `make model` |
 | Qwen3.5-2B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3.5-2B | Apache-2.0 | system agent |
 | Qwen3-Embedding-0.6B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3-Embedding-0.6B | Apache-2.0 | embedder, memory index |

@@ -1,4 +1,4 @@
-# ringzero architecture (as of M4.7 constrained tool calls + hibernation, with M5 MicroPython, edition ringzero Qwen35@2b-Qwen3@0.6b)
+# ringzero architecture (as of M4.7 constrained tool calls + hibernation, with M5 MicroPython and M5b WASI, edition ringzero Qwen35@2b-Qwen3@0.6b)
 
 ## Diagram
 
@@ -12,7 +12,7 @@ flowchart TB
     subgraph K["Rust no_std kernel (ring 0, soft-float)"]
         KMAIN["main.rs kmain<br/>boot sequence"]
         IDT["idt.rs<br/>exceptions, wake IPI, idle timer"]
-        MEM["mem.rs<br/>bump arena, lower-half identity map,<br/>uncached MMIO map, 16 MiB kernel heap (linked_list_allocator)"]
+        MEM["mem.rs<br/>bump arena, lower-half identity map,<br/>uncached MMIO map, 64 MiB kernel heap (linked_list_allocator),<br/>wasm slot: one linear memory, realloc in place (M5b)"]
         BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
         FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
         FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
@@ -51,6 +51,12 @@ flowchart TB
         UPY["upy.rs: !py, run_code tool,<br/>time budget + Ctrl-C (upy_check), stdout capture"]
         GLUE["kernel/upy/glue.c<br/>fresh interpreter per run on a 1 MiB stack,<br/>VM hook -> KeyboardInterrupt / hard abort, cut traceback"]
         UVM["py/ core (ports/embed): compiler, bytecode VM,<br/>GC heap 8 MiB, mpz ints, math via libm_dbl;<br/>mini libc (libc.c + mem* from compiler_builtins)"]
+    end
+
+    subgraph WS["WASI runtime (Rust, ring 0; M5b)"]
+        WRT["wasm.rs: !wasm / !run, run_wasm tool,<br/>fresh wasmi Engine + Store per run, fuel slices of 10 M,<br/>budget + Ctrl-C between slices, memory cap (StoreLimits),<br/>stdout/stderr -> console or 6 KiB capture"]
+        WASI["wasm.rs: WASI preview1 host functions<br/>args, environ, clocks, random (RDRAND), poll_oneoff,<br/>fd_* + path_* over fs.rs, preopen / = fd 3,<br/>'..' above / refused, /sys read-only, others ENOSYS"]
+        WMI["wasmi 2.0.3 (interpreter, no_std + alloc)<br/>validate, lazy translation, register bytecode"]
     end
 
     subgraph D["Devices (QEMU q35)"]
@@ -143,6 +149,17 @@ flowchart TB
     UPY -- "Ctrl-C poll every 10 ms" --> SH
     UVM -- "print -> upy_out" --> UPY
     UPY --> CON
+    KMAIN -- "wasm::init: slot (memory cap)" --> WRT
+    WRT -- "sys_mmap_anon, set_wasm_slot" --> MEM
+    SH -- "!wasm PATH|NAME ARGS [< FILE], !run" --> WRT
+    AG -- "run_wasm tool (10 s budget, 6 KiB output)" --> WRT
+    WRT -- "read .wasm, Module::new, instantiate,<br/>call_resumable / resume on OutOfFuel" --> WMI
+    WMI -- "imports" --> WASI
+    WASI -- "entry, list, read_into, write_at,<br/>touch, truncate, mkdir, rm, rename" --> FS
+    WASI -- "fd_write 1/2" --> WRT
+    WRT -- "Ctrl-C poll every 10 ms" --> SH
+    WRT -- "upy::on_stack (shared 1 MiB stack)" --> UPY
+    WRT --> CON
 ```
 
 Data flow of `how much free memory?` (plain text goes to the agent):
@@ -387,6 +404,13 @@ bit-identical to the per-token path (docs/BATCHED_PREFILL_RESULT.md).
   models and the snapshot pool (arena use 520 -> 529 MiB). Its C code (~286 KB of text) is linked into the
   kernel image with `-mcmodel=kernel -mno-red-zone`, uses SSE2 for doubles (the Rust side stays soft-float,
   no float crosses the FFI) and runs on the BSP between model calls, on its own stack.
+- The WASI runtime (M5b) takes the wasm slot (256 MiB, `RINGZERO_WASM_MIB`) from the arena after MicroPython,
+  and the kernel heap grew from 16 to 64 MiB for wasmi (module bytes, translated code, the store). The global
+  allocator in mem.rs routes one allocation to the slot: the first one of whole 64 KiB pages while wasm.rs is
+  instantiating, the linear memory's initial size. Its reallocs (wasmi grows memories by doubling a Vec) stay in
+  place, so a 128 -> 256 MiB step needs no second buffer; StoreLimits keeps the memory within the cap. RAM free
+  2003 -> 1694 MiB. wasmi (portable dispatch, simd) and wasm.rs add 1.87 MB of kernel text. A run is on the BSP,
+  on MicroPython's 1 MiB stack (upy::on_stack), between model calls.
 - No heap and no general frame allocator yet. The snapshot pool (1 GiB taken from the arena at boot, 1 MiB
   chunks, bitmap) is the only memory that is freed and reused.
 

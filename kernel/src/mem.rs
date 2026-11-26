@@ -2,8 +2,9 @@
 // identity-mapped in the lower half with 2 MiB pages (the engine treats negative pointers from
 // sys_mmap_anon as errors, transformer.asm:529, so HHDM addresses cannot be used), plus a
 // page-table walk to report the page size behind an address.
+use core::alloc::GlobalAlloc;
 use core::arch::asm;
-use core::sync::atomic::{AtomicU64, Ordering::Relaxed};
+use core::sync::atomic::{AtomicBool, AtomicU64, Ordering::Relaxed};
 
 static ARENA_CUR: AtomicU64 = AtomicU64::new(0);
 static ARENA_END: AtomicU64 = AtomicU64::new(0);
@@ -72,10 +73,79 @@ pub fn init(hhdm: u64, phys: u64, len: u64) {
     ARENA_END.store(end, Relaxed);
 }
 
-// Kernel heap (alloc, for the FAT driver and the file indexer): a fixed slice of the arena, taken at boot.
-#[global_allocator]
+// Kernel heap (alloc, for the FAT driver, the file indexer and wasmi): a fixed slice of the arena, taken at boot.
 static HEAP: linked_list_allocator::LockedHeap = linked_list_allocator::LockedHeap::empty();
-pub const HEAP_BYTES: usize = 16 << 20;
+pub const HEAP_BYTES: usize = 64 << 20;
+
+// M5b: the wasm slot, one region of the memory cap (wasm.rs) for one wasm linear memory. wasmi keeps a linear
+// memory in a Vec<u8> and grows it by doubling (realloc); in the heap a 128 -> 256 MiB step needs 384 MiB at
+// once. While wasm.rs instantiates a module the slot is armed: the first allocation of whole 64 KiB pages (the
+// memory's initial size) takes it, and every realloc of it stays in place.
+static SLOT: AtomicU64 = AtomicU64::new(0);
+static SLOT_LEN: AtomicU64 = AtomicU64::new(0);
+static SLOT_ARMED: AtomicBool = AtomicBool::new(false);
+static SLOT_BUSY: AtomicBool = AtomicBool::new(false);
+
+pub fn set_wasm_slot(p: *mut u8, len: usize) {
+    SLOT_LEN.store(len as u64, Relaxed);
+    SLOT.store(p as u64, Relaxed);
+}
+
+/// Around Linker::instantiate only (one memory per instance: a second one stays in the heap).
+pub fn arm_wasm_slot(on: bool) {
+    SLOT_ARMED.store(on, Relaxed);
+}
+
+fn in_slot(p: *mut u8) -> bool {
+    let (s, n) = (SLOT.load(Relaxed), SLOT_LEN.load(Relaxed));
+    s != 0 && (p as u64) >= s && (p as u64) < s + n
+}
+
+fn slot_take(size: usize, align: usize) -> Option<*mut u8> {
+    let ok = SLOT_ARMED.load(Relaxed) && size % 65536 == 0 && size as u64 <= SLOT_LEN.load(Relaxed) && align <= 4096;
+    (ok && SLOT_BUSY.compare_exchange(false, true, Relaxed, Relaxed).is_ok()).then(|| {
+        SLOT_ARMED.store(false, Relaxed);
+        SLOT.load(Relaxed) as *mut u8
+    })
+}
+
+struct Alloc;
+#[global_allocator]
+static ALLOC: Alloc = Alloc;
+
+unsafe impl GlobalAlloc for Alloc {
+    unsafe fn alloc(&self, l: core::alloc::Layout) -> *mut u8 {
+        match slot_take(l.size(), l.align()) {
+            Some(p) => p,
+            None => unsafe { HEAP.alloc(l) },
+        }
+    }
+    unsafe fn alloc_zeroed(&self, l: core::alloc::Layout) -> *mut u8 {
+        match slot_take(l.size(), l.align()) {
+            Some(p) => unsafe {
+                core::ptr::write_bytes(p, 0, l.size()); // the slot is reused across runs
+                p
+            },
+            None => unsafe { HEAP.alloc_zeroed(l) },
+        }
+    }
+    unsafe fn dealloc(&self, p: *mut u8, l: core::alloc::Layout) {
+        if in_slot(p) {
+            SLOT_BUSY.store(false, Relaxed);
+        } else {
+            unsafe { HEAP.dealloc(p, l) }
+        }
+    }
+    unsafe fn realloc(&self, p: *mut u8, l: core::alloc::Layout, new: usize) -> *mut u8 {
+        // shortcut: a doubling step may ask for more than the slot (1088 KiB x 2^8 = 272 MiB > 256); the Vec only
+        // writes up to its length, and StoreLimits keeps the memory within the slot. Only the linear memory is here.
+        if in_slot(p) { p } else { unsafe { HEAP.realloc(p, l, new) } }
+    }
+}
+
+pub fn heap_free() -> usize {
+    HEAP.lock().free()
+}
 
 pub fn heap_init() {
     let p = sys_mmap_anon(HEAP_BYTES as u64);

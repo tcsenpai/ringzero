@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """boottest.py ISO bios|uefi OUTDIR [SMP] [CMD ...] : boot ISO in QEMU/KVM headless (guest RAM MEM=6G, the
 default since the embedder), log serial with host timestamps, type each CMD at the ringzero prompt (one per prompt), stop at the prompt after the
-last CMD (or at PANIC/EXCEPTION/M0 FAIL, or 900 s), save a screenshot as PNG. DISK=build/disk.img attaches a
+last CMD ("CMD ^C3" sends Ctrl-C 3 s after CMD) (or at PANIC/EXCEPTION/M0 FAIL, or 900 s), save a screenshot as PNG. DISK=build/disk.img attaches a
 virtio-blk data disk like the make run targets."""
 import os, re, shutil, socket, subprocess, sys, time
 from screenshot import mon, ppm_to_png
@@ -51,7 +51,9 @@ while time.time() - t0 < 900 and p.poll() is None:
     if n_prompts > prompts:
         prompts = n_prompts
         if sent < len(cmds):
-            time.sleep(0.2); ser.sendall((cmds[sent] + "\r").encode()); sent += 1
+            c, _, k = cmds[sent].partition(" ^C")  # "CMD ^C3": type CMD, then Ctrl-C after 3 s
+            time.sleep(0.2); ser.sendall((c + "\r").encode()); sent += 1
+            if k: time.sleep(float(k)); ser.sendall(b"\x03")
         else:
             break
 if buf:

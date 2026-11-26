@@ -53,6 +53,7 @@ pub fn init() {
     unsafe {
         upy_setup(heap, mib << 20, stack, STACK);
         HEAP_BYTES = mib << 20;
+        STACK_TOP = stack as usize + STACK;
     }
     klog!(b'I', "upy:  MicroPython 1.29.0 (embed port, freestanding), GC heap {} MiB + stack {} KiB from the arena", mib, STACK >> 10);
 }
@@ -65,13 +66,24 @@ extern "C" fn upy_out(s: *const u8, n: usize) {
             crate::console::write_bytes(b);
             return;
         }
-        let o = &mut *core::ptr::addr_of_mut!(OUT);
-        let mut k = b.len().min(OUT_CAP - o.n);
-        while k > 0 && k < b.len() && b[k] & 0xC0 == 0x80 {
-            k -= 1; // never cut a UTF-8 sequence: OUT is read back as &str
-        }
-        o.push(&b[..k]);
-        DROPPED += b.len() - k;
+        DROPPED += (*core::ptr::addr_of_mut!(OUT)).push_cut(b);
+    }
+}
+
+unsafe extern "C" {
+    fn upy_on_stack(f: unsafe extern "C" fn(*mut u8), arg: *mut u8, top: *mut u8);
+}
+static mut STACK_TOP: usize = 0;
+
+/// Run f on the private 1 MiB stack (glue.c upy_on_stack); the boot stack is only 64 KiB. The WASI runtime
+/// (M5b) shares it: Python and wasm never run at the same time.
+pub fn on_stack(mut f: &mut dyn FnMut()) {
+    unsafe extern "C" fn tramp(a: *mut u8) {
+        unsafe { (*(a as *mut &mut dyn FnMut()))() }
+    }
+    match unsafe { STACK_TOP } {
+        0 => f(),
+        top => unsafe { upy_on_stack(tramp, &mut f as *mut &mut dyn FnMut() as *mut u8, top as *mut u8) },
     }
 }
 

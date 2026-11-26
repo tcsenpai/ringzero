@@ -24,6 +24,15 @@ impl<const N: usize> SBuf<N> {
         self.b[self.n..self.n + k].copy_from_slice(&s[..k]);
         self.n += k;
     }
+    /// push, never cutting inside a UTF-8 sequence (the buffer is read back as &str); returns the bytes dropped.
+    pub fn push_cut(&mut self, s: &[u8]) -> usize {
+        let mut k = s.len().min(N - self.n);
+        while k > 0 && k < s.len() && s[k] & 0xC0 == 0x80 {
+            k -= 1;
+        }
+        self.push(&s[..k]);
+        s.len() - k
+    }
 }
 
 impl<const N: usize> Write for SBuf<N> {

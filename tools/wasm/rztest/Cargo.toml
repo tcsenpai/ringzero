@@ -1,0 +1,10 @@
+[package]
+name = "rztest"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-2.0-or-later"
+description = "M5b: WASI preview1 checks for the ringzero runtime (build: tools/wasm_apps.sh)"
+
+[profile.release]
+opt-level = "s"
+strip = true

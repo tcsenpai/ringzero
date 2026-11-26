@@ -19,7 +19,7 @@ or to act on it, and never invent numbers. Reply in English or in Italian, match
 user's latest message, briefly, in plain text without markdown headers.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
-const TOOLS: [&str; 17] = [
+const TOOLS: [&str; 18] = [
     r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: free, used and total RAM in MiB.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does.", "parameters": {"type": "object", "properties": {}}}}"#,
@@ -37,6 +37,7 @@ const TOOLS: [&str; 17] = [
     r#"{"type": "function", "function": {"name": "mkdir", "description": "Create a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "rm", "description": "Delete a file or an empty directory (asks the user).", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "run_code", "description": "Run Python code (MicroPython) and return what it prints.", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}}"#,
+    r#"{"type": "function", "function": {"name": "run_wasm", "description": "Run a WASI program from the disk (in /bin, e.g. coreutils) and return what it prints.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "args": {"type": "string", "description": "command-line arguments, space separated"}}, "required": ["path"]}}}"#,
 ];
 
 pub(crate) enum Ty {
@@ -45,7 +46,7 @@ pub(crate) enum Ty {
 }
 
 // (name, params (name, type, required)), same order and content as TOOLS
-pub(crate) const SPECS: [(&str, &[(&str, Ty, bool)]); 17] = [
+pub(crate) const SPECS: [(&str, &[(&str, Ty, bool)]); 18] = [
     ("meminfo", &[]),
     ("cpuinfo", &[]),
     ("list_cores", &[]),
@@ -63,6 +64,7 @@ pub(crate) const SPECS: [(&str, &[(&str, Ty, bool)]); 17] = [
     ("mkdir", &[("path", Ty::Str(&[]), true)]),
     ("rm", &[("path", Ty::Str(&[]), true)]),
     ("run_code", &[("code", Ty::Str(&[]), true)]), // M5
+    ("run_wasm", &[("path", Ty::Str(&[]), true), ("args", Ty::Str(&[]), false)]), // M5b
 ];
 
 const TEMPLATE_TOOLS_HEAD: &str = "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>";
@@ -501,6 +503,7 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
             }
         }
         "run_code" => crate::upy::tool(arg(c, "code").unwrap_or(""), o), // M5
+        "run_wasm" => crate::wasm::tool(arg(c, "path").unwrap_or(""), arg(c, "args").unwrap_or(""), o), // M5b
         "set_setting" => {
             let (k, v) = (arg(c, "key").unwrap_or(""), arg(c, "value").unwrap_or(""));
             if shell::set_setting(k, v, o) {
@@ -668,7 +671,7 @@ pub fn ask(q: &str) {
                 }
                 println!(")");
                 // M4.7a: a value the grammar had to choose is a guess; tools that change the machine do not run it
-                const FX: [&str; 9] = ["set_setting", "remember", "forget", "write_file", "mkdir", "rm", "poweroff", "reboot", "run_code"];
+                const FX: [&str; 10] = ["set_setting", "remember", "forget", "write_file", "mkdir", "rm", "poweroff", "reboot", "run_code", "run_wasm"];
                 if validate(&c, res).is_some() {
                     if crate::gram::last_steered() && FX.contains(&c.name) {
                         let _ = write!(res, "error: not run: a tool name, parameter or value was not in the schema and the kernel had to replace it. Call {} again with values from its schema, or answer without the tool", c.name);

@@ -27,6 +27,7 @@ mod smp;
 mod snap;
 mod sys;
 mod upy; // M5 MicroPython
+mod wasm; // M5b WASI runtime
 mod gram; // M4.7a constrained decoding
 mod hib; // M4.7b hibernation
 
@@ -238,6 +239,8 @@ extern "C" fn kmain() -> ! {
     klog!(b'I', "mem:  kernel heap {} MiB (linked_list_allocator, from the arena)", mem::HEAP_BYTES >> 20);
     fs::init();
     upy::init(); // M5: MicroPython heap + stack, before the snapshot pool takes the arena
+    wasm::init(); // M5b: the wasm memory slot, same reason
+    klog!(b'I', "wasm: command-line splitter self-test {}", if wasm::selftest() { "PASS" } else { "FAIL" });
 
     // ---- engine ABI test, model, golden self-test, REPL ----
     let ok = engine::selftest();
