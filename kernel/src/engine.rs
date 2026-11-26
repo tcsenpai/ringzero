@@ -1,58 +1,42 @@
-// FFI to the NASM engine: the symbols it imports (provided here) and an M0 link/ABI self-test.
+// FFI to the NASM engine: its entry points, the symbols it imports, and the M0 ABI self-test.
 //
 // ABI note: this target is soft-float, so Rust never passes f32/f64 in xmm registers. Engine
 // entry points that take float args in xmm (rmsnorm_avx2 eps, sample_top_p temp/topp) need an
-// asm shim before Rust can call them. Everything called here takes only pointers and integers.
+// asm shim before Rust can call them: sample_top_p_bits in engine/cpu.asm.
 
 use crate::println;
 
 unsafe extern "C" {
     pub fn enable_avx_fpu();
     fn silu_mul_avx2(gate_inout: *mut f32, up: *const f32, n: u64);
-    fn argmax_f32(x: *const f32, n: u64) -> u64;
-    // Not called in M0. Referenced only so --gc-sections keeps the whole engine and the
-    // linker must resolve every symbol it imports (M1 calls these for real).
-    fn model_init();
-    fn model_free();
-    fn transformer_forward();
-    fn tok_build_chat_prompt();
-    fn tok_encode_bpe();
-    fn tok_write_stdout();
-    fn sample_top_p();
-    fn matmul_q8_0_range();
-    fn quantize_x_q8_0();
+    pub fn argmax_f32(x: *const f32, n: u64) -> u64;
+    pub fn model_init(base: *const u8, size: u64, max_seq_override: u64) -> i64;
+    pub fn transformer_forward(token: u32, pos: u64, compute_logits: i32);
+    pub fn tok_build_chat_prompt(prompt: *const u8, out: *mut u32, max: u64, raw: u64, think: u64) -> u64;
+    pub fn tok_write_stdout(token: u64);
+    /// cpu.asm shim: floats as raw bits (soft-float Rust cannot pass xmm args).
+    pub fn sample_top_p_bits(logits: *const f32, probs: *mut f32, n: u64, rng: *mut u64, temp: u32, topp: u32) -> u64;
+    static g_ctx: [u64; 80];
 }
 
-#[used]
-pub static ENTRY_POINTS: [(&str, unsafe extern "C" fn()); 9] = [
-    ("model_init", model_init),
-    ("model_free", model_free),
-    ("transformer_forward", transformer_forward),
-    ("tok_build_chat_prompt", tok_build_chat_prompt),
-    ("tok_encode_bpe", tok_encode_bpe),
-    ("tok_write_stdout", tok_write_stdout),
-    ("sample_top_p", sample_top_p),
-    ("matmul_q8_0_range", matmul_q8_0_range),
-    ("quantize_x_q8_0", quantize_x_q8_0),
-];
-
-// ---- imports of transformer.asm / tokenizer.asm ----
-
-#[unsafe(no_mangle)]
-extern "C" fn sys_mmap_anon(size: u64) -> *mut u8 {
-    panic!("sys_mmap_anon({size}): no model arena yet (M1)");
+/// g_ctx field at byte offset `off` (engine/constants.inc CTX_*).
+pub fn ctx(off: usize) -> u64 {
+    unsafe { (core::ptr::addr_of!(g_ctx) as *const u64).add(off / 8).read_volatile() }
 }
 
-#[unsafe(no_mangle)]
-extern "C" fn sys_munmap(_ptr: *mut u8, _size: u64) -> i64 {
-    0 // bump arena: freeing is a no-op, same as the asm OS
-}
+// ---- imports of transformer.asm / tokenizer.asm (sys_mmap_anon/sys_munmap live in mem.rs,
+// tp_* in engine/smp.asm) ----
 
 #[unsafe(no_mangle)]
 extern "C" fn sys_write_all(_fd: u64, buf: *const u8, len: u64) -> i64 {
+    let t0 = crate::smp::rdtsc();
     crate::console::write_bytes(unsafe { core::slice::from_raw_parts(buf, len as usize) });
+    OUT_TSC.fetch_add(crate::smp::rdtsc() - t0, core::sync::atomic::Ordering::Relaxed);
     0
 }
+
+/// TSC cycles spent printing model output (serial + framebuffer).
+pub static OUT_TSC: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
 
 #[unsafe(no_mangle)]
 extern "C" fn str_len(s: *const u8) -> u64 {
@@ -61,21 +45,6 @@ extern "C" fn str_len(s: *const u8) -> u64 {
         n += 1;
     }
     n as u64
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn tp_matmul_q8_0() {
-    panic!("tp_matmul_q8_0: SMP dispatch not linked yet (M1)");
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn tp_gqa_attn() {
-    panic!("tp_gqa_attn: SMP dispatch not linked yet (M1)");
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn tp_deltanet() {
-    panic!("tp_deltanet: SMP dispatch not linked yet (M1)");
 }
 
 // ---- self-test ----
@@ -99,8 +68,6 @@ struct Buf([f32; 64]);
 
 /// Calls silu_mul_avx2 and argmax_f32 and checks them against Rust. Returns true on PASS.
 pub fn selftest() -> bool {
-    println!("engine: {} entry points linked, e.g. {} @ {:p}, {} @ {:p}", ENTRY_POINTS.len(),
-        ENTRY_POINTS[0].0, ENTRY_POINTS[0].1 as *const u8, ENTRY_POINTS[2].0, ENTRY_POINTS[2].1 as *const u8);
     let mut gate = Buf([0.0; 64]);
     let mut up = Buf([0.0; 64]);
     for i in 0..64 {

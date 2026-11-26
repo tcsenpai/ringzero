@@ -20,11 +20,15 @@ struct Console {
     fb: Option<Fb>,
     x: usize,
     y: usize,
+    // partial UTF-8 sequence for the framebuffer (a token can end mid-character)
+    ubuf: [u8; 4],
+    ulen: usize,
 }
 
 unsafe impl Send for Console {}
 
-static CONSOLE: Mutex<Console> = Mutex::new(Console { serial: None, fb: None, x: 0, y: 0 });
+static CONSOLE: Mutex<Console> =
+    Mutex::new(Console { serial: None, fb: None, x: 0, y: 0, ubuf: [0; 4], ulen: 0 });
 
 pub fn init(fb: Option<Fb>) {
     let mut c = CONSOLE.lock();
@@ -62,6 +66,20 @@ impl Console {
             return self.newline();
         }
         let cw = get_raster_width(W, H);
+        if ch == '\u{8}' || ch == '\u{7f}' {
+            // backspace: step back one cell and blank it
+            if self.x >= cw {
+                self.x -= cw;
+                for dy in 0..H.val() {
+                    let off = (self.y + dy) * fb.pitch + self.x * 4;
+                    unsafe { core::ptr::write_bytes(fb.addr.add(off), 0, cw * 4) };
+                }
+            }
+            return;
+        }
+        if (ch as u32) < 0x20 {
+            return;
+        }
         if self.x + cw > fb.width {
             self.newline();
         }
@@ -100,11 +118,64 @@ pub fn print(args: fmt::Arguments) {
     }
 }
 
+/// Raw bytes (model output): serial gets them as is (\n -> \r\n), the framebuffer decodes UTF-8
+/// across calls.
 pub fn write_bytes(b: &[u8]) {
-    print(format_args!("{}", core::str::from_utf8(b).unwrap_or("<non-utf8>")));
+    let mut c = match CONSOLE.try_lock() {
+        Some(c) => c,
+        None => {
+            unsafe { CONSOLE.force_unlock() };
+            CONSOLE.lock()
+        }
+    };
+    if let Some(sp) = &mut c.serial {
+        for &x in b {
+            if x == b'\n' {
+                sp.inner_mut().send_bytes_exact(b"\r");
+            }
+            sp.inner_mut().send_bytes_exact(&[x]);
+        }
+    }
+    for &x in b {
+        if c.ulen == 0 && x < 0x80 {
+            c.fb_char(x as char);
+            continue;
+        }
+        if c.ulen > 0 && x & 0xC0 != 0x80 {
+            c.ulen = 0; // broken sequence: drop it
+            if x < 0x80 {
+                c.fb_char(x as char);
+                continue;
+            }
+        }
+        let n = c.ulen;
+        c.ubuf[n] = x;
+        c.ulen += 1;
+        let want = match c.ubuf[0] {
+            0xC0..=0xDF => 2,
+            0xE0..=0xEF => 3,
+            0xF0..=0xF7 => 4,
+            _ => 1, // stray continuation byte
+        };
+        if c.ulen >= want {
+            let ch = core::str::from_utf8(&c.ubuf[..c.ulen]).ok().and_then(|s| s.chars().next()).unwrap_or('?');
+            c.ulen = 0;
+            c.fb_char(ch);
+        }
+    }
+}
+
+/// Non-blocking read of one byte from COM1.
+pub fn serial_getc() -> Option<u8> {
+    CONSOLE.lock().serial.as_mut().and_then(|s| s.inner_mut().try_receive_byte().ok())
 }
 
 #[macro_export]
 macro_rules! println {
     ($($t:tt)*) => { $crate::console::print(format_args!("{}\n", format_args!($($t)*))) };
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($t:tt)*) => { $crate::console::print(format_args!($($t)*)) };
 }

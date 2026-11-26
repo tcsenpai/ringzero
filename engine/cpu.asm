@@ -28,6 +28,18 @@ enable_avx_fpu:
     ldmxcsr [rel default_mxcsr]
     ret
 
+; ----------------------------------------------------------------------------
+; Float-argument shims for the soft-float Rust kernel: floats travel as raw u32 bits in GPRs.
+; u64 sample_top_p_bits(float *logits, float *probs, u64 n, u64 *rng, u32 temp_bits, u32 topp_bits)
+;   -> sample_top_p(logits, probs, n, xmm0 = temp, xmm1 = topp, rcx = rng)
+; ----------------------------------------------------------------------------
+global sample_top_p_bits
+extern sample_top_p
+sample_top_p_bits:
+    vmovd   xmm0, r8d
+    vmovd   xmm1, r9d
+    jmp     sample_top_p
+
 section .rodata
 align 4
 default_mxcsr: dd 0x1F80

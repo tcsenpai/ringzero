@@ -1,4 +1,4 @@
-# AIOS architecture (as of M0)
+# AIOS architecture (as of M1)
 
 ## Boot flow
 
@@ -8,8 +8,9 @@
    `/boot/model.asmbin` as a module, sets a GOP/VBE framebuffer, builds 4-level paging with the
    HHDM (base revision 3), starts every AP and parks it, then jumps to `kmain` on the BSP in
    long mode with a Limine stack. The IDT is undefined at this point.
-3. `kmain` (kernel/src/main.rs): console on COM1 + framebuffer, CPUID check, `enable_avx_fpu`,
-   memory map / MP / module report, engine self-test, then `hlt`.
+3. `kmain` (kernel/src/main.rs): console on COM1 + framebuffer, IDT, CPUID check, `enable_avx_fpu`,
+   TSC calibration (PIT ch2), arena + model identity maps, AP release, `model_init`, golden
+   self-test, `/bench`, then the REPL (kernel/src/llm.rs).
 
 ## Memory
 
@@ -23,7 +24,11 @@
   `model_init` (M1) gets its HHDM virtual address. With `-m 4G` on q35 the model lands below
   4 GiB and 2 GiB of usable RAM remain above 4 GiB (`0x100000000`), which is where the
   engine's arena (`sys_mmap_anon`) will come from.
-- No heap, no frame allocator and no page-table changes yet.
+- The engine treats a negative `sys_mmap_anon` result as an error (transformer.asm:529), and HHDM
+  addresses are negative. So the arena (largest usable region, bump allocator, kernel/src/mem.rs) and
+  the model are **identity-mapped in the lower half with 2 MiB pages**, added to Limine's page tables
+  before the APs start (they share CR3). `model_init` gets the model's physical (= identity) address.
+- No heap and no general frame allocator yet.
 
 ## Where the engine sits
 
@@ -31,11 +36,27 @@
 Rust kernel (ring 0, soft-float)          NASM engine (ring 0, AVX2/FMA/F16C)
   kmain ---- calls ---------------------->  silu_mul_avx2, argmax_f32 (M0 self-test)
                                              model_init, transformer_forward, tok_* (M1)
-  sys_mmap_anon / sys_munmap   <-- imports -- transformer.asm
-  sys_write_all / str_len      <-- imports -- tokenizer.asm
+  sys_mmap_anon / sys_munmap   <-- imports -- transformer.asm   (mem.rs)
+  sys_write_all / str_len      <-- imports -- tokenizer.asm     (engine.rs)
   tp_matmul_q8_0 / tp_gqa_attn /
-  tp_deltanet (stubs, panic)   <-- imports -- transformer.asm  (SMP dispatch, M1)
+  tp_deltanet                  <-- imports -- transformer.asm   (engine/smp.asm)
 ```
+
+## SMP
+
+Limine MP (x2APIC requested) starts every AP. `smp::start` writes `tid` into each AP's
+`extra_argument` and its `goto_address` = `ap_limine_entry` (engine/smp.asm): own 64 KiB stack,
+`ap_init` (lidt, LAPIC enable), `enable_avx_fpu`, then the asm OS worker loop. The BSP is tid 0 and
+runs its own slice inside `tp_*`, so `transformer_forward` is called from the BSP only.
+
+Idle workers spin for `tp_park_tsc` cycles, then, if `tp_park_enable`, count themselves in
+`tp_n_parked` and `hlt`. A dispatcher that sees `tp_n_parked != 0` sends one broadcast IPI (vector
+0xF0, EOI-only handler). Default policy: parking disabled during a generation, enabled between
+requests (parking inside a generation costs 27-46% decode, see M1_RESULT.md). The BSP waits for input
+in `hlt` with a 1 kHz TSC-deadline timer (vector 0xF1).
+
+Interrupts stay off (IF=0) everywhere except inside those `sti; hlt` windows, so the engine is never
+interrupted and the soft-float Rust handlers never need to save vector state.
 
 The Rust target is soft-float, so Rust never touches xmm/ymm and the engine owns the vector
 state. Consequence: engine functions that take float args in xmm registers need a small asm shim
@@ -48,5 +69,6 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 | Inference engine (math, matmul, tokenizer, transformer), vendored unmodified | NASM |
 | `enable_avx_fpu` (engine/cpu.asm, from the old boot.asm) | NASM |
 | Boot, paging, AP startup | Limine |
-| Console, CPU checks, memory/MP/module reporting, engine imports | Rust |
-| SMP dispatch (`tp_*` + worker loop from the old smp.asm) | not yet ported (M1: keep in asm) |
+| `sample_top_p_bits` float shim (engine/cpu.asm) | NASM |
+| SMP dispatch (`tp_*`), worker loop, AP entry, parking (engine/smp.asm, adapted from the asm OS) | NASM |
+| Console, IDT, CPU checks, TSC calibration, memory maps, AP release, generation loop, REPL | Rust |

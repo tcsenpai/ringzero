@@ -5,9 +5,10 @@ Experimental "AI OS": a small Rust `no_std` x86-64 kernel, booted by Limine, wit
 assembly from [llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`), linked
 into the kernel as objects.
 
-Status: **M0**. The kernel boots under BIOS and UEFI, prints on COM1 and the framebuffer,
-finds the model module, enables AVX and calls into the engine. No inference yet (M1).
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/M0_RESULT.md](docs/M0_RESULT.md).
+Status: **M1**. Boots under BIOS and UEFI, runs the APs in the engine's worker loop, passes the
+Qwen3.5-2B golden self-test and serves a chat REPL on COM1 (and PS/2), at the asm OS's speed.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/M0_RESULT.md](docs/M0_RESULT.md) and
+[docs/M1_RESULT.md](docs/M1_RESULT.md) (how to connect to the remote instance).
 
 ## Build and run
 
@@ -19,8 +20,10 @@ make iso                 # kernel + Limine (fetched, pinned tag) + model -> buil
 make run-bios            # QEMU/KVM, q35, 4 GiB, 8 CPUs, serial on stdio (Ctrl-C to quit)
 make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window
+make run-remote          # headless: serial on TCP 4555 (nc HOST 4555), VNC on :1 (5901, password aios)
 make iso MODEL=/path/to/qwen3-0.6b-q8_0.asmbin   # other model file
-python3 tools/boottest.py build/aios.iso uefi build/t   # headless: timed serial log + screen.png
+python3 tools/boottest.py build/aios.iso uefi build/t 8 /bench /stats   # headless: timed serial log,
+                         # types each command at the aios> prompt, saves screen.png
 ```
 
 `MODEL` defaults to `~/coding/qwenbaremetal/models/qwen35-2b-q8_0-v3.asmbin`.
@@ -30,7 +33,7 @@ python3 tools/boottest.py build/aios.iso uefi build/t   # headless: timed serial
 | Path | What |
 |---|---|
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
-| `engine/` | vendored NASM engine (unmodified) + `cpu.asm` (`enable_avx_fpu`) |
+| `engine/` | vendored NASM engine (unmodified) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model as a Limine module |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot) |
 

@@ -12,7 +12,7 @@ ISO    := $(BUILD)/aios.iso
 QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp 8 \
           -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot
 
-.PHONY: kernel iso run-bios run-uefi clean
+.PHONY: kernel iso run-bios run-uefi run-remote clean
 .DELETE_ON_ERROR:
 
 kernel:
@@ -45,6 +45,18 @@ run-uefi: iso
 	cp $(OVMF_VARS) $(BUILD)/ovmf_vars.fd
 	$(QEMU) -drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
 	        -drive if=pflash,format=raw,file=$(BUILD)/ovmf_vars.fd
+
+# Headless guest for remote use: serial console on TCP 4555 (nc HOST 4555), framebuffer on VNC :1
+# (port 5901, password VNC_PASS; LAN-only throwaway test VM), QEMU monitor on build/remote.mon.
+REMOTE_SMP ?= 8
+VNC_PASS   ?= aios
+run-remote: iso
+	@avail=$$(awk '/MemAvailable/ {print int($$2/1024)}' /proc/meminfo); \
+	 if [ $$avail -lt 6144 ]; then echo "refusing: only $$avail MiB available (want > 6144)"; exit 1; fi
+	qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp $(REMOTE_SMP) \
+	    -cdrom $(ISO) -boot d -no-reboot -vga std \
+	    -object secret,id=vncpw,data=$(VNC_PASS) -display vnc=0.0.0.0:1,password-secret=vncpw \
+	    -serial tcp:0.0.0.0:4555,server,nowait -monitor unix:$(BUILD)/remote.mon,server,nowait
 
 clean:
 	rm -rf $(BUILD) kernel/target

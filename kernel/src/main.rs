@@ -1,10 +1,14 @@
-// AIOS kernel, milestone M0: boot under Limine, report what the bootloader handed us,
-// enable AVX on the BSP and prove the NASM engine links and runs.
+// AIOS kernel, milestone M1: boot under Limine, IDT, engine arena, APs in the asm worker loop,
+// Qwen3.5-2B golden self-test, then a chat REPL on COM1 (+ PS/2 keyboard).
 #![no_std]
 #![no_main]
 
 mod console;
 mod engine;
+mod idt;
+mod llm;
+mod mem;
+mod smp;
 
 use core::arch::asm;
 use limine::firmware_type::FirmwareType;
@@ -39,7 +43,7 @@ static MEMMAP: MemoryMapRequest = MemoryMapRequest::new();
 
 #[used]
 #[unsafe(link_section = ".requests")]
-static MP: MpRequest = MpRequest::new();
+static MP: MpRequest = MpRequest::new().with_flags(limine::mp::RequestFlags::X2APIC);
 
 #[used]
 #[unsafe(link_section = ".requests")]
@@ -55,12 +59,6 @@ static _END: RequestsEndMarker = RequestsEndMarker::new();
 
 const MIB: u64 = 1024 * 1024;
 
-fn rdtsc() -> u64 {
-    let (lo, hi): (u32, u32);
-    unsafe { asm!("rdtsc", out("eax") lo, out("edx") hi, options(nomem, nostack)) };
-    (hi as u64) << 32 | lo as u64
-}
-
 fn xgetbv0() -> u64 {
     let (lo, hi): (u32, u32);
     unsafe { asm!("xgetbv", in("ecx") 0, out("eax") lo, out("edx") hi, options(nomem, nostack)) };
@@ -69,7 +67,7 @@ fn xgetbv0() -> u64 {
 
 #[unsafe(no_mangle)]
 extern "C" fn kmain() -> ! {
-    let tsc_entry = rdtsc();
+    let tsc_entry = smp::rdtsc();
     assert!(BASE_REVISION.is_supported());
 
     let fb = FRAMEBUFFER.get_response().and_then(|r| r.framebuffers().next()).map(|f| console::Fb {
@@ -81,9 +79,10 @@ extern "C" fn kmain() -> ! {
     });
     let fb_desc = fb.as_ref().map(|f| (f.width, f.height, f.bpp));
     console::init(fb);
+    idt::init();
 
     println!("==============================================");
-    println!(" AIOS M0  (Rust no_std kernel + NASM LLM engine)");
+    println!(" AIOS M1  (Rust no_std kernel + NASM LLM engine)");
     println!("==============================================");
     if let Some(b) = BOOTLOADER.get_response() {
         println!("boot: {} {}, base revision {:?}", b.name(), b.version(), BASE_REVISION.loaded_revision());
@@ -114,16 +113,9 @@ extern "C" fn kmain() -> ! {
     let osxsave = CpuId::new().get_feature_info().unwrap().has_oxsave();
     println!("cpu:  enabled: CR4.OSXSAVE={} XCR0={:#x} (want 0x7)", osxsave, xgetbv0());
 
-    // TSC at entry ~ time since VM power-on (firmware + Limine, incl. module load), if the TSC rate is known.
-    let tsc_hz = cpuid
-        .get_tsc_info()
-        .and_then(|t| t.tsc_frequency())
-        .or_else(|| cpuid.get_processor_frequency_info().map(|p| p.processor_base_frequency() as u64 * 1_000_000))
-        .filter(|&hz| hz > 0);
-    match tsc_hz {
-        Some(hz) => println!("time: TSC {} MHz, kernel entry at {} ms after TSC 0", hz / 1_000_000, tsc_entry / (hz / 1000)),
-        None => println!("time: TSC rate unknown, entry TSC={}", tsc_entry),
-    }
+    let hz = smp::calibrate_tsc();
+    println!("time: TSC {}.{:03} MHz (PIT ch2, 20 ms window), entry TSC={} (~{} ms after TSC 0)",
+        hz / 1_000_000, hz / 1000 % 1000, tsc_entry, tsc_entry / (hz / 1000).max(1));
 
     // ---- memory map ----
     let hhdm = HHDM.get_response().expect("hhdm").offset();
@@ -156,14 +148,27 @@ extern "C" fn kmain() -> ! {
     );
     println!("mem:  largest usable run {:#x} + {} MiB, HHDM offset {:#x}", largest.0, largest.1 / MIB, hhdm);
 
+    mem::init(hhdm, largest.0, largest.1);
+    println!("mem:  engine arena identity-mapped at {:#x} ({} MiB), page size {} KiB (HHDM view: {} KiB)",
+        mem::base(), largest.1 / MIB, mem::page_size(mem::base()) / 1024, mem::page_size(hhdm + mem::base()) / 1024);
+    // the model too: lower-half identity map with 2 MiB pages, before the APs start (shared CR3)
+    let mods = MODULES.get_response().map(|r| r.modules()).unwrap_or(&[]);
+    let model_phys = mods.first().map(|m| {
+        let p = m.addr() as u64 - hhdm;
+        mem::map_low(p, m.size());
+        p
+    });
+
     // ---- SMP ----
     match MP.get_response() {
-        Some(mp) => println!("smp:  {} CPUs reported by Limine MP, BSP LAPIC id {}", mp.cpus().len(), mp.bsp_lapic_id()),
-        None => println!("smp:  no MP response"),
+        Some(mp) => {
+            println!("smp:  {} CPUs reported by Limine MP, BSP LAPIC id {}", mp.cpus().len(), mp.bsp_lapic_id());
+            smp::start(mp);
+        }
+        None => println!("smp:  no MP response, running on the BSP only"),
     }
 
     // ---- modules (the model) ----
-    let mods = MODULES.get_response().map(|r| r.modules()).unwrap_or(&[]);
     println!("mod:  {} module(s)", mods.len());
     for m in mods {
         let p = m.addr();
@@ -188,10 +193,18 @@ extern "C" fn kmain() -> ! {
         );
     }
 
-    // ---- engine link + ABI test ----
+    // ---- engine ABI test, model, golden self-test, REPL ----
     let ok = engine::selftest();
-    println!("M0 {}", if ok { "PASS" } else { "FAIL" });
-
+    println!("engine: M0 ABI self-test {}", if ok { "PASS" } else { "FAIL" });
+    let (Some(m), Some(mp)) = (mods.first(), model_phys) else { panic!("no model module") };
+    println!("mem:  model identity-mapped at {:#x}, page size {} KiB (HHDM view: {} KiB)",
+        mp, mem::page_size(mp) / 1024, mem::page_size(m.addr() as u64) / 1024);
+    if llm::init(mp as *const u8, m.size()) {
+        llm::selftest();
+        println!("bench: 64-token decode, prompt \"Explain how a CPU cache works in 3 concise sentences.\"");
+        llm::bench();
+        llm::repl();
+    }
     loop {
         unsafe { asm!("cli; hlt") };
     }
