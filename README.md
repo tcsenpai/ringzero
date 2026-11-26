@@ -1,11 +1,11 @@
-# AIOS
+# ringzero
 
-Experimental "AI OS": a small Rust `no_std` x86-64 kernel, booted by Limine, with an LLM
+ringzero is an experimental AI OS: a small Rust `no_std` x86-64 kernel, booted by Limine, with an LLM
 (Qwen3.5-2B Q8_0) running in ring 0 as a system agent. The inference engine is the NASM
 assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
-Status: **M2.5** (edition "AI OS Qwen35@2b"). Boots under BIOS and UEFI, runs the APs in the engine's
+Status: **M2.5** (edition "ringzero Qwen35@2b"). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
 uptime, settings, poweroff/reboot with confirmation) in its native tool format. `!cmd` runs a machine
@@ -27,7 +27,7 @@ Quickstart:
 
 ```sh
 make model               # Qwen/Qwen3.5-2B from Hugging Face (~4.5 GB) -> models/qwen35-2b-q8_0-v3.asmbin (2 GB)
-make iso                 # kernel + Limine + model -> build/aios.iso
+make iso                 # kernel + Limine + model -> build/ringzero.iso
 make run-remote          # then: nc HOST 4555 (serial shell), VNC HOST:5901 (password aios)
 ```
 
@@ -35,8 +35,8 @@ More:
 
 ```sh
 make model HF_DIR=/path/to/hf/qwen3.5-2b   # reuse a download (config.json, safetensors, tokenizer*.json)
-make iso                 # kernel + Limine (fetched, pinned tag) + model -> build/aios.iso
-AIOS_KV=f32 make iso     # FP32 KV cache instead of FP16 (comparison build, 768 MiB of KV)
+make iso                 # kernel + Limine (fetched, pinned tag) + model -> build/ringzero.iso
+RINGZERO_KV=f32 make iso     # FP32 KV cache instead of FP16 (comparison build, 768 MiB of KV)
 make run-bios            # QEMU/KVM, q35, 4 GiB, 8 CPUs, serial on stdio (Ctrl-C to quit)
 make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window
@@ -46,8 +46,8 @@ make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test   # a second inst
 tail -f build/remote-serial.log                                       # watch the remote shell
 python3 tools/screenshot.py build/remote-monitor.sock build/screen.png   # framebuffer screenshot
 make iso MODEL=/path/to/qwen3-0.6b-q8_0.asmbin   # other model file
-python3 tools/boottest.py build/aios.iso uefi build/t 8 /bench /stats   # headless: timed serial log,
-                         # types each command at the aios> prompt, saves screen.png
+python3 tools/boottest.py build/ringzero.iso uefi build/t 8 /bench /stats   # headless: timed serial log,
+                         # types each command at the ringzero> prompt, saves screen.png
 ```
 
 `MODEL` defaults to `models/qwen35-2b-q8_0-v3.asmbin` (gitignored; a symlink to an existing file works).

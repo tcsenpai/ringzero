@@ -137,7 +137,7 @@ Notes:
 ### 3.1 Model in one paragraph (for `/help`)
 
 Every finished turn is saved automatically as a numbered point (`#7`). A **branch** is a name pointing
-at the newest point of a line of work. The prompt shows it: `aios[main]>`. `/undo` steps back, `/redo`
+at the newest point of a line of work. The prompt shows it: `ringzero[main]>`. `/undo` steps back, `/redo`
 steps forward again. Typing after an undo starts a side line, and the old line stays reachable for a
 while (shown in `/tree`). `/save NAME` keeps a point forever, `/branch NAME` starts a named line. Only the
 model's memory goes back in time; changes to the machine (settings, files) stay.
@@ -167,13 +167,13 @@ and listed by `/load` after a reboot, `/persona NAME` (switch root).
 
 ### 3.3 What the user sees
 
-Prompt: `aios[main]> `. After an undo the prompt shows the step back: `aios[main~1]> `. A new turn
+Prompt: `ringzero[main]> `. After an undo the prompt shows the step back: `ringzero[main~1]> `. A new turn
 from there forks and names the old line `main@7` (the id of its tip). Do not show a dirty `*` marker:
 every finished turn is saved, so there is never unsaved work. The only partial state is a turn
 interrupted by Ctrl-C, and that is restored to the pre-turn point right away.
 
 ```
-aios[main]> /tree
+ringzero[main]> /tree
 #0 boot prefix                         743 tok
 `- #1 how much free memory?             812
    |- #2 and the model?                 905
@@ -342,7 +342,7 @@ Each step is one agent session unless noted, and each leaves the boot self-test 
    - Save a node at the end of `ask()` after the final answer.
    - Restore the parent on Ctrl-C and on an interrupted prefill.
    - `/bench`, `/fill` and `/gen` checkpoint and restore.
-   - Prompt `aios[main~N]>`.
+   - Prompt `ringzero[main~N]>`.
    - Done when (through `tools/accept.py`, greedy):
      - "my name is Ada" → "my name is Bob" → `/undo` → "what is my name?" answers Ada.
      - `/retry` at temp 0 gives identical `GEN_TOKENS` (FNV) twice.

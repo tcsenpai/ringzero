@@ -1,4 +1,4 @@
-# AIOS architecture (as of M2.5)
+# ringzero architecture (as of M2.5)
 
 ## Diagram
 
@@ -27,7 +27,7 @@ flowchart TB
 
     subgraph A["NASM engine (ring 0, AVX2/FMA/F16C)"]
         TR["transformer.asm<br/>Qwen3.5: 6 full-attn + 18 DeltaNet layers"]
-        KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(AIOS_KV=f32: FP32, 768 MiB)"]
+        KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(RINGZERO_KV=f32: FP32, 768 MiB)"]
         MM["matmul.asm Q8_0"]
         MA["math.asm"]
         TOK["tokenizer.asm BPE"]
@@ -122,7 +122,7 @@ Legend:
   (27 MiB with FP16 KV). `/clear` marks the conversation fresh; the next turn restores it instead of
   prefilling again. Multi-turn keeps the live state.
 - **KV cache**: 32768 tokens. FP16 (default build) stores K/V rows with `vcvtps2ph` and reads them with
-  `vcvtph2ps` inside `gqa_attn_range` (12 KiB/token, 384 MiB); `AIOS_KV=f32 make iso` builds the FP32
+  `vcvtph2ps` inside `gqa_attn_range` (12 KiB/token, 384 MiB); `RINGZERO_KV=f32 make iso` builds the FP32
   cache (24 KiB/token, 768 MiB). `model_init` takes the 32768 override although the .asmbin header says 4096.
 - **Context manager**: fill is tracked in tokens (`/ctx`, stats line). Past `compact` percent (75 by
   default, `!set compact N`) the next turn first compacts (diagram above), if more than 2 exchanges came

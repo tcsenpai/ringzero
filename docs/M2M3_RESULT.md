@@ -18,20 +18,20 @@ Then type a builtin (`help`, `mem`, `cpu`, `cores`, `log`, `uptime`, `bench`, `s
 `clear`, ...) or `@ <question>` for the agent. Ctrl-C stops a generation. `clear` starts a new
 conversation (the next `@` restores the boot snapshot in about 1.5 ms).
 
-Observability for the main session (Fedora paths, relative to `~/coding/aios`):
+Observability for the main session (Fedora paths, relative to `~/coding/ringzero`):
 
 ```sh
 # everything the guest printed on serial, including the echoed input of whoever is connected (append mode)
-ssh fedoralan 'tail -f ~/coding/aios/build/remote-serial.log'
+ssh fedoralan 'tail -f ~/coding/ringzero/build/remote-serial.log'
 # framebuffer screenshot through the QEMU monitor (read-only for the guest), PPM -> PNG
-ssh fedoralan 'cd ~/coding/aios && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/aios/build/screen.png .
+ssh fedoralan 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/ringzero/build/screen.png .
 ```
 
 Restart on Fedora (one guest at a time; stop the old one first):
 
 ```sh
 echo quit | socat - UNIX-CONNECT:build/remote-monitor.sock
-cd ~/coding/aios && setsid nohup make run-remote > build/remote.log 2>&1 < /dev/null &
+cd ~/coding/ringzero && setsid nohup make run-remote > build/remote.log 2>&1 < /dev/null &
 ```
 
 `poweroff` (or the agent's poweroff after `y`) ends the QEMU process. `reboot` does too, because

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """boottest.py ISO bios|uefi OUTDIR [SMP] [CMD ...] : boot ISO in QEMU/KVM headless, log serial with
-host timestamps, type each CMD at the 'aios> ' prompt (one per prompt), stop at the prompt after the
+host timestamps, type each CMD at the ringzero prompt (one per prompt), stop at the prompt after the
 last CMD (or at PANIC/EXCEPTION/M0 FAIL, or 900 s), save a screenshot as PNG."""
-import os, shutil, socket, subprocess, sys, time
+import os, re, shutil, socket, subprocess, sys, time
 from screenshot import mon, ppm_to_png
 
 iso, mode, out = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -42,8 +42,9 @@ while time.time() - t0 < 900 and p.poll() is None:
     text = "\n".join(l for _, l in stamps) + buf.decode(errors="replace")
     if any(k in text for k in ("PANIC:", "-> halt", "M0 FAIL", "model_init failed")): break
     if stamps and time.time() - last_rx > 180: break  # silent for 3 min after output started: hung
-    if text.count("aios> ") > prompts:
-        prompts = text.count("aios> ")
+    n_prompts = len(re.findall(r"ringzero(?:\[[^\]\n]*\])?> ", text))
+    if n_prompts > prompts:
+        prompts = n_prompts
         if sent < len(cmds):
             time.sleep(0.2); ser.sendall((cmds[sent] + "\r").encode()); sent += 1
         else:
@@ -61,5 +62,5 @@ log = "\n".join(l for _, l in stamps)
 at = lambda k: next((round(t, 2) for t, l in stamps if k in l), None)
 res = "PASS" if "SELFTEST PASS" in log else "FAIL" if "SELFTEST FAIL" in log else \
       "CRASH" if ("PANIC" in log or "EXCEPTION" in log) else "TIMEOUT"
-print(f"[{mode} smp={smp}] banner at {at('AIOS M')}s, selftest {res}, {sent}/{len(cmds)} commands sent")
+print(f"[{mode} smp={smp}] banner at {at('ringzero Qwen')}s, selftest {res}, {sent}/{len(cmds)} commands sent")
 print(open(f"{out}/timed.log").read())

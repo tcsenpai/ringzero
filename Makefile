@@ -1,4 +1,4 @@
-# AIOS build. Run on the Linux build box (needs cargo, nasm, xorriso, git, cc, qemu).
+# ringzero build. Run on the Linux build box (needs cargo, nasm, xorriso, git, cc, qemu).
 LIMINE_TAG ?= v11.2.1-binary
 LIMINE_URL ?= https://codeberg.org/Limine/Limine.git
 MODEL      ?= models/qwen35-2b-q8_0-v3.asmbin
@@ -7,8 +7,8 @@ OVMF_VARS  ?= /usr/share/edk2/ovmf/OVMF_VARS.fd
 QEMU_DISPLAY ?= none
 
 BUILD  := build
-KERNEL := kernel/target/x86_64-unknown-none/release/aios-kernel
-ISO    := $(BUILD)/aios.iso
+KERNEL := kernel/target/x86_64-unknown-none/release/ringzero-kernel
+ISO    := $(BUILD)/ringzero.iso
 QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp 8 \
           -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot
 
@@ -62,8 +62,8 @@ REMOTE_PORT ?= 4555
 REMOTE_VNC  ?= 1
 REMOTE_NAME ?= remote
 QEMU_KEYMAPS ?= /usr/share/qemu/keymaps
-VNC_KEYMAP ?= $(BUILD)/it-aios
-$(BUILD)/it-aios: tools/keymaps/it-altgr
+VNC_KEYMAP ?= $(BUILD)/it-ringzero
+$(BUILD)/it-ringzero: tools/keymaps/it-altgr
 	mkdir -p $(BUILD) && cat $(QEMU_KEYMAPS)/it $< > $@
 
 run-remote: iso $(filter $(BUILD)/%,$(VNC_KEYMAP))

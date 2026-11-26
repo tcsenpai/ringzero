@@ -18,7 +18,7 @@ unsafe extern "C" {
     /// cpu.asm shim: floats as raw bits (soft-float Rust cannot pass xmm args).
     pub fn sample_top_p_bits(logits: *const f32, probs: *mut f32, n: u64, rng: *mut u64, temp: u32, topp: u32) -> u64;
     static g_ctx: [u64; 80];
-    /// bytes per KV cache element: 2 (FP16, default build) or 4 (AIOS_KV=f32)
+    /// bytes per KV cache element: 2 (FP16, default build) or 4 (RINGZERO_KV=f32)
     pub static kv_elt_bytes: u64;
 }
 

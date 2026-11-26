@@ -25,7 +25,7 @@ open vnc://LAN-ADDRESS0:5901         # framebuffer (macOS Screen Sharing), passw
   `/park off|idle|<usec>`, `/temp X` (0 = greedy), `/stats`, `/help`. `/fault` deliberately triggers a
   page fault: it tests the exception handler and **halts the VM**.
 - Restart on Fedora (one guest at a time, the target refuses with under 6 GiB free):
-  `cd ~/coding/aios && setsid nohup make run-remote > build/remote.log 2>&1 < /dev/null &`.
+  `cd ~/coding/ringzero && setsid nohup make run-remote > build/remote.log 2>&1 < /dev/null &`.
   Stop it with `echo quit | socat - UNIX-CONNECT:build/remote.mon`.
 
 `make run-web` (browser terminal) was skipped: the coordinator asked for VNC instead.

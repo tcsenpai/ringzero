@@ -413,10 +413,10 @@ fn show(f: fn(&mut SBuf<1024>)) {
     println!("{}", o.as_str());
 }
 
-const PROMPT: &str = "aios> ";
+const PROMPT: &str = "ringzero> ";
 
 pub fn run() -> ! {
-    println!("AIOS shell. Type a message for the system agent, !cmd for the machine, /cmd for the session. /help lists them.");
+    println!("ringzero shell. Type a message for the system agent, !cmd for the machine, /cmd for the session. /help lists them.");
     static mut LINE: [u8; 16384] = [0; 16384];
     loop {
         print!("\n{}", PROMPT);

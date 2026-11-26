@@ -19,21 +19,21 @@ Type a message to talk to the agent, `!mem` / `!cores` / `!log 10` / `!kbd it` f
 `/ctx`, `/history`, `/compact`, `/clear` for the session. Tab completes, a bare `/` or `!` (pause or Enter)
 lists the commands, up/down recall history, Ctrl-C stops a generation.
 
-Observability (Fedora paths, relative to `~/coding/aios`):
+Observability (Fedora paths, relative to `~/coding/ringzero`):
 
 ```sh
-ssh fedoralan 'tail -f ~/coding/aios/build/remote-serial.log'
-ssh fedoralan 'cd ~/coding/aios && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/aios/build/screen.png .
+ssh fedoralan 'tail -f ~/coding/ringzero/build/remote-serial.log'
+ssh fedoralan 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/ringzero/build/screen.png .
 ```
 
 Restart on Fedora (stop the old guest first):
 
 ```sh
 echo quit | socat - UNIX-CONNECT:build/remote-monitor.sock
-cd ~/coding/aios && setsid nohup make run-remote > build/remote.log 2>&1 < /dev/null &
+cd ~/coding/ringzero && setsid nohup make run-remote > build/remote.log 2>&1 < /dev/null &
 ```
 
-`~/coding/aios/models/qwen35-2b-q8_0-v3.asmbin` there is a symlink to the existing export
+`~/coding/ringzero/models/qwen35-2b-q8_0-v3.asmbin` there is a symlink to the existing export
 (`~/coding/qwenbaremetal/models/`), as the Makefile now uses the repo-relative `models/` path.
 
 ## Status per request

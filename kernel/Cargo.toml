@@ -1,11 +1,11 @@
 [package]
-name = "aios-kernel"
+name = "ringzero-kernel"
 version = "0.0.1"
 edition = "2021"
 license = "GPL-2.0-or-later"
 
 [[bin]]
-name = "aios-kernel"
+name = "ringzero-kernel"
 test = false
 bench = false
 
