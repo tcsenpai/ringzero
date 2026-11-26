@@ -2,7 +2,9 @@
 ; Do not edit here: change upstream and re-vendor. AIOS changes (M2.5), all marked "AIOS": optional
 ; FP16 KV cache (-DKV_F16): vcvtps2ph on store, dot_f16_avx2 / saxpy_f16_avx2 in gqa_attn_range; and
 ; model_init lets max_seq_override exceed the header's max_seq_len; rope_heads and g_dn_job are global for the
-; batched prefill (M4.8, engine/prefill.asm).
+; batched prefill (M4.8, engine/prefill.asm). M7 (.asmbin v4, all "AIOS"): v4 accepted, Q4_0 slot types tagged into
+; bit 0 of the slot pointers (desc_tag_q4, also called by prefill.asm), untied lm_head (CTX_LM_HEAD_PTR), DeltaNet with
+; Hv = ratio * Hk (V head h reads K head h / ratio, q/k copied before the in-place l2norm).
 ; ============================================================================
 %ifdef QWEN35
 ; transformer.asm — Qwen3 / Qwen3.5 Transformer Forward Pass & Model Loader
@@ -98,6 +100,7 @@ global transformer_forward
 global deltanet_heads_range
 global rope_heads                       ; AIOS (M4.8)
 global g_dn_job                         ; AIOS (M4.8)
+global desc_tag_q4                      ; AIOS (M7)
 %endif
 %if FAST_Q8
 global gqa_attn_range
@@ -192,7 +195,11 @@ model_init:
     cmp     dword [r15 + HDR_MAGIC], ASMBIN_MAGIC
     jne     .err_bad_hdr
 %ifdef QWEN35
-    cmp     dword [r15 + HDR_VERSION], ASMBIN_VERSION_V3
+    mov     eax, [r15 + HDR_VERSION]    ; AIOS (M7): v3 or v4
+    sub     eax, ASMBIN_VERSION_V3
+    cmp     eax, 1
+    ja      .err_bad_hdr
+    cmp     eax, eax                    ; ZF = 1 for the jne below
 %else
     mov     eax, [r15 + HDR_VERSION]
     cmp     eax, ASMBIN_VERSION
@@ -349,6 +356,17 @@ model_init:
     mov     rax, [r15 + HDR_OFF_FINAL_NORM]
     add     rax, r15
     mov     [rbx + CTX_FINAL_NORM_PTR], rax
+%ifdef QWEN35
+    mov     rax, [rbx + CTX_EMB_PTR]    ; AIOS (M7): lm_head = embed (tied) unless v4 gives an untied one
+    cmp     dword [r15 + HDR_VERSION], ASMBIN_VERSION_V4
+    jne     .lm_tied
+    mov     rcx, [r15 + HDR_OFF_LM_HEAD]
+    test    rcx, rcx
+    jz      .lm_tied
+    lea     rax, [r15 + rcx]
+.lm_tied:
+    mov     [rbx + CTX_LM_HEAD_PTR], rax
+%endif
 
 %ifdef QWEN35
     ; Count full-attention / DeltaNet layers; refuse unknown types and unsupported DeltaNet shapes
@@ -359,6 +377,14 @@ model_init:
 .type_chk_lp:
     test    rcx, rcx
     jz      .type_chk_done
+    mov     eax, [rdx + DESC_QTYPES]    ; AIOS (M7): slot types only on the matrix slots 2..5, no type 3
+    test    eax, 0xFFFFF00F
+    jnz     .err_layer_type
+    mov     r8d, eax
+    shr     r8d, 1
+    and     r8d, eax
+    test    r8d, 0x555
+    jnz     .err_layer_type
     mov     eax, [rdx + DESC_TYPE]
     cmp     eax, LAYER_TYPE_FULL_ATTN
     jne     .t_not_full
@@ -377,14 +403,20 @@ model_init:
     mov     [rbx + CTX_N_LIN], r13
     test    r13, r13
     jz      .lin_cfg_ok
-    ; DeltaNet kernel assumptions: Hk == Hv <= 32, Dk == Dv == 128, conv kernel 4
-    mov     eax, [r15 + HDR_N_LIN_K_HEADS]
-    cmp     eax, [r15 + HDR_N_LIN_V_HEADS]
-    jne     .err_layer_type
+    ; DeltaNet kernel assumptions: Hv = ratio * Hk <= 32 (AIOS M7: was Hk == Hv), Dk == Dv == 128, conv kernel 4
+    mov     ecx, [r15 + HDR_N_LIN_K_HEADS]
+    test    ecx, ecx
+    jz      .err_layer_type
+    mov     eax, [r15 + HDR_N_LIN_V_HEADS]
     cmp     eax, 32
     ja      .err_layer_type
-    test    eax, eax
-    jz      .err_layer_type
+    xor     edx, edx
+    div     ecx
+    test    edx, edx
+    jnz     .err_layer_type
+    mov     [rbx + CTX_LIN_RATIO], rax
+    shl     rcx, 7                      ; Hk * Dk
+    mov     [rbx + CTX_KEY_DIM], rcx
     cmp     dword [r15 + HDR_LIN_K_DIM], 128
     jne     .err_layer_type
     cmp     dword [r15 + HDR_LIN_V_DIM], 128
@@ -794,6 +826,9 @@ transformer_forward:
     mov     [rsp + SLOT(i)], rcx
 %assign i i+1
 %endrep
+    mov     rdi, rax                    ; AIOS (M7): Q4_0 slots get bit 0 set
+    lea     rsi, [rsp + SLOT(0)]
+    call    desc_tag_q4
 %else
     ; Compute all 11 tensor pointers for layer l (matching export_weights.py layout)
     imul    rax, [rbx + CTX_LAYER_STRIDE]
@@ -1306,7 +1341,11 @@ transformer_forward:
     TAP_CALL -2
 %endif
 
+%ifdef QWEN35
+    mov     rdi, [rbx + CTX_LM_HEAD_PTR] ; AIOS (M7): tied (= embed) or untied lm_head
+%else
     mov     rdi, [rbx + CTX_EMB_PTR]    ; tied embeddings!
+%endif
     mov     rsi, [rbx + CTX_BUF_X]
     mov     rdx, [rbx + CTX_BUF_LOGITS]
     mov     rcx, [rbx + CTX_VOCAB_SIZE]
@@ -1518,8 +1557,9 @@ deltanet_heads_range:
     push    r13
     push    r14
     push    r15
-    sub     rsp, 584                    ; 6 pushes + 584 + ret = 640 -> 16B aligned
+    sub     rsp, 1608                   ; 6 pushes + 1608 + ret = 1664 -> 16B aligned
     ; [rsp + 0] dec f32, [rsp + 4] beta f32, [rsp + 64..575] delta scratch
+    ; AIOS (M7): [rsp + 576..1087] q copy, [rsp + 1088..1599] k copy of this V head's K head
     lea     rbx, [rel g_ctx]
     lea     rbp, [rel g_dn_job]
     mov     r12, rdi                    ; h
@@ -1528,12 +1568,26 @@ deltanet_heads_range:
 .hd_lp:
     cmp     r12, [rsp + 8]
     jae     .hd_done
-    mov     r14, r12
-    shl     r14, 9                      ; h * 128 * 4
-    add     r14, [rbx + CTX_BUF_Q]      ; q_h
-    mov     r15, [rbx + CTX_VAL_DIM]    ; key_dim == value_dim
-    shl     r15, 2
-    add     r15, r14                    ; k_h
+    ; AIOS (M7): K head kh = h / ratio; q_kh and k_kh are copied (V heads sharing a K head must not
+    ; l2norm it twice, possibly on two CPUs at once); with ratio 1 the values are the in-place ones
+    mov     rax, r12
+    xor     edx, edx
+    div     qword [rbx + CTX_LIN_RATIO]
+    shl     rax, 9                      ; kh * 128 * 4
+    add     rax, [rbx + CTX_BUF_Q]      ; q_kh
+    mov     rcx, [rbx + CTX_KEY_DIM]
+    lea     rdx, [rax + rcx*4]          ; k_kh
+    lea     r14, [rsp + 576]
+    lea     r15, [rsp + 1088]
+    xor     ecx, ecx
+.qk_copy:
+    vmovups ymm0, [rax + rcx]
+    vmovups ymm1, [rdx + rcx]
+    vmovups [r14 + rcx], ymm0
+    vmovups [r15 + rcx], ymm1
+    add     ecx, 32
+    cmp     ecx, 512
+    jb      .qk_copy
     mov     rdi, r14
     call    l2norm128
     mov     rdi, r14
@@ -1582,9 +1636,12 @@ deltanet_heads_range:
     add     rdi, [rbx + CTX_BUF_DN_STATE]
     mov     rsi, r14                    ; q
     mov     rdx, r15                    ; k
-    mov     rcx, [rbx + CTX_VAL_DIM]
-    shl     rcx, 2
-    add     rcx, r15                    ; v_h
+    mov     rcx, [rbx + CTX_KEY_DIM]    ; AIOS (M7): v region after q and k (2 * Hk * Dk floats)
+    shl     rcx, 3
+    add     rcx, [rbx + CTX_BUF_Q]
+    mov     rax, r12
+    shl     rax, 9
+    add     rcx, rax                    ; v_h
     mov     r8, r12
     shl     r8, 9
     add     r8, [rbx + CTX_BUF_ATT_OUT]
@@ -1604,7 +1661,7 @@ deltanet_heads_range:
     inc     r12
     jmp     .hd_lp
 .hd_done:
-    add     rsp, 584
+    add     rsp, 1608
     pop     r15
     pop     r14
     pop     r13
@@ -1819,6 +1876,31 @@ gqa_attn_range:
     pop     r12
     pop     rbp
     pop     rbx
+    ret
+%endif
+
+%ifdef QWEN35
+; ----------------------------------------------------------------------------
+; AIOS (M7): void desc_tag_q4(const desc *d /*rdi*/, u64 *slots /*rsi*/): set bit 0 of slot pointer i when its v4
+; type (DESC_QTYPES, 2 bits per slot) is Q4_0. The matmul kernels dispatch on that bit (tensors are 64-byte aligned);
+; v3 descriptors have 0 there, so nothing changes for them.
+; ----------------------------------------------------------------------------
+desc_tag_q4:
+    mov     eax, [rdi + DESC_QTYPES]
+    xor     ecx, ecx
+.lp:
+    test    eax, eax
+    jz      .done
+    mov     edx, eax
+    and     edx, 3
+    cmp     edx, QTYPE_Q4_0
+    jne     .next
+    or      qword [rsi + rcx*8], 1
+.next:
+    shr     eax, 2
+    inc     ecx
+    jmp     .lp
+.done:
     ret
 %endif
 

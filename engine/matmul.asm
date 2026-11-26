@@ -1,6 +1,11 @@
 ; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/matmul.asm).
 ; Do not edit here: change upstream and re-vendor. AIOS changes (M4.8 batched prefill), all marked "AIOS":
 ; quantize_x_q8_0_to (caller buffers), matmul_q8_0_batch_range, quantize_batch_q8_0 and the bmm_* job.
+; AIOS (M7): Q4_0 weights (W4A8). A weight pointer with bit 0 set (transformer.asm desc_tag_q4) is a Q4_0 split-row
+; tensor [K/2 nibble bytes][K/32 fp16 d]: matmul_q8_0_range jumps to matmul_q4_0_range, and the batch kernels unpack
+; each Q4_0 row once into a per-thread Q8_0 row (q - 8 as int8, same fp16 scales) and run unchanged on it. The integer
+; block dots and the float sequence are the Q8 kernel's, so a Q4_0 row gives bit for bit what the Q8 kernel gives on
+; its int8 unpacking, in decode and in both batch kernels.
 ; ============================================================================
 ; matmul.asm — High-throughput AVX2 + FMA + F16C Q8_0 matmul kernels (zero libc)
 ;
@@ -45,6 +50,7 @@ default rel
 %endif
 
 %define Q8_MAX_K 16384
+%define Q4_ROWBUF (Q8_MAX_K + Q8_MAX_K / 16)  ; AIOS (M7)
 
 section .text
 
@@ -66,6 +72,7 @@ global bmm_vnni
 %endif
 global dequant_row_q8_0
 global matmul_q8_0_range
+global matmul_q4_0_range                 ; AIOS (M7)
 global dot_f32_avx2
 global saxpy_f32_avx2
 
@@ -285,6 +292,8 @@ quantize_x_q8_0_to:
 ;   - 100% bit-for-bit identical per row for ANY partitioning (1T..64T)
 ; ----------------------------------------------------------------------------
 matmul_q8_0_range:
+    test    dil, 1                      ; AIOS (M7): Q4_0-tagged weight pointer
+    jnz     matmul_q4_0_range
     push    rbx
     push    rbp
     push    r12
@@ -459,13 +468,215 @@ align 16
     pop     rbx
     ret
 
+; Macro (AIOS M7): 1-row x 4-block Q4_0 x INT8 body, the INT8_1ROW_4BLK sequence with the weight loads replaced by
+; a nibble unpack (llama.cpp bytes_from_nibbles_32 order: low nibbles = elements 0-15, high = 16-31, minus 8).
+;   rax = w (nibbles of the current row), r8 = s_cur = w + K/2, r10 = nibble offset (= rbx / 2), rbx = xq offset
+;   ymm13 = 32 x 0x0F, ymm14 = 32 x 8, ymm12 / ymm15 / ymm0..3 as in INT8_1ROW_4BLK
+%macro Q4_1ROW_4BLK 0
+    Q8_PREFETCH [r8 + r10]              ; one line per 4 blocks, ~one row ahead (as the Q8 kernel)
+
+    vmovdqu    xmm6,  [rax + r10]
+    vmovdqu    xmm7,  [rax + r10 + 16]
+    vpsrlw     xmm8,  xmm6, 4
+    vpsrlw     xmm9,  xmm7, 4
+    vinserti128 ymm6, ymm6, xmm8, 1
+    vinserti128 ymm7, ymm7, xmm9, 1
+    vpand      ymm6,  ymm6, ymm13
+    vpand      ymm7,  ymm7, ymm13
+    vpsubb     ymm6,  ymm6, ymm14
+    vpsubb     ymm7,  ymm7, ymm14
+    vmovdqa    ymm4,  [r11 + rbx]
+    vmovdqa    ymm10, [r11 + rbx + 32]
+    vpabsb     ymm5,  ymm4
+    vpabsb     ymm11, ymm10
+    vpsignb    ymm6,  ymm6, ymm4
+    vpsignb    ymm7,  ymm7, ymm10
+    vpmaddubsw ymm6,  ymm5, ymm6
+    vpmaddubsw ymm7,  ymm11, ymm7
+    vpmaddwd   ymm6,  ymm6, ymm15
+    vpmaddwd   ymm7,  ymm7, ymm15
+    vcvtdq2ps  ymm6,  ymm6
+    vcvtdq2ps  ymm7,  ymm7
+    vpermilps  ymm8,  ymm12, 0x00
+    vpermilps  ymm9,  ymm12, 0x55
+    vfmadd231ps ymm0, ymm6, ymm8
+    vfmadd231ps ymm1, ymm7, ymm9
+
+    vmovdqu    xmm6,  [rax + r10 + 32]
+    vmovdqu    xmm7,  [rax + r10 + 48]
+    vpsrlw     xmm8,  xmm6, 4
+    vpsrlw     xmm9,  xmm7, 4
+    vinserti128 ymm6, ymm6, xmm8, 1
+    vinserti128 ymm7, ymm7, xmm9, 1
+    vpand      ymm6,  ymm6, ymm13
+    vpand      ymm7,  ymm7, ymm13
+    vpsubb     ymm6,  ymm6, ymm14
+    vpsubb     ymm7,  ymm7, ymm14
+    vmovdqa    ymm4,  [r11 + rbx + 64]
+    vmovdqa    ymm10, [r11 + rbx + 96]
+    vpabsb     ymm5,  ymm4
+    vpabsb     ymm11, ymm10
+    vpsignb    ymm6,  ymm6, ymm4
+    vpsignb    ymm7,  ymm7, ymm10
+    vpmaddubsw ymm6,  ymm5, ymm6
+    vpmaddubsw ymm7,  ymm11, ymm7
+    vpmaddwd   ymm6,  ymm6, ymm15
+    vpmaddwd   ymm7,  ymm7, ymm15
+    vcvtdq2ps  ymm6,  ymm6
+    vcvtdq2ps  ymm7,  ymm7
+    vpermilps  ymm8,  ymm12, 0xAA
+    vpermilps  ymm9,  ymm12, 0xFF
+    vfmadd231ps ymm2, ymm6, ymm8
+    vfmadd231ps ymm3, ymm7, ymm9
+%endmacro
+
 ; ----------------------------------------------------------------------------
-; AIOS (batched prefill): void matmul_q8_0_batch_range(uint64 r0, uint64 r1)
+; AIOS (M7): void matmul_q4_0_range(const void *W /*bit 0 set*/, const float *x, float *out, uint64 K, uint64 r0, uint64 r1)
+; Q4_0 split rows, row_stride = K/2 + K/16, K % 128 == 0 (the exporter writes Q4_0 only for K % 512 == 0), fp16 d.
+; Same activations (q8_xq / q8_xs), accumulators, scale products and reduction as .row_f16 of matmul_q8_0_range.
+; ----------------------------------------------------------------------------
+matmul_q4_0_range:
+    push    rbx
+    push    rbp
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+    and     rdi, -2                     ; drop the Q4_0 tag
+    mov     rsi, r9
+    sub     rsi, r8                     ; rows_left
+    jle     .exit
+    lea     rdx, [rdx + r8 * 4]
+    vpbroadcastw ymm15, [rel q8_one16]
+    vpbroadcastb ymm13, [rel q4_m0f]
+    vpbroadcastb ymm14, [rel q4_b8]
+    lea     r11, [rel q8_xq]
+    lea     rbp, [rel q8_xs]
+    mov     r15, rcx                    ; K
+    mov     r13, rcx
+    and     r13, -128                   ; K_128 (== K)
+    mov     r14, rcx
+    shr     r14, 4
+    mov     rax, rcx
+    shr     rax, 1
+    add     r14, rax                    ; row_stride = K/2 + K/16
+    mov     rax, r8
+    imul    rax, r14
+    add     rax, rdi                    ; w_cur = W + r0 * row_stride
+    mov     rdi, r15
+    shr     rdi, 1                      ; K/2: the scales follow the nibbles
+
+align 16
+.row:
+    lea     r12, [rax + r14]            ; w_next
+    lea     r8,  [rax + rdi]            ; s_cur (fp16)
+    vxorps  ymm0, ymm0, ymm0
+    vxorps  ymm1, ymm1, ymm1
+    vxorps  ymm2, ymm2, ymm2
+    vxorps  ymm3, ymm3, ymm3
+    xor     ebx, ebx                    ; xq offset: 0, 128, ...
+    xor     r9d, r9d                    ; fp16 scale offset: 0, 8, ... (xs = r9*2)
+    xor     r10d, r10d                  ; nibble offset: 0, 64, ...
+
+align 16
+.blk4:
+    vmovq      xmm12, qword [r8 + r9]
+    vcvtph2ps  xmm12, xmm12
+    vmulps     xmm12, xmm12, [rbp + r9*2]
+    vinsertf128 ymm12, ymm12, xmm12, 1
+
+    Q4_1ROW_4BLK
+
+    add     rbx, 128
+    add     r10, 64
+    add     r9, 8
+    cmp     rbx, r13
+    jb      .blk4
+
+    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm2, ymm2, ymm3
+    vaddps  ymm0, ymm0, ymm2
+    vhaddps ymm0, ymm0, ymm0
+    vhaddps ymm0, ymm0, ymm0
+    vextractf128 xmm1, ymm0, 1
+    vaddss  xmm0, xmm0, xmm1
+    vmovss  [rdx], xmm0
+    add     rdx, 4
+    mov     rax, r12
+    dec     rsi
+    jnz     .row
+.exit:
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     rbp
+    pop     rbx
+    ret
+
+; Macro (AIOS M7): unpack the Q4_0 row at rax into the Q8_0 row layout at %1 (K int8 = q - 8, then the K/32 fp16
+; scales), so the Q8 batch kernels run on it unchanged. K % 512 == 0. Clobbers rbx, r9, rcx, ymm4..ymm9; r15 = K.
+%macro Q4_UNPACK_ROW 1
+    vpbroadcastb ymm8, [rel q4_m0f]
+    vpbroadcastb ymm9, [rel q4_b8]
+    xor     ebx, ebx                    ; nibble offset
+    xor     r9d, r9d                    ; int8 offset
+%%blk:
+    vmovdqu    xmm4, [rax + rbx]
+    vmovdqu    xmm5, [rax + rbx + 16]
+    vpsrlw     xmm6, xmm4, 4
+    vpsrlw     xmm7, xmm5, 4
+    vinserti128 ymm4, ymm4, xmm6, 1
+    vinserti128 ymm5, ymm5, xmm7, 1
+    vpand      ymm4, ymm4, ymm8
+    vpand      ymm5, ymm5, ymm8
+    vpsubb     ymm4, ymm4, ymm9
+    vpsubb     ymm5, ymm5, ymm9
+    vmovdqa    [%1 + r9], ymm4
+    vmovdqa    [%1 + r9 + 32], ymm5
+    add     rbx, 32
+    add     r9, 64
+    cmp     r9, r15
+    jb      %%blk
+    mov     r9, r15
+    shr     r9, 4                       ; K/16 scale bytes (rbx = K/2 = their offset in the Q4 row)
+    xor     ecx, ecx
+%%sc:
+    vmovdqu    ymm4, [rax + rbx]
+    vmovdqu    [%1 + r15], ymm4
+    add     rbx, 32
+    add     %1, 32
+    add     ecx, 32
+    cmp     rcx, r9
+    jb      %%sc
+    sub     %1, rcx                     ; back to the row start
+%endmacro
+
+; row stride of the batch job's W into r14 (Q8_0: K + K/16, Q4_0: K/2 + K/16), w_cur = W + r8 * stride into rax
+%macro BMM_ROW0 0
+    mov     r14, r15
+    shr     r14, 4
+    mov     rax, r15
+    test    byte [rel bmm_w], 1
+    jz      %%q8
+    shr     rax, 1
+%%q8:
+    add     r14, rax
+    mov     rax, r8
+    imul    rax, r14
+    mov     rcx, [rel bmm_w]
+    and     rcx, -2
+    add     rax, rcx
+%endmacro
+
+; ----------------------------------------------------------------------------
+; AIOS (batched prefill): void matmul_q8_0_batch_range(uint64 r0, uint64 r1, uint64 tid)
 ; Rows [r0, r1) of W against bmm_b quantized activation rows (bmm_xq: stride K bytes, bmm_xs: stride
 ; K/8 bytes), out[b * bmm_ostride + r * 4]. FP16 scales only (prefill_init refuses v1 files).
 ; Each weight row is read from DRAM once and stays in L1 for the B tokens; per (row, token) the
 ; instruction sequence is exactly .row_f16 above, so every output is bit-identical to the
-; per-token matmul_q8_0_range result.
+; per-token matmul_q8_0_range result. AIOS (M7): a Q4_0 W (bit 0) is unpacked row by row into
+; q4_rowbuf[tid] first (tid = SMP worker id, 0 on the BSP).
 ; ----------------------------------------------------------------------------
 matmul_q8_0_batch_range:
     cmp     dword [rel bmm_vnni], 0
@@ -476,6 +687,10 @@ matmul_q8_0_batch_range:
     push    r13
     push    r14
     push    r15
+    imul    rdx, rdx, Q4_ROWBUF
+    lea     rcx, [rel q4_rowbuf]
+    add     rdx, rcx
+    push    rdx                         ; [rsp] = this thread's Q4 row buffer
     mov     r8, rdi                     ; r0
     sub     rsi, rdi                    ; rows_left
     jle     .exit
@@ -483,18 +698,19 @@ matmul_q8_0_batch_range:
     mov     r15, [rel bmm_k]            ; K
     mov     r13, r15
     and     r13, -128                   ; K_128
-    mov     r14, r15
-    shr     r14, 4
-    add     r14, r15                    ; row_stride (fp16 scales)
-    mov     rax, r8
-    imul    rax, r14
-    add     rax, [rel bmm_w]            ; w_cur = W + r0 * row_stride
+    BMM_ROW0                            ; r14 = row_stride, rax = w_cur = W + r0 * row_stride
     mov     rdi, [rel bmm_out]
     lea     rdi, [rdi + r8*4]           ; &out[token 0][r0]
 
 align 16
 .row:
     lea     r12, [rax + r14]            ; w_next
+    test    byte [rel bmm_w], 1
+    jz      .row8
+    mov     rdx, [rsp]
+    Q4_UNPACK_ROW rdx
+    mov     rax, rdx
+.row8:
     lea     r8,  [rax + r15]            ; s_cur (fp16)
     mov     rdx, rdi
     mov     r11, [rel bmm_xq]
@@ -566,6 +782,7 @@ align 16
     dec     rsi
     jnz     .row
 .exit:
+    add     rsp, 8
     pop     r15
     pop     r14
     pop     r13
@@ -593,28 +810,34 @@ matmul_q8_0_batch_vnni:
     mov     r8, rdi                     ; r0
     sub     rsi, rdi                    ; rows_left
     jle     .exit_nf
+    lea     r9, [rel q4_rowbuf]         ; AIOS (M7): this thread's Q4 row buffer
+    imul    rdx, rdx, Q4_ROWBUF
+    add     r9, rdx
     mov     r15, [rel bmm_k]            ; K
     mov     rcx, rsp
     sub     rsp, r15
     sub     rsp, 64
     and     rsp, -32
     mov     [rsp], rcx                  ; caller rsp; C buffer at rsp + 32 (K bytes)
+    mov     [rsp + 8], r9               ; Q4 row buffer; [rsp + 16] = current (packed) row
     lea     r12, [rsp + 32]
     vpbroadcastb ymm14, [rel q8_b80]    ; 32 x 0x80 (u8 128)
     vpxor   ymm13, ymm13, ymm13
     mov     r13, r15
     and     r13, -128                   ; K_128
-    mov     r14, r15
-    shr     r14, 4
-    add     r14, r15                    ; row_stride (fp16 scales)
-    mov     rax, r8
-    imul    rax, r14
-    add     rax, [rel bmm_w]
+    BMM_ROW0                            ; r14 = row_stride, rax = w_cur
     mov     rdi, [rel bmm_out]
     lea     rdi, [rdi + r8*4]
 
 align 16
 .row:
+    mov     [rsp + 16], rax
+    test    byte [rel bmm_w], 1
+    jz      .row8
+    mov     rdx, [rsp + 8]
+    Q4_UNPACK_ROW rdx
+    mov     rax, rdx
+.row8:
     lea     r8, [rax + r15]             ; s_cur (fp16)
     xor     ebx, ebx
 .corr:                                  ; C[j] = -(128 * sum of each 4 weights), streams the row from DRAM once
@@ -710,6 +933,7 @@ align 16
     jnz     .tok
 
     add     rdi, 4
+    mov     rax, [rsp + 16]
     add     rax, r14
     dec     rsi
     jnz     .row
@@ -1109,6 +1333,8 @@ q8_inv_127:   dd 0.007874015748031496       ; 1.0f / 127.0f
 q8_one16:     dw 1
 q8_min_i8:    db -127
 q8_b80:       db 0x80                   ; AIOS
+q4_m0f:       db 0x0F                   ; AIOS (M7)
+q4_b8:        db 8                      ; AIOS (M7)
 %endif
 
 section .bss
@@ -1130,4 +1356,7 @@ bmm_xs:       resq 1                    ; B x K/32 f32
 bmm_xstride:  resq 1                    ; input row stride (bytes) for quantize_batch_q8_0
 bmm_ostride:  resq 1                    ; output row stride (bytes)
 bmm_vnni:     resd 1                    ; 1: AVX-VNNI batch kernel (prefill_init, CPUID 7.1:EAX[4])
+; AIOS (M7): one Q8_0-layout row per SMP worker for the batch kernels' Q4_0 unpack (K + K/16 bytes, K <= Q8_MAX_K)
+alignb 64
+q4_rowbuf:    resb 64 * Q4_ROWBUF
 %endif

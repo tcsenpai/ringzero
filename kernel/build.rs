@@ -10,6 +10,7 @@ fn main() {
     // KV cache in FP16 by default; RINGZERO_KV=f32 builds the upstream FP32 cache for comparison
     let kv_f32 = env::var("RINGZERO_KV").is_ok_and(|v| v == "f32");
     println!("cargo:rerun-if-env-changed=RINGZERO_KV");
+    println!("cargo:rerun-if-env-changed=RINGZERO_EDITION"); // M7: main.rs banner (make MODEL=9b)
 
     for name in ASM {
         let src = engine.join(format!("{name}.asm"));

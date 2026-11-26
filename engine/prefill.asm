@@ -44,6 +44,7 @@ extern tp_matmul_q8_0
 extern tp_matmul_q8_0_batch
 extern tp_gqa_attn
 extern tp_deltanet
+extern desc_tag_q4
 extern bmm_xq
 extern bmm_xs
 extern bmm_xstride
@@ -332,6 +333,9 @@ transformer_prefill:
     mov     [rsp + SLOT(i)], rcx
 %assign i i+1
 %endrep
+    mov     rdi, rax                    ; M7: Q4_0 slots get bit 0 set (the batch kernels unpack them)
+    lea     rsi, [rsp + SLOT(0)]
+    call    desc_tag_q4
 
     ; input RMSNorm: xb_b = rmsnorm(x_b, in_norm)
     xor     r12d, r12d
@@ -646,7 +650,7 @@ transformer_prefill:
     cmp     qword [rsp + L_LOGITS], 0
     je      .done
 
-    ; last token: BUF_X = x_{n-1}, final RMSNorm + tied LM head -> BUF_LOGITS (as transformer_forward)
+    ; last token: BUF_X = x_{n-1}, final RMSNorm + LM head -> BUF_LOGITS (as transformer_forward)
     mov     r12, [rsp + L_N]
     dec     r12
     ROW     rsi, r12, pf_x, pf_sx
@@ -661,7 +665,7 @@ transformer_prefill:
     mov     rcx, [rbx + CTX_DIM]
     vmovss  xmm0, [rbx + CTX_RMS_EPS]
     call    rmsnorm_avx2
-    mov     rdi, [rbx + CTX_EMB_PTR]
+    mov     rdi, [rbx + CTX_LM_HEAD_PTR] ; M7: tied (= embed) or untied lm_head
     mov     rsi, [rbx + CTX_BUF_X]
     mov     rdx, [rbx + CTX_BUF_LOGITS]
     mov     rcx, [rbx + CTX_VOCAB_SIZE]

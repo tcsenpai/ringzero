@@ -61,6 +61,9 @@ MAGIC = b"ASML"
 VERSION_V1 = 1
 VERSION_V2 = 2
 VERSION_V3 = 3
+VERSION_V4 = 4  # ringzero (M7): v3 + per-slot quant type (Q4_0) + untied lm_head
+QTYPE_Q8_0, QTYPE_Q4_0 = 1, 2  # 2-bit descriptor slot types (0 = f32 / unused)
+Q4_ROLES = ("attn", "attn_out", "dn", "dn_out", "mlp", "mlp_down")
 FLAG_TIED_EMB = 1
 FLAG_QK_NORM = 2
 FLAG_FP16_SCALES = 4
@@ -167,6 +170,36 @@ def quantize_matrix_q8_0_row_split(w: np.ndarray, scale_dtype: str = "fp16") -> 
     row_packed = np.concatenate([q_flat.view(np.uint8), s_bytes], axis=1)
     assert row_packed.shape == (M, K + nb * scale_bytes_per_block)
     return row_packed.tobytes()
+
+
+def quantize_q4_0_blocks(w: np.ndarray):
+    """ringzero (M7): Q4_0 RTN of [M, K] f32 (llama.cpp quantize_row_q4_0_ref rule, block 32): d = (signed absmax) / -8,
+    q = clamp(floor(x / d + 8.5), 0, 15), d stored as fp16 and the effective fp16 d used for 1/d; blocks whose fp16 d
+    underflows to 0 are flushed to 0. Returns (q - 8 as int8 [M, K/32, 32] in [-8, 7], d f16 [M, K/32])."""
+    M, K = w.shape
+    assert K % 32 == 0, f"K={K} must be a multiple of 32"
+    blocks = w.reshape(M, K // 32, 32).astype(np.float32, copy=False)
+    idx = np.argmax(np.abs(blocks), axis=2)
+    mx = np.take_along_axis(blocks, idx[:, :, None], axis=2)[:, :, 0]
+    d16 = (mx / np.float32(-8.0)).astype(np.float16)
+    d = d16.astype(np.float32)
+    with np.errstate(divide="ignore"):
+        inv = np.where(d != 0.0, np.float32(1.0) / d, np.float32(0.0)).astype(np.float32)
+    q = np.clip(np.floor(blocks * inv[:, :, None] + np.float32(8.5)), 0, 15).astype(np.int8) - np.int8(8)
+    q[d == 0.0] = 0
+    return q, d16
+
+
+def quantize_matrix_q4_0_row_split(w: np.ndarray) -> bytes:
+    """ringzero (M7): per-row split Q4_0: [K/2 nibble bytes][K/32 fp16 d] per row (row stride K/2 + K/16, a 64-byte
+    multiple for K % 512 == 0). In each 16-byte block byte j holds element j in the low nibble and element j + 16 in the
+    high nibble, both stored as q + 8 (llama.cpp block_q4_0 order)."""
+    M, K = w.shape
+    q, d16 = quantize_q4_0_blocks(w)
+    u = (q + np.int8(8)).astype(np.uint8)
+    nib = (u[:, :, :16] | (u[:, :, 16:] << 4)).reshape(M, K // 2)
+    row = np.concatenate([nib, d16.astype("<f2").view(np.uint8).reshape(M, K // 16)], axis=1)
+    return row.tobytes()
 
 
 def tokenizer_ids(tok_json_path: str, tok_cfg_path: str) -> dict:
@@ -447,10 +480,14 @@ def is_qwen35(cfg: dict) -> bool:
     return "linear_attention" in layer_types or tcfg.get("model_type", "").startswith("qwen3_5")
 
 
-def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scale_dtype: str = "fp16", force: bool = False):
+def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scale_dtype: str = "fp16", force: bool = False,
+                    q4: frozenset = frozenset()):
+    """ringzero (M7): q4 = set of matrix roles written as Q4_0 (Q4_ROLES); any Q4 tensor or an untied lm_head makes the
+    file v4 (descriptor reserved u32 = 2-bit quant type per slot, header u64 216 = lm_head offset). Otherwise v3, byte
+    for byte as before."""
     t0 = time.time()
     use_fp16 = scale_dtype == "fp16"
-    version = VERSION_V3
+    assert use_fp16 or not q4, "Q4_0 needs fp16 scales"
     with open(os.path.join(model_dir, "config.json"), "r") as f:
         cfg = json.load(f)
     tcfg = cfg.get("text_config", cfg)
@@ -477,21 +514,26 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
     conv_k = int(tcfg.get("linear_conv_kernel_dim", 0))
     gate = bool(tcfg.get("attn_output_gate", False)) and is35
     one_pw = 1.0 if is35 else 0.0  # Qwen3.5 RMSNorm is x*(1+w): bake +1.0 (all but the DeltaNet gated norm)
-    if is35:
-        assert n_lk == n_lv and lk_dim == lv_dim, "Hv != Hk needs a head-repeat, not supported by this layout"
+    if is35:  # ringzero (M7): Hv may be a multiple of Hk (9B: 16 K heads, 32 V heads; V head j uses K head j // (Hv/Hk))
+        assert n_lv % n_lk == 0 and lk_dim == lv_dim, "need Hv % Hk == 0 and Dk == Dv"
+    version = VERSION_V4 if (q4 or not tie_emb) else VERSION_V3
     mask = sum(1 << l for l, t in enumerate(layer_types) if t == "linear_attention")
     assert n_layers <= 64
 
     wm = os.path.join(model_dir, "model.safetensors.index.json")
+    shard_of = None  # ringzero (M7): multi-shard checkpoints (9B: 4 shards), tensor name -> shard file
     st_name = "model.safetensors"
     if os.path.exists(wm):
-        files = set(json.load(open(wm))["weight_map"].values())
-        assert len(files) == 1, f"multi-shard checkpoints unsupported: {files}"
-        st_name = files.pop()
+        shard_of = json.load(open(wm))["weight_map"]
+        st_name = sorted(set(shard_of.values()))[0]
     st_path = os.path.join(model_dir, st_name)
     tok_path = os.path.join(model_dir, "tokenizer.json")
     tok_cfg = os.path.join(model_dir, "tokenizer_config.json")
-    hdr, data_offset = load_safetensors_header(st_path)
+    shards = {}
+    for fn in sorted(set(shard_of.values())) if shard_of else [st_name]:
+        h, o = load_safetensors_header(os.path.join(model_dir, fn))
+        shards[fn] = (open(os.path.join(model_dir, fn), "rb"), h, o)
+    hdr = {k: v for _, h, _ in shards.values() for k, v in h.items()}
     if not is35 and pre + "embed_tokens.weight" not in hdr and "embed_tokens.weight" in hdr:
         pre = ""  # ringzero: Qwen3-Embedding stores the bare Qwen3Model (no "model." prefix)
 
@@ -499,9 +541,13 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
     tok_blob = build_tokenizer_blob(tok_path, vocab_size, tok_cfg)
     tids = tokenizer_ids(tok_path, tok_cfg) if is35 else None
 
-    with open(st_path, "rb") as sf, open(out_path, "wb") as out:
+    def RT(name, r0=0, r1=None):
+        sf, h, o = shards[shard_of[name]] if shard_of else shards[st_name]
+        return read_tensor_f32(sf, h, o, name, r0, r1)
+
+    with open(out_path, "wb") as out:
         def T(name, r0=0, r1=None):
-            return read_tensor_f32(sf, hdr, data_offset, pre + name, r0, r1)
+            return RT(pre + name, r0, r1)
 
         def put_f32(arr, shape):
             arr = np.asarray(arr, dtype=np.float32)
@@ -510,13 +556,18 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
             out.write(arr.astype("<f4").tobytes())
             return off
 
-        def put_q8(mats, K):
-            """Quantize and write [M_i, K] matrices back to back (rows chunked: bounded memory). Returns start offset."""
+        def put_q8(mats, K, role=None):
+            """Quantize and write [M_i, K] matrices back to back (rows chunked: bounded memory). Returns start offset.
+            ringzero (M7): Q4_0 when role is in q4 (qtypes[] records the slot type for the descriptor)."""
             off = pad64(out)
+            four = role in q4
             for m in mats:
                 assert m.ndim == 2 and m.shape[1] == K and K % 32 == 0 and K <= 16384, m.shape
+                assert not four or K % 512 == 0, K  # Q4 row stride K/2 + K/16 stays a 64-byte multiple
                 for r in range(0, m.shape[0], 8192):
-                    out.write(quantize_matrix_q8_0_row_split(m[r:r + 8192], scale_dtype=scale_dtype))
+                    c = m[r:r + 8192]
+                    out.write(quantize_matrix_q4_0_row_split(c) if four else quantize_matrix_q8_0_row_split(c, scale_dtype=scale_dtype))
+            qtypes.append(QTYPE_Q4_0 if four else QTYPE_Q8_0)
             return off
 
         def q8_tensor(name, shape):
@@ -541,7 +592,7 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
         assert tuple(hdr[pre + ename]["shape"]) == (vocab_size, dim), f"Unexpected embed shape {hdr[pre + ename]['shape']}"
         if "lm_head.weight" in hdr and tie_emb:
             emb = T(ename)
-            lmh = read_tensor_f32(sf, hdr, data_offset, "lm_head.weight")
+            lmh = RT("lm_head.weight")
             max_diff = float(np.max(np.abs(emb - lmh)))
             assert max_diff == 0.0, f"tie_word_embeddings=True but diff={max_diff}"
             print("Verified embed_tokens == lm_head exact (max_diff=0.0)")
@@ -557,6 +608,7 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
             lin = layer_types[l] == "linear_attention"
             p = f"layers.{l}."
             s = [0] * N_DESC_SLOTS
+            qtypes = []  # appended by put_q8 for slots 2, 3, 4, 5 in that order
             # file order: small fp32 tensors first (Qwen3 order: in_norm, q_norm, k_norm, post_norm), then Q8 matrices
             s[0] = put_f32(T(p + "input_layernorm.weight") + one_pw, (dim,))
             if not lin:
@@ -585,17 +637,18 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
                     q, g = q[:, 0].reshape(-1, dim), q[:, 1].reshape(-1, dim)
                 k = q8_tensor(a + "k_proj.weight", (n_kv_heads * head_dim, dim))
                 v = q8_tensor(a + "v_proj.weight", (n_kv_heads * head_dim, dim))
-                s[2] = put_q8([q, k, v] + ([g] if gate else []), dim)
-                s[3] = put_q8([q8_tensor(a + "o_proj.weight", (dim, n_heads * head_dim))], n_heads * head_dim)
+                s[2] = put_q8([q, k, v] + ([g] if gate else []), dim, "attn")
+                s[3] = put_q8([q8_tensor(a + "o_proj.weight", (dim, n_heads * head_dim))], n_heads * head_dim, "attn_out")
             else:
                 s[2] = put_q8([q8_tensor(a + "in_proj_qkv.weight", (C, dim)),
-                               q8_tensor(a + "in_proj_z.weight", (zdim, dim))], dim)
-                s[3] = put_q8([q8_tensor(a + "out_proj.weight", (dim, zdim))], zdim)
+                               q8_tensor(a + "in_proj_z.weight", (zdim, dim))], dim, "dn")
+                s[3] = put_q8([q8_tensor(a + "out_proj.weight", (dim, zdim))], zdim, "dn_out")
             s[4] = put_q8([q8_tensor(p + "mlp.gate_proj.weight", (hidden_dim, dim)),
-                           q8_tensor(p + "mlp.up_proj.weight", (hidden_dim, dim))], dim)
-            s[5] = put_q8([q8_tensor(p + "mlp.down_proj.weight", (dim, hidden_dim))], hidden_dim)
+                           q8_tensor(p + "mlp.up_proj.weight", (hidden_dim, dim))], dim, "mlp")
+            s[5] = put_q8([q8_tensor(p + "mlp.down_proj.weight", (dim, hidden_dim))], hidden_dim, "mlp_down")
             pad64(out)
-            descs.append(struct.pack("<II16Q", ltype, 0, *s))
+            qbits = sum(t << (2 * i) for i, t in zip((2, 3, 4, 5), qtypes)) if version == VERSION_V4 else 0
+            descs.append(struct.pack("<II16Q", ltype, qbits, *s))
             assert len(descs[-1]) == DESC_STRIDE
             if (l + 1) % 7 == 0 or l == n_layers - 1:
                 print(f"  Exported layer {l + 1}/{n_layers}", flush=True)
@@ -610,6 +663,12 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
         final_norm = T("norm.weight") + one_pw
         assert final_norm.shape == (dim,)
         out.write(final_norm.astype("<f4").tobytes())
+        off_lm_head = 0
+        if not tie_emb:  # ringzero (M7): untied lm_head (9B), Q8_0, streamed in row chunks
+            off_lm_head = pad64(out)
+            print(f"Quantizing lm_head ({vocab_size}, {dim}) -> Q8_0...")
+            for r in range(0, vocab_size, 8192):
+                out.write(quantize_matrix_q8_0_row_split(RT("lm_head.weight", r, min(r + 8192, vocab_size)), scale_dtype=scale_dtype))
         file_size = pad64(out)
 
         out.seek(off_layer_table)
@@ -661,6 +720,8 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
             header += struct.pack("<10I", tids["endoftext"], tids["im_start"], tids["im_end"], tids["think_start"],
                                   tids["think_end"], tids["user"], tids["assistant"], tids["nl"], tids["nl2"],
                                   tids["argmax_limit"])
+        if version == VERSION_V4:  # ringzero (M7): 216 u64 lm_head offset (0 = tied to embed_tokens)
+            header += b"\x00" * (216 - len(header)) + struct.pack("<Q", off_lm_head)
         header += b"\x00" * (HEADER_SIZE_V3 - len(header))
         assert len(header) == HEADER_SIZE_V3
         out.seek(0)
@@ -675,6 +736,7 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
     print(f"  off_layertbl : {off_layer_table:,} ({n_layers} x {DESC_STRIDE} B)")
     print(f"  off_layers   : {off_layers:,} (stride={layer_stride:,} x {n_layers})")
     print(f"  off_final_nrm: {off_final_norm:,}")
+    print(f"  Q4_0 roles   : {','.join(sorted(q4)) or '-'}; lm_head {'tied' if tie_emb else 'Q8_0 untied'}")
     print(f"  Elapsed      : {dt:.2f} s")
 
 
@@ -685,11 +747,15 @@ def main():
     ap.add_argument("--max-seq-len", type=int, default=4096)
     ap.add_argument("--scale-dtype", choices=["fp16", "fp32"], default="fp16", help="Per-block Q8_0 scale dtype (fp16 -> v2 compact, fp32 -> v1 legacy)")
     ap.add_argument("--v3", action="store_true", help="ringzero: write a Qwen3 checkpoint as v3 (for the QWEN35 kernel build)")
+    ap.add_argument("--q4", default="", help="ringzero (M7): Q4_0 matrix roles, comma list of " + ",".join(Q4_ROLES) +
+                    " or 'all' (embeddings and lm_head stay Q8_0, small tensors f32); writes .asmbin v4")
     args = ap.parse_args()
+    q4 = frozenset(Q4_ROLES if args.q4 == "all" else [r for r in args.q4.split(",") if r])
+    assert q4 <= set(Q4_ROLES), f"unknown --q4 roles {sorted(q4 - set(Q4_ROLES))}"
     with open(os.path.join(args.model_dir, "config.json"), "r") as f:
         cfg = json.load(f)
     if is_qwen35(cfg) or args.v3:  # Qwen3 keeps the original v1/v2 writer unless --v3
-        export_model_v3(args.model_dir, args.out, args.max_seq_len, scale_dtype=args.scale_dtype, force=args.v3)
+        export_model_v3(args.model_dir, args.out, args.max_seq_len, scale_dtype=args.scale_dtype, force=args.v3, q4=q4)
     else:
         export_model(args.model_dir, args.out, args.max_seq_len, scale_dtype=args.scale_dtype)
 
