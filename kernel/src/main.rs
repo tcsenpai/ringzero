@@ -1,12 +1,14 @@
 // ringzero kernel (edition "ringzero Qwen35@2b-Qwen3@0.6b"): boot under Limine, IDT, engine arena, APs in the asm worker
 // loop, Qwen3.5-2B + Qwen3-Embedding-0.6B on the same engine (context swap, embed.rs), Qwen3.5-2B golden self-test,
-// virtio-blk + FAT32 at / (blk.rs, fs.rs), system-agent prefix prefill + snapshot, then the shell on COM1 + PS/2.
+// virtio-blk + FAT32 at / (blk.rs, fs.rs), agentd (memory stores, persistent index, context compiler, idle
+// consolidation), system-agent prefix (boot snapshot cache or prefill) + snapshot, then the shell on COM1 + PS/2.
 #![no_std]
 #![no_main]
 
 extern crate alloc;
 
 mod agent;
+mod agentd;
 mod blk;
 mod console;
 mod embed;
@@ -19,6 +21,7 @@ mod llm;
 mod log;
 mod mem;
 mod memidx;
+mod mstore;
 mod shell;
 mod smp;
 mod snap;
@@ -248,16 +251,20 @@ extern "C" fn kmain() -> ! {
                     embed::boot_check();
                 }
             }
-            _ => klog!(b'W', "embed: no embed.asmbin module, /embed /index /search and search_memory are off"),
+            _ => klog!(b'W', "embed: no embed.asmbin module, /embed /index /search and recall are off"),
         }
         klog!(b'I', "index: memory index self-test (fp16, Q8_0 rows, ln, identifier gate, retain) {}", if memidx::selftest() { "PASS" } else { "FAIL" });
         klog!(b'I', "index: file indexer self-test (chunker, path checks) {}", if fidx::selftest() { "PASS" } else { "FAIL" });
+        klog!(b'I', "agentd: self-test (record codec + torn tail, fact validation, grounding, calendar) {}",
+            if mstore::selftest() && agentd::selftest() { "PASS" } else { "FAIL" });
+        agentd::init(); // stores recovered, index loaded or rebuilt, files compared with the saved index
         llm::selftest(); // the 2B's golden test runs after the context swap round trip of the boot check
         klog!(b'I', "bench: 64-token decode, prompt \"Explain how a CPU cache works in 3 concise sentences.\"");
         llm::bench();
         klog!(b'I', "agent: tool-call parser self-test {}", if agent::selftest() { "PASS" } else { "FAIL" });
         klog!(b'I', "kbd:  PS/2 layout {} (change with '!kbd us|it')", kbd::layout());
         agent::init();
+        agentd::booted();
         shell::run();
     }
     loop {

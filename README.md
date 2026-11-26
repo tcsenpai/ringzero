@@ -6,7 +6,7 @@ to it on the same engine for a memory index. The inference engine is the NASM
 assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
-Status: **M4 disk + filesystem** (edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
+Status: **M4.5 agentd** (edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
 uptime, settings, poweroff/reboot with confirmation) in its native tool format. `!cmd` runs a machine
@@ -21,8 +21,7 @@ whole forward calls, so the 2B's state is never touched. `/embed [-q] TEXT` prin
 6 ms per token, 0.61 s per 100 tokens; cosine >= 0.9986 against the HF fp32 model), `/index add TEXT` stores a
 note in the RAM memory index (Q8_0 rows), `/search QUERY` returns the top 5 by embedding similarity, with BM25
 joining only for identifier-like queries or a strong keyword match, and shows which signal matched. The agent
-has a `search_memory` tool over the same index. The index lives in RAM (lost at reboot; persistence is M4.5).
-Results: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md).
+has a `recall` tool over the same index (through agentd, below). Results: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md).
 
 Disk (M4): a virtio-blk disk (`build/disk.img`, 512 MiB FAT32, made once by `make disk`) is mounted at `/` at
 boot; the banner prints its size and free space. Shell: `!ls [PATH]`, `!cat PATH`, `!write PATH TEXT` (`\n` =
@@ -31,8 +30,30 @@ too). The agent has `ls`, `cat` (8 KiB tool cap), `write_file`, `mkdir` and `rm`
 paths must be absolute, without `.` or `..`, at most 255 bytes, files at most 64 KiB. Text files written through
 the shell or the agent are chunked (~1000 bytes, ~200-250 tokens) into the memory index in idle time at the
 prompt, in slices that any keystroke or Ctrl-C ends within one embedder forward call; `/index stats` shows the
-queue, and `/search` or `search_memory` return the chunks as `[/path] text`. Results:
+queue, and `/search` or `recall` return the chunks as `[/path] text`. Results:
 [docs/M4_RESULT.md](docs/M4_RESULT.md).
+
+agentd (M4.5): a kernel subsystem owns the agent's memory, because the 2B model is small; the model only reads
+and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and every agentd decision is logged
+(`/agentd log`, kernel log level D).
+- Persistent stores in `/sys/mem` on the disk: an append-only journal of turns and tool results, facts (key ->
+  value, source, time) and episodes (session summaries). Records carry a length and a checksum; at boot each file
+  is scanned to its last good record and a torn tail is cut.
+- The memory index is saved to `/sys/mem/index.bin` with a header (embedder hash, dim, Q8_0 layout, chunker
+  version, the size and mtime of each indexed file) and loaded at boot in about a millisecond; only files that
+  changed on the disk (also from the host) and new records are embedded again.
+- Boot snapshot cache: the prefilled system prompt + tools state (33 MiB) is saved to `/sys/bootsnap.bin` and
+  loaded at the next boot in about 0.2 s instead of a 26 s prefill (BIOS boot to the prompt 40.6 s cold, 11.9 s
+  cached). The key covers the model, the prefix tokens and the engine build; any change means a prefill.
+- Context compiler: the first message of every conversation, and the first turn after a compaction, gets a
+  memory slot of at most 200 tokens: saved facts, then notes recalled for that message (earlier statements of the
+  user, episodes, file chunks). This fixes the M2.5 compaction recall failure.
+- Idle work runs in one priority queue at the prompt (embed memory texts, embed file chunks, save the index,
+  consolidate), in slices that any keystroke stops between engine steps. Consolidation (after 60 s idle, or
+  `/consolidate`) has the 2B summarize the session into an episode and propose facts; the kernel validates them
+  (snake_case key, short value, grounded in what the user said, dedup) and the user's conversation is restored
+  to its snapshot point after.
+Results: [docs/M45_RESULT.md](docs/M45_RESULT.md).
 
 Engine state snapshots: every finished turn is saved as a point (`#7`) in a 1 GiB pool (KV rows of the
 turn + the 19.3 MiB DeltaNet state, about 21 MiB per short turn; going back costs about 0.6 ms). The
@@ -44,7 +65,7 @@ Only the model goes back: tool side effects stay, and `/undo` says so. Design:
 [docs/design/SNAPSHOTS.md](docs/design/SNAPSHOTS.md).
 
 Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to the
-remote instance: [docs/M4_RESULT.md](docs/M4_RESULT.md) (earlier: [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
+remote instance: [docs/M45_RESULT.md](docs/M45_RESULT.md) (earlier: [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
 [M2+M3](docs/M2M3_RESULT.md), [M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
 
 ## Build and run
@@ -67,7 +88,32 @@ make run-local           # or: the same VM in a QEMU window on the box's desktop
 
 Try at the prompt: `!write /notes/todo.txt comprare il latte`, `!cat /notes/todo.txt`, `!ls /`, then ask
 "crea un file /notes/idea.txt con scritto ciao" or "cosa devo comprare?" (after a few seconds of idle the file
-is in the memory index). `!poweroff` and boot again: the files are still there.
+is in the memory index). Tell it "mi chiamo Cris e il mio numero preferito e 4711", run `/consolidate`, then
+`/facts`; `!poweroff`, boot again and ask "come mi chiamo?": the facts and the memory index are still there, and
+the second boot loads the prompt state from the disk cache.
+
+Remote instance on the Fedora box (Tailscale HOST-ADDRESS):
+
+```sh
+nc HOST-ADDRESS 4555                 # serial shell: press Enter to get "ringzero[main]> "
+stty -echo -icanon; nc HOST-ADDRESS 4555; stty sane    # without the double local echo (Tab works too)
+open vnc://HOST-ADDRESS:5901         # framebuffer + PS/2 keyboard, password: aios
+ssh fedorascale 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
+ssh fedorascale 'cd ~/coding/ringzero && make run-local'   # at the Fedora desktop: the same VM in a QEMU window
+```
+
+agentd at the prompt:
+
+```
+/agentd                  # stores, index (saved or changed), idle queue, consolidation state, last decisions
+/agentd log 40           # the last 40 decisions (slot contents, facts accepted or rejected, jobs, recovery)
+/facts                   # saved facts: key = value (source, time)
+/remember KEY VALUE      # save a fact yourself; /forget KEY deletes one (asks y/N)
+/consolidate             # episode + facts from this session now (Ctrl-C stops and restores the conversation)
+!set consolidate 30      # idle seconds before an automatic consolidation (0 = only /consolidate)
+!set slot 0              # turn the memory slot off (default 200 tokens)
+/index clear             # throw the index away and re-embed every file and memory record in idle time
+```
 
 More:
 
@@ -115,11 +161,12 @@ Memory index, from the shell:
 | Path | What |
 |---|---|
 | `kernel/src/blk.rs`, `fs.rs`, `fidx.rs` | virtio-blk on PCI, FAT32 at /, file indexer (M4) |
+| `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log; record stores in /sys/mem (M4.5) |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
 | `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot) |
-| `tools/accept.py` | drives the shell over TCP (answers y/N prompts, sends Ctrl-C), saves a transcript |
+| `tools/accept.py` | drives the shell over TCP (answers y/N prompts, sends Ctrl-C, waits idle, powers off), saves a transcript |
 | `tools/uxtest.py` | types steps byte by byte over TCP (Tab completion, suggestions, long pasted lines), waits for a quiet prompt |
 | `tools/fetch_model.sh` | `make model`: Hugging Face download (uvx hf, curl fallback) + export, skipped when the .asmbin exists |
 | `tools/export_weights.py` | safetensors -> .asmbin Q8_0 exporter, vendored from llm.asm (alesha-pro, MIT; Qwen3.5 v3 export from tcsenpai/llm.asm; `--v3` for Qwen3 / the embedder) |

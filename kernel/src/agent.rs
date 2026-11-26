@@ -19,7 +19,7 @@ or to act on it, and never invent numbers. Reply in English or in Italian, match
 user's latest message, briefly, in plain text without markdown headers.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
-const TOOLS: [&str; 14] = [
+const TOOLS: [&str; 16] = [
     r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: free, used and total RAM in MiB.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does.", "parameters": {"type": "object", "properties": {}}}}"#,
@@ -28,7 +28,9 @@ const TOOLS: [&str; 14] = [
     r#"{"type": "function", "function": {"name": "poweroff", "description": "Shut down the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "reboot", "description": "Reboot the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "set_setting", "description": "Change a system setting. temperature: sampling temperature, 0 = greedy. cores: CPU cores used for inference. keyboard: PS/2 keyboard layout, us or it.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "enum": ["temperature", "cores", "keyboard"]}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
-    r#"{"type": "function", "function": {"name": "search_memory", "description": "Search the memory index (notes about the user and this machine, files on the disk) by meaning and keywords. Returns the best matching notes with scores.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "what to look for, as a question or keywords"}}, "required": ["query"]}}}"#,
+    r#"{"type": "function", "function": {"name": "remember", "description": "Save a fact the user told you, kept across reboots.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "description": "snake_case, e.g. user_name"}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
+    r#"{"type": "function", "function": {"name": "forget", "description": "Delete a saved fact (asks the user).", "parameters": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}}}"#,
+    r#"{"type": "function", "function": {"name": "recall", "description": "Search saved facts, past conversations and files on the disk.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}}"#,
     r#"{"type": "function", "function": {"name": "ls", "description": "List a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "cat", "description": "Read a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "write_file", "description": "Create or replace a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}}"#,
@@ -42,7 +44,7 @@ enum Ty {
 }
 
 // (name, params (name, type, required)), same order and content as TOOLS
-const SPECS: [(&str, &[(&str, Ty, bool)]); 14] = [
+const SPECS: [(&str, &[(&str, Ty, bool)]); 16] = [
     ("meminfo", &[]),
     ("cpuinfo", &[]),
     ("list_cores", &[]),
@@ -51,7 +53,9 @@ const SPECS: [(&str, &[(&str, Ty, bool)]); 14] = [
     ("poweroff", &[]),
     ("reboot", &[]),
     ("set_setting", &[("key", Ty::Str(&["temperature", "cores", "keyboard"]), true), ("value", Ty::Str(&[]), true)]),
-    ("search_memory", &[("query", Ty::Str(&[]), true)]),
+    ("remember", &[("key", Ty::Str(&[]), true), ("value", Ty::Str(&[]), true)]),
+    ("forget", &[("key", Ty::Str(&[]), true)]),
+    ("recall", &[("query", Ty::Str(&[]), true)]),
     ("ls", &[("path", Ty::Str(&[]), true)]),
     ("cat", &[("path", Ty::Str(&[]), true)]),
     ("write_file", &[("path", Ty::Str(&[]), true), ("content", Ty::Str(&[]), true)]),
@@ -263,6 +267,7 @@ pub fn compact(why: &str) -> bool {
         unsafe { N_COMPACT }, why, before, pos, before * 100 / max_seq, pos * 100 / max_seq, n_sum, us1 / 1000, n, us2 / 1000, (us1 + us2) / 1000);
     hist("kernel", "[compaction] summary written by the model:");
     hist("summary", sum.as_str());
+    crate::agentd::on_compact(sum.as_str());
     true
 }
 
@@ -279,27 +284,62 @@ fn build_prefix() -> usize {
     llm::encode(&t.b[..t.n], toks())
 }
 
-/// Boot: prefill the system prompt + tools from position 0 and snapshot the engine state.
+/// Boot snapshot cache: the prefilled prefix state on the disk (snap.rs), keyed by model, prefix and engine.
+const BOOT_SNAP: &str = "/sys/bootsnap.bin";
+
+/// Boot: load the prefix state from the disk cache, or prefill the system prompt + tools from position 0
+/// (and write the cache); then snapshot it as point #0.
 pub fn init() {
     let n = build_prefix();
-    let mut h = 0xcbf2_9ce4_8422_2325u64; // FNV-1a of the ids, to compare with the HF tokenizer
-    toks()[..n].iter().for_each(|&x| h = (h ^ x as u64).wrapping_mul(0x100_0000_01b3));
-    klog!(b'I', "agent: system prompt + {} tools = {} tokens (fnv {:#x}), prefilling once...", TOOLS.len(), n, h);
+    let ids = unsafe { core::slice::from_raw_parts(toks().as_ptr() as *const u8, (n - 2) * 4) };
+    let h = toks()[..n].iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &x| (h ^ x as u64).wrapping_mul(0x100_0000_01b3));
+    klog!(b'I', "agent: system prompt + {} tools = {} tokens (fnv {:#x})", TOOLS.len(), n, h);
+    use crate::mstore::fnv;
+    let geo = [unsafe { crate::engine::kv_elt_bytes }, llm::ctx_max_seq(), llm::CTX_LEN];
+    let key = geo.iter().fold(fnv(fnv(fnv(crate::mstore::FNV0, ids), &unsafe { llm::MODEL_HASH }.to_le_bytes()),
+        env!("RINGZERO_ENGINE_HASH").as_bytes()), |h, g| fnv(h, &g.to_le_bytes()));
+    unsafe { SYS_END = [toks()[n - 2], toks()[n - 1]] }; // <|im_end|> \n of the system turn
     smp::park_phase(true);
     let t0 = smp::rdtsc();
-    unsafe { SYS_END = [toks()[n - 2], toks()[n - 1]] }; // <|im_end|> \n of the system turn
-    let mut pos = 0;
-    while !llm::feed(&toks()[..n - 2], &mut pos) {
-        pos = 0; // Ctrl-C at boot: no shell yet, prefill again
-    }
+    let cached = if crate::fs::mounted() { snap::load_prefix(BOOT_SNAP, key) } else { Err("no disk") };
     let t1 = smp::rdtsc();
-    let bytes = snap::init_root(pos);
+    let hit = matches!(cached, Ok(p) if p == (n - 2) as u64);
+    let pos = match cached {
+        Ok(p) if p == (n - 2) as u64 => {
+            let us = smp::tsc_to_us(t1 - t0);
+            klog!(b'I', "agent: boot snapshot cache hit ({}, key {:#x}): {} tok of state loaded in {}.{:03} s instead of a prefill",
+                BOOT_SNAP, key, p, us / 1_000_000, us / 1000 % 1000);
+            crate::dlog!("boot cache: hit, prefix state loaded from the disk in {} ms", us / 1000);
+            p
+        }
+        r => {
+            let why = match r {
+                Err(e) => e,
+                Ok(_) => "token count differs",
+            };
+            crate::dlog!("boot cache: miss ({}), prefilling {} tokens", why, n - 2);
+            let mut pos = 0;
+            while !llm::feed(&toks()[..n - 2], &mut pos) {
+                pos = 0; // Ctrl-C at boot: no shell yet, prefill again
+            }
+            let us = smp::tsc_to_us(smp::rdtsc() - t1);
+            klog!(b'I', "agent: prefix prefill {} tok in {}.{:03} s ({} tok/s)", pos, us / 1_000_000, us / 1000 % 1000,
+                n as u64 * 1_000_000 / us.max(1));
+            pos
+        }
+    };
     let t2 = smp::rdtsc();
+    let bytes = snap::init_root(pos);
+    let t3 = smp::rdtsc();
+    if !hit && crate::fs::mounted() {
+        match snap::save_prefix(BOOT_SNAP, key, pos) {
+            Ok(b) => crate::dlog!("boot cache: written, {} MiB in {} ms", b >> 20, smp::tsc_to_us(smp::rdtsc() - t3) / 1000),
+            Err(e) => crate::dlog!("boot cache: write failed ({})", e),
+        }
+    }
     smp::park_phase(false);
-    let us = smp::tsc_to_us(t1 - t0);
-    klog!(b'I', "agent: prefix prefill {} tok in {}.{:03} s ({} tok/s), snapshot #0 {} MiB in a {} MiB pool, saved in {} ms (pool touched)",
-        pos, us / 1_000_000, us / 1000 % 1000, n as u64 * 1_000_000 / us.max(1), bytes >> 20, snap::pool_bytes() >> 20,
-        smp::tsc_to_us(t2 - t1) / 1000);
+    klog!(b'I', "agent: snapshot #0 {} MiB in a {} MiB pool, saved in {} ms (pool touched)", bytes >> 20, snap::pool_bytes() >> 20,
+        smp::tsc_to_us(t3 - t2) / 1000);
 }
 
 /// Hidden `toks` builtin: print the prefix token ids (checked against the HF tokenizer offline).
@@ -405,18 +445,30 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
             }
             let _ = write!(o, "cancelled: the user answered no, the machine stays on");
         }
-        "search_memory" => {
-            // embedder context swap between two 2B forward calls (embed.rs): the 2B state is not touched
-            let mut h = [crate::memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: crate::memidx::Via::Emb }; 3];
-            match crate::memidx::search(arg(c, "query").unwrap_or(""), &mut h) {
-                Ok(f) => {
-                    for (i, x) in h[..f.n].iter().enumerate() {
-                        let _ = write!(o, "{}{}. (score {:.2}) {}", if i > 0 { "\n" } else { "" }, i + 1, x.cos, crate::memidx::text(x.id));
-                    }
+        // memory goes through agentd: the kernel validates, dedups and logs every change
+        "recall" => crate::agentd::recall(arg(c, "query").unwrap_or(""), o),
+        "remember" => match crate::agentd::remember(arg(c, "key").unwrap_or(""), arg(c, "value").unwrap_or(""), "agent", true) {
+            Ok(m) => {
+                let _ = write!(fx, "{}remember {}", if fx.n > 0 { ", " } else { "" }, arg(c, "key").unwrap_or(""));
+                o.push(m.as_bytes());
+            }
+            Err(e) => o.push(e.as_bytes()),
+        },
+        "forget" => {
+            let k = arg(c, "key").unwrap_or("");
+            let mut q = SBuf::<160>::new();
+            let _ = write!(q, "\n[agent] wants to forget the fact '{}'. Proceed?", k);
+            if !crate::agentd::facts().iter().any(|f| Some(f.key.as_str()) == crate::agentd::norm_key(k).as_deref()) {
+                if let Err(m) = crate::agentd::forget(k) {
+                    o.push(m.as_bytes()); // unknown key: the error lists the saved keys, nothing is removed
                 }
-                Err(e) => {
-                    let _ = write!(o, "{}", e);
+            } else if shell::confirm(q.as_str()) {
+                match crate::agentd::forget(k) {
+                    Ok(m) | Err(m) => o.push(m.as_bytes()),
                 }
+                let _ = write!(fx, "{}forget {}", if fx.n > 0 { ", " } else { "" }, k);
+            } else {
+                let _ = write!(o, "cancelled: the user answered no, the fact is kept");
             }
         }
         "ls" | "cat" | "write_file" | "mkdir" | "rm" => {
@@ -508,7 +560,8 @@ pub fn ask(q: &str) {
     }
     // the live state is the current point here; a fresh one still has the system turn open
     let mut start = pos();
-    if snap::at_root() {
+    let fresh = snap::at_root();
+    if fresh {
         for t in unsafe { SYS_END } {
             llm::fwd(t, start, 0); // close the system turn
             start += 1;
@@ -523,8 +576,16 @@ pub fn ask(q: &str) {
     t.clear();
     let think = unsafe { llm::THINK } != 0;
     let gen_prompt = if think { "<|im_start|>assistant\n<think>\n" } else { "<|im_start|>assistant\n<think>\n\n</think>\n\n" };
-    let _ = write!(t, "<|im_start|>user\n{}<|im_end|>\n{}", q, gen_prompt);
     smp::park_phase(true);
+    // agentd's context compiler: facts + recalled notes in front of the first message of a conversation
+    let mut slot = alloc::string::String::new();
+    let why = if fresh { Some("new conversation") } else if crate::agentd::take_after_compact() { Some("after compaction") } else { None };
+    if let Some(w) = why {
+        crate::agentd::slot(q, w, &mut slot);
+        slot.lines().skip(1).for_each(|l| println!("[memory] {}", l));
+    }
+    crate::agentd::on_user(q);
+    let _ = write!(t, "<|im_start|>user\n{}{}<|im_end|>\n{}", slot, q, gen_prompt);
     let mut intr = false;
     for round in 0..=MAX_ROUNDS {
         let n = llm::encode(&t.b[..t.n], toks());
@@ -562,6 +623,7 @@ pub fn ask(q: &str) {
                 crate::log::record(b'A', a.as_str());
                 let ans = cap.rsplit("</think>").next().unwrap_or(cap).trim();
                 hist("assistant", ans);
+                crate::agentd::on_answer(ans);
                 let off = ans.as_ptr() as usize - cap.as_ptr() as usize;
                 answer = Some((off, off + ans.len()));
                 break;
@@ -590,6 +652,7 @@ pub fn ask(q: &str) {
                 let mut h = SBuf::<512>::new();
                 let _ = write!(h, "{}(...) -> {}", c.name, &res.as_str()[..floor_char(res.as_str(), 400)]);
                 hist("tool", h.as_str());
+                crate::agentd::on_tool(c.name, res.as_str());
                 let mut l = SBuf::<200>::new();
                 let _ = write!(l, "tool {} -> {}", c.name, res.as_str());
                 crate::log::record(b'A', l.as_str());

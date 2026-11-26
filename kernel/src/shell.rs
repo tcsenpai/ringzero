@@ -99,7 +99,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -108,7 +108,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
@@ -136,8 +136,13 @@ const CMDS: &[Cmd] = &[
     c("load", SLASH, &[], "NAME  go to a saved point"),
     c("drop", SLASH, &[], "NAME|#ID  delete a branch, a save or a point"),
     c("snap", SLASH, &[], "snapshot status: point, pool, timings"),
+    c("agentd", SLASH, &["log"], "[log [N]]  memory subsystem: stores, index, queue, consolidation, decisions"),
+    c("facts", SLASH, &[], "saved facts (key = value, source, time)"),
+    c("remember", SLASH, &[], "KEY VALUE  save a fact"),
+    c("forget", SLASH, &[], "KEY  delete a fact (asks y/N)"),
+    c("consolidate", SLASH, &[], "summarize this session into an episode and facts now"),
     c("embed", SLASH, &["-q", "-v"], "[-q] [-v] TEXT  embed TEXT (-q: as a query, -v: print all values)"),
-    c("index", SLASH, &["add", "stats", "clear", "dim"], "add TEXT | stats | clear | dim N  the memory index (RAM)"),
+    c("index", SLASH, &["add", "stats", "clear", "dim"], "add TEXT | stats | clear (rebuild) | dim N  the memory index"),
     c("search", SLASH, &[], "QUERY  top 5 in the memory index (embedding + gated BM25)"),
     c("bench", SLASH, &[], "64-token decode bench (the conversation is restored after)"),
     c("fill", SLASH, &[], "<tokens>  prefill + decode speed at that context fill"),
@@ -158,7 +163,8 @@ fn find(pre: u8, name: &str) -> Option<&'static Cmd> {
 
 fn help() {
     println!("Type a message to talk to the system agent (Qwen3.5-2B in ring 0, with tools; Qwen3-Embedding-0.6B for /embed,");
-    println!("/index, /search and its search_memory tool). Ctrl-C stops the agent.");
+    println!("/index, /search and its recall tool). Ctrl-C stops the agent. agentd keeps facts, episodes and a journal on");
+    println!("the disk (/sys/mem) and puts saved facts in front of the first message of every conversation.");
     for (pre, label) in [(BANG, "!  machine commands"), (SLASH, "/  session commands")] {
         println!("{}:", label);
         for c in CMDS.iter().filter(|c| c.pre & pre != 0) {
@@ -265,6 +271,7 @@ pub fn readline(buf: &mut [u8], prompt: Option<&str>) -> usize {
     let mut sug_at = 0u64; // TSC deadline: list the commands if a bare / or ! stays alone this long
     loop {
         if take_intr() {
+            crate::agentd::preempt();
             println!("^C");
             return 0;
         }
@@ -275,13 +282,14 @@ pub fn readline(buf: &mut [u8], prompt: Option<&str>) -> usize {
                     suggest(p, &buf[..1]);
                 }
             }
-            // at the shell prompt only (not in a y/N question): a slice of file indexing, ended by any input
-            if prompt.is_some() && crate::fidx::idle(&mut input_waiting) {
+            // at the shell prompt only (not in a y/N question): one slice of agentd's idle work, ended by any input
+            if prompt.is_some() && crate::agentd::idle(&mut input_waiting) {
                 continue;
             }
             smp::idle_wait();
             continue;
         };
+        crate::agentd::preempt(); // input: a consolidation in flight gives the engine back first
         sug_at = 0;
         if c == b'\n' && core::mem::replace(&mut last_cr, false) {
             continue; // \r\n
@@ -430,6 +438,28 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
                 false
             }
         },
+        "slot" => match val.parse::<usize>() {
+            Ok(n) if n <= 1000 => {
+                unsafe { crate::agentd::SLOT_BUDGET = n };
+                let _ = write!(o, "slot = {} tokens{}", n, if n == 0 { " (off: no memory slot)" } else { " for the memory slot of a new conversation" });
+                true
+            }
+            _ => {
+                let _ = write!(o, "error: slot must be a token budget from 0 (off) to 1000");
+                false
+            }
+        },
+        "consolidate" => match val.parse::<u64>() {
+            Ok(n) => {
+                unsafe { crate::agentd::CONS_IDLE_S = n };
+                let _ = write!(o, "consolidate = {} s{}", n, if n == 0 { " (off: /consolidate only)" } else { " of idle time at the prompt" });
+                true
+            }
+            _ => {
+                let _ = write!(o, "error: consolidate must be idle seconds (0 = off)");
+                false
+            }
+        },
         "compact" => match val.parse::<u64>() {
             Ok(p) if (1..=95).contains(&p) => {
                 unsafe { agent::COMPACT_PCT = p };
@@ -442,7 +472,7 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             }
         },
         _ => {
-            let _ = write!(o, "error: unknown setting '{}' (temperature, cores, keyboard, think, compact, snappool)", key);
+            let _ = write!(o, "error: unknown setting '{}' (temperature, cores, keyboard, think, compact, snappool, consolidate, slot)", key);
             false
         }
     };
@@ -506,8 +536,8 @@ fn index_cmd(a: &str) {
             println!("[index] {}", o.as_str());
         }
         "clear" => {
-            memidx::clear();
-            println!("[index] cleared");
+            crate::agentd::rebuild("/index clear");
+            println!("[index] cleared: every file and memory record is queued again (idle time at the prompt)");
         }
         "dim" => match rest.parse::<usize>().map_err(|_| "usage: /index dim N").and_then(memidx::set_dim) {
             Ok(()) => println!("[index] dim {}", memidx::dim()),
@@ -741,6 +771,34 @@ pub fn run() -> ! {
                 };
                 println!("[park] {}", desc);
             }
+            "agentd" => {
+                if let Some(r) = arg.strip_prefix("log") {
+                    crate::agentd::log_last(r.trim().parse::<usize>().unwrap_or(30));
+                } else {
+                    crate::agentd::status();
+                    crate::agentd::log_last(10);
+                }
+            }
+            "facts" => crate::agentd::list_facts(),
+            "remember" => match arg.split_once(' ') {
+                Some((k, v)) => match crate::agentd::remember(k, v, "user", false) {
+                    Ok(m) | Err(m) => println!("[facts] {}", m),
+                },
+                None => println!("usage: /remember KEY VALUE"),
+            },
+            "forget" if arg.is_empty() => println!("usage: /forget KEY"),
+            "forget" => {
+                let mut q = SBuf::<96>::new();
+                let _ = write!(q, "forget the fact '{}'?", arg);
+                if confirm(q.as_str()) {
+                    match crate::agentd::forget(arg) {
+                        Ok(m) | Err(m) => println!("[facts] {}", m),
+                    }
+                } else {
+                    println!("[facts] kept");
+                }
+            }
+            "consolidate" => crate::agentd::consolidate_now(),
             "embed" => embed_cmd(arg),
             "index" => index_cmd(arg),
             "search" => search_cmd(arg),

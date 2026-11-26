@@ -1,35 +1,36 @@
-// File indexer: text files written through the shell (!write) or the agent (write_file) are queued here and
-// embedded into the memory index (memidx.rs) in idle time at the shell prompt, one chunk (~1000 bytes,
-// ~250 tokens) per embedding, stored as "[/path] text". The work runs in slices between forward calls of the
-// embedder (embed::begin/resume): any input or Ctrl-C ends a slice within one forward call (~6 ms), and a
-// slice never runs longer than SLICE_MS, so the shell never waits for the indexer. Rewriting or removing a
-// file drops its old chunks first. In RAM only, like the index (persistence is M4.5).
+// File indexer: text files written through the shell (!write) or the agent (write_file), and at boot every
+// file that changed on the disk since the saved index (agentd), are queued here and chunked into the memory
+// index (memidx.rs), one chunk (~1000 bytes, ~250 tokens) per embedding, stored as "[/path] text". agentd's
+// idle scheduler runs the embeddings in slices (next_chunk / advance). Rewriting or removing a file drops its
+// old chunks first. `table` lists the files whose chunks are in the index, with the size and mtime they had
+// then: saved with the index, compared with the disk at the next boot.
 use crate::log::SBuf;
-use crate::{embed, fs, memidx, smp};
+use crate::{embed, fs, memidx};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
 
 /// Target chunk size in bytes (Italian / English text: ~3.5-4.5 bytes per token, so ~220-290 tokens).
 pub const CHUNK: usize = 1000;
-const SLICE_MS: u64 = 100;
+/// Saved with the index: a change in cut() or the "[/path] " text format means a rebuild.
+pub const VERSION: u32 = 1;
 
 struct Job {
     path: String,
     off: u64, // next chunk starts here
     size: u64,
+    chunks: u32,
 }
 
 struct St {
     q: Vec<Job>,
-    // chunk being embedded: embed job id, its text, the offset after it
-    cur: Option<(u64, SBuf<{ CHUNK + 300 }>, u64)>,
+    table: Vec<(String, u64, u32)>,
+    gen: u64, // bumped when the head job may have changed (a chunk in flight is then dropped)
     chunks: u64,
     files: u64,
-    us: u64,
 }
 
-static mut ST: St = St { q: Vec::new(), cur: None, chunks: 0, files: 0, us: 0 };
+static mut ST: St = St { q: Vec::new(), table: Vec::new(), gen: 0, chunks: 0, files: 0 };
 
 fn st() -> &'static mut St {
     unsafe { &mut *core::ptr::addr_of_mut!(ST) }
@@ -39,12 +40,13 @@ fn under(p: &str, root: &str) -> bool {
     p == root || p.strip_prefix(root).is_some_and(|r| r.starts_with('/'))
 }
 
-/// A file (or a whole directory) is gone or about to be rewritten: drop its chunks and its queue entry.
+/// A file (or a whole directory) is gone or about to be rewritten: drop its chunks, queue entry and table row.
 pub fn forget(path: &str) -> usize {
     let s = st();
     let path = path.trim_end_matches('/');
     s.q.retain(|j| !under(&j.path, path));
-    s.cur = None; // the chunk in flight may be this file's: the head starts its chunk over
+    s.table.retain(|(p, _, _)| !under(p, path));
+    s.gen += 1;
     memidx::retain(|t| !(t.starts_with('[') && t[1..].split_once("] ").is_some_and(|(p, _)| under(p, path))))
 }
 
@@ -54,13 +56,49 @@ pub fn enqueue(path: &str, data: &[u8]) {
     if !embed::ready() || !fs::is_text(data) || data.iter().all(|b| b.is_ascii_whitespace()) {
         return;
     }
+    push(path, data.len() as u64);
+}
+
+/// Queue a file found on the disk (boot scan); its first 4 KiB decide whether it is text.
+pub fn enqueue_path(path: &str) -> bool {
+    forget(path);
+    let mut b = [0u8; 4096];
+    let Ok((k, size)) = fs::read_into(path, 0, &mut b) else { return false };
+    let k = match core::str::from_utf8(&b[..k]) {
+        Err(e) if e.error_len().is_none() => e.valid_up_to(), // a UTF-8 character cut by the 4 KiB window
+        _ => k,
+    };
+    if !embed::ready() || !fs::is_text(&b[..k]) || b[..k].iter().all(|c| c.is_ascii_whitespace()) {
+        return false;
+    }
+    push(path, size);
+    true
+}
+
+fn push(path: &str, size: u64) {
     let s = st();
-    s.q.push(Job { path: String::from(path), off: 0, size: data.len() as u64 });
-    s.cur = None; // the head may have changed
+    s.q.push(Job { path: String::from(path), off: 0, size, chunks: 0 });
+    s.gen += 1;
 }
 
 pub fn pending() -> bool {
     !st().q.is_empty()
+}
+pub fn gen() -> u64 {
+    st().gen
+}
+/// Indexed files as (path, size, mtime).
+pub fn table() -> &'static [(String, u64, u32)] {
+    &st().table
+}
+pub fn table_add(path: &str, size: u64, mtime: u32) {
+    st().table.push((String::from(path), size, mtime));
+}
+pub fn clear() {
+    let s = st();
+    s.q.clear();
+    s.table.clear();
+    s.gen += 1;
 }
 
 /// Cut text at a chunk boundary: at most CHUNK bytes, preferring a newline, then a space, past CHUNK/2.
@@ -77,17 +115,23 @@ pub fn cut(b: &[u8]) -> usize {
     k
 }
 
-/// Next chunk of the head job into a fresh embedding job. false = nothing left to start.
-fn start_chunk() -> bool {
+/// Text of the head job's next chunk and the offset after it. Finished files move to the table (logged);
+/// None = nothing left (or the index is full: the queue is dropped).
+pub fn next_chunk() -> Option<(SBuf<{ CHUNK + 300 }>, u64)> {
     let s = st();
     while let Some(j) = s.q.first_mut() {
         if j.off >= j.size {
-            s.q.remove(0);
+            let j = s.q.remove(0);
             s.files += 1;
+            let (size, mt) = fs::meta(&j.path).unwrap_or((j.size, 0));
+            s.table.retain(|(p, _, _)| *p != j.path);
+            s.table.push((j.path.clone(), size, mt));
+            crate::dlog!("index: file {} done, {} chunks ({} B)", j.path, j.chunks, size);
             continue;
         }
         let Ok((b, size)) = fs::read(&j.path, j.off, CHUNK + 8) else {
-            s.q.remove(0); // removed or unreadable meanwhile
+            crate::dlog!("index: {} unreadable, dropped from the queue", j.path);
+            s.q.remove(0);
             continue;
         };
         j.size = size;
@@ -95,61 +139,30 @@ fn start_chunk() -> bool {
         let mut t = SBuf::new();
         let _ = write!(t, "[{}] {}", j.path, core::str::from_utf8(&b[..k]).unwrap_or(""));
         if memidx::room(t.as_str()).is_err() {
-            crate::klog!(b'W', "index: full, file queue dropped ({} files)", s.q.len());
+            crate::dlog!("index: full, file queue dropped ({} files)", s.q.len());
             s.q.clear();
-            return false;
+            return None;
         }
-        match embed::begin(t.as_str(), false) {
-            Ok(id) => {
-                let next = j.off + k.max(1) as u64;
-                s.cur = Some((id, t, next));
-                return true;
-            }
-            Err(_) => return false,
-        }
+        return Some((t, j.off + k.max(1) as u64));
     }
-    false
+    None
 }
 
-/// Called by the shell's line editor while it waits for input. Runs at most one slice; true if it worked.
-pub fn idle(stop: &mut dyn FnMut() -> bool) -> bool {
-    if !pending() || !fs::mounted() {
-        return false;
-    }
+/// The chunk that ended at `next` is stored.
+pub fn advance(next: u64) {
     let s = st();
-    let t0 = smp::rdtsc();
-    let deadline = t0 + smp::us_to_tsc(SLICE_MS * 1000);
-    smp::park_phase(true);
-    let mut v = [0.0f32; embed::DIM];
-    while !stop() && smp::rdtsc() < deadline {
-        if s.cur.is_none() && !start_chunk() {
-            break;
-        }
-        let Some((id, _, _)) = s.cur.as_ref() else { break };
-        match embed::resume(*id, memidx::dim(), &mut v, || stop() || smp::rdtsc() >= deadline) {
-            Ok(None) => break, // stopped: resume next time
-            Ok(Some(info)) => {
-                let (_, t, next) = s.cur.take().unwrap();
-                if memidx::store(t.as_str(), &v[..memidx::dim()], info).is_ok() {
-                    s.chunks += 1;
-                }
-                if let Some(j) = s.q.first_mut() {
-                    j.off = next;
-                }
-            }
-            Err(_) => s.cur = None, // another embedding ran in between: this chunk starts over
-        }
+    s.chunks += 1;
+    if let Some(j) = s.q.first_mut() {
+        j.off = next;
+        j.chunks += 1;
     }
-    smp::park_phase(false);
-    s.us += smp::tsc_to_us(smp::rdtsc() - t0);
-    true
 }
 
 pub fn stats<const N: usize>(o: &mut SBuf<N>) {
     let s = st();
     let left: u64 = s.q.iter().map(|j| j.size.saturating_sub(j.off)).sum();
-    let _ = write!(o, "files: {} queued ({} bytes left{}), {} indexed ({} chunks, {} ms of idle time)", s.q.len(), left,
-        if let Some(j) = s.q.first() { alloc::format!(", now {}", j.path) } else { String::new() }, s.files, s.chunks, s.us / 1000);
+    let _ = write!(o, "files: {} queued ({} bytes left{}), {} indexed this boot ({} chunks), {} in the table", s.q.len(), left,
+        if let Some(j) = s.q.first() { alloc::format!(", now {}", j.path) } else { String::new() }, s.files, s.chunks, s.table.len());
 }
 
 /// Boot self-check of the chunker and the path checks (no disk or model involved).

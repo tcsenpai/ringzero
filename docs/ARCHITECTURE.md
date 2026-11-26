@@ -1,4 +1,4 @@
-# ringzero architecture (as of M4 disk + filesystem, edition ringzero Qwen35@2b-Qwen3@0.6b)
+# ringzero architecture (as of M4.5 agentd, edition ringzero Qwen35@2b-Qwen3@0.6b)
 
 ## Diagram
 
@@ -14,20 +14,22 @@ flowchart TB
         IDT["idt.rs<br/>exceptions, wake IPI, idle timer"]
         MEM["mem.rs<br/>bump arena, lower-half identity map,<br/>uncached MMIO map, 16 MiB kernel heap (linked_list_allocator)"]
         BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
-        FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount)"]
-        FIDX["fidx.rs: file indexer<br/>queue of written text files, ~1000 B chunks '[/path] text',<br/>idle slices <= 100 ms, preempted by input between forward calls"]
+        FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
+        FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
+        AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok), facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
+        MST["mstore.rs: /sys/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
         CON["console.rs<br/>COM1 + framebuffer glyphs"]
         KBD["kbd.rs<br/>PS/2 set 1, layouts us / it, AltGr, Ctrl"]
         LOG["log.rs<br/>ring of 256 lines, level + timestamp"]
-        SYS["sys.rs<br/>meminfo, cpuinfo, cores, uptime,<br/>poweroff, reboot"]
+        SYS["sys.rs<br/>meminfo, cpuinfo, cores, uptime, CMOS RTC,<br/>poweroff, reboot"]
         SH["shell.rs<br/>text -> agent, !machine, /session commands,<br/>Tab completion, suggestions, history, Ctrl-C"]
         AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
         LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, tokenizer split,<br/>feed / generate, live token array"]
-        SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay, eviction"]
+        SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay, eviction,<br/>boot snapshot cache (/sys/bootsnap.bin, 33 MiB)"]
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
-        IDX["memidx.rs: memory index (RAM)<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion"]
+        IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/sys/mem/index.bin)"]
         ENG["engine.rs<br/>FFI, output capture"]
     end
 
@@ -48,24 +50,38 @@ flowchart TB
         GOP["framebuffer<br/>(VNC :1)"]
         LAPIC["x2APIC / TSC-deadline"]
         VBLK["virtio-blk-pci<br/>build/disk.img (512 MiB FAT32)"]
+        RTC["CMOS RTC (0x70/0x71)"]
         ACPI["ICH9 PM (S5), 8042 reset"]
     end
 
-    KMAIN --> IDT & MEM & SMP & CON & FS & LLM & EMB & AG & SH
+    KMAIN --> IDT & MEM & SMP & CON & FS & LLM & EMB & AGD & AG & SH
     SH -- "!ls !cat !write !mkdir !rm !df !sync" --> FS
     AG -- "ls, cat, write_file, mkdir, rm (y/N) tools" --> FS
     SH -- "!write, !rm" --> FIDX
     AG -- "write_file, rm" --> FIDX
-    SH -- "idle at the prompt: one slice" --> FIDX
-    FIDX -- "read chunk" --> FS
-    FIDX -- "embed::begin / resume (stop between forward calls)" --> EMB
-    FIDX -- "store chunk row, retain (drop old chunks)" --> IDX
+    SH -- "idle at the prompt: one slice;<br/>any input: preempt" --> AGD
+    SH -- "/agentd /facts /remember /forget<br/>/consolidate, !set consolidate|slot" --> AGD
+    AG -- "memory slot for the first message,<br/>journal of turns + tool results,<br/>remember / forget (y/N) / recall tools" --> AGD
+    CM -- "compaction done: slot on the next turn" --> AGD
+    AGD -- "next_chunk / advance, boot scan<br/>(size + mtime vs the table)" --> FIDX
+    AGD -- "embed::begin / resume (stop between forward calls)" --> EMB
+    AGD -- "store rows, retain, search,<br/>save / load index.bin" --> IDX
+    AGD -- "append, load (recover torn tail)" --> MST
+    MST --> FS
+    AGD -- "consolidation: fwd + pick_next per step,<br/>output to CAP only" --> LLM
+    AGD -- "rollback to the current point after<br/>consolidation or on input" --> SNAP
+    AG -- "boot: load_prefix or prefill + save_prefix<br/>(key: model, prefix ids, engine build)" --> SNAP
+    SNAP -- "bootsnap.bin" --> FS
+    FIDX -- "read chunk, meta" --> FS
+    FIDX -- "retain (drop old chunks)" --> IDX
+    FS -- "file times" --> SYS
+    SYS --> RTC
+    SYS -- "shutdown: save the index" --> AGD
     FS --> BLK --> VBLK
     BLK -- "DMA pages, bounce ring, map_mmio" --> MEM
     SYS -- "sync before poweroff / reboot" --> FS
     SH -- "!cmd" --> SYS
     SH -- "/embed /index /search" --> IDX
-    AG -- "search_memory tool<br/>(between 2B forward calls)" --> IDX
     IDX -- "embed doc / query" --> EMB
     IDX -- "tp_matmul_q8_0 over the rows" --> WK
     EMB -- "load embedder g_ctx, forward per token,<br/>2B g_ctx back before return" --> TR
@@ -121,6 +137,51 @@ sequenceDiagram
     Note over A: up to 4 tool rounds per user turn, poweroff/reboot ask y/N at the shell first
 ```
 
+Memory slot at the start of a conversation (agentd context compiler; also on the first turn after a compaction):
+
+```mermaid
+sequenceDiagram
+    participant S as shell.rs
+    participant A as agent.rs
+    participant D as agentd.rs
+    participant X as memidx.rs + embed.rs
+    participant L as llm.rs + engine
+    S->>A: ask("come mi chiamo?") on a fresh line (boot prefix, system turn open)
+    A->>L: feed <|im_end|>\n (close the system turn)
+    A->>D: slot(q)
+    D->>D: facts, newest first, within 120 tok
+    D->>X: embed the queued memory texts, then search(q): top 4
+    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...); keep cos >= 0.45 or BM25 matches, within 200 tok
+    D-->>A: "[memory from earlier conversations, ...]\n- user_name: Cris\n- the user said earlier: ...\n\n" (logged: ids, cos, tokens, ms)
+    A->>D: on_user(q): journal 'U' record, "[said] q" queued (statements only)
+    A->>L: user turn = slot + q, then the usual tool loop
+    A->>D: on_tool / on_answer: journal 'T' / 'A' records
+```
+
+Idle work (agentd scheduler, one slice per call from the line editor, at most 100 ms, stopped between engine steps by any input):
+
+```mermaid
+sequenceDiagram
+    participant S as shell.rs readline
+    participant D as agentd.rs
+    participant E as embed.rs
+    participant L as llm.rs + engine
+    participant P as snap.rs
+    loop no input at the prompt
+        S->>D: idle(stop)
+        D->>D: pick: 1 memory texts, 2 file chunks, 3 save index, 4 consolidate (after 60 s idle, +1 every 50 waited slices)
+        alt embed
+            D->>E: begin / resume until stop or done, store the row
+        else consolidate
+            D->>L: on top of the current point: feed the fixed instruction, then generate (greedy, no thinking), one token per step
+            L-->>D: EPISODE: ... / FACT: key = value (CAP only)
+            D->>P: rollback: the current point back (R copy, ~0.7 ms)
+            D->>D: validate facts (snake_case key, short value, grounded in what the user said, dedup), append to /sys/mem
+        end
+    end
+    S->>D: preempt() on the first input byte: a consolidation in flight stops, the current point is restored
+```
+
 Compaction (auto at 75% fill, or `/compact`):
 
 ```mermaid
@@ -132,7 +193,7 @@ sequenceDiagram
     A->>L: restore root #0 (boot prefix: tools + system prompt, without the closing <|im_end|>); the current point stays as pre-compact-N
     A->>L: feed "Summary of the earlier part of this session ... trust them: SUMMARY<|im_end|>" (inside the system turn) + last 2 exchanges verbatim (<= 3000 tok)
     A->>A: save the rebuilt context as point [compact N] (stored under #0, /undo goes back to pre-compact-N); Ctrl-C restores the current point
-    Note over A: DeltaNet state cannot be cropped, so the context is rebuilt from the snapshot.<br/>The raw transcript (64 KiB ring) is kept for /history. Every compaction is logged (fill before/after, summary tokens, ms).
+    Note over A: DeltaNet state cannot be cropped, so the context is rebuilt from the snapshot.<br/>The raw transcript (64 KiB ring) is kept for /history. Every compaction is logged (fill before/after, summary tokens, ms).<br/>agentd journals the summary and puts a memory slot in front of the next user turn (the fix for the M2.5 recall failure).
 ```
 
 Legend:
@@ -150,13 +211,37 @@ Legend:
   `embed(text, is_query)`: queries get `Instruct: {task}\nQuery:` (English task line), every input gets
   `<|endoftext|>` (151643), the vector is the last token's `x * w_final` (the RMSNorm scale cancels in the L2
   normalization, so the forward skips the lm_head), cut to the Matryoshka dim and L2-normalized.
-- **Memory index** (memidx.rs, RAM only): up to 4096 texts (2 KiB each, 1 MiB in all) with their embeddings as
+- **agentd** (agentd.rs, mstore.rs, M4.5): the OS does the memory bookkeeping, the 2B only reads and writes it
+  through typed tools (`remember`, `forget` with y/N, `recall`). Stores in `/sys/mem` are append-only files of
+  records `'R' kind len:u32 ts:u64 sum:u32 payload` (ts from the CMOS RTC, sum = folded FNV-1a): `journal.log`
+  (U user turn, A answer, T tool result, C compaction summary, B boot, P poweroff), `facts.log` (S set
+  `key\tvalue\tsource`, X forget; replayed, last wins), `episodes.log` (E). At boot each store is scanned to its
+  last good record and a torn tail is truncated. Facts the model proposes (tool or consolidation) are checked by
+  the kernel: snake_case key, value <= 120 B without markup, not a placeholder, key not equal to the value,
+  grounded (every number and at least half of the words of 3+ characters appear in what the user said since the
+  last consolidation), dedup by key. The context compiler builds a slot of at most 200 tokens (facts newest first
+  within 120, then recalled notes) in front of the first message of a conversation and of the first turn after a
+  compaction. Consolidation (after 60 s idle or `/consolidate`) runs the 2B greedy and without thinking on top of
+  the current snapshot point, captures `EPISODE:` / `FACT:` lines, then restores the point. Every decision goes to
+  the kernel log (level D) and the `/agentd log` ring (128 lines).
+- **Boot snapshot cache** (snap.rs `save_prefix` / `load_prefix`, agent.rs): `/sys/bootsnap.bin` holds the
+  prefix state right after its prefill: a 48-byte header (key, pos, row bytes, planes, R bytes, FNV of the rest),
+  the token ids, rows 0..pos of the 24 K/V planes and R (33 MiB for 1252 tokens). The key is FNV over the prefix
+  ids, a sample hash of the model file, an engine build hash from build.rs (asm sources + KV flag), the KV element
+  size and the context length. A hit loads it in 0.16-0.24 s instead of a 26 s prefill; a miss prefills and
+  writes it (2 s).
+- **Memory index** (memidx.rs): up to 4096 texts (2 KiB each, 1 MiB in all) with their embeddings as
   Q8_0 rows (int8 + fp16 block scales, the engine's weight layout; dim 1024 by default, `/index dim N` on an empty
   index). A search embeds the query and scores every row with one `tp_matmul_q8_0` on all cores, ranks by
   cosine, and runs BM25 (k1 1.5, b 0.75, IT/EN stopwords) over the texts. BM25 joins the ranking (RRF, k 60) only
   when the query looks like an identifier or path (`a/b.c`, `HL-L2350DW`, `casa-wifi`, letters+digits, all caps)
   or when its top hit has every query term and at least 1.5x the second score. Used by `/index`, `/search` and the
-  agent's `search_memory` tool; the API (add, search, text, len, clear, set_dim) is what agentd will reuse.
+  agent's `recall` tool (via agentd). Persistence: `/sys/mem/index.bin` = a 72-byte header (embedder sample hash,
+  dim, row stride, layout id, fidx chunker version, counts, FNV of the payload), agentd's extra lines (store sizes
+  the index covers, the table of indexed files with size and mtime), then offsets, rows and texts. Loaded at boot
+  in about a millisecond; any header mismatch or a bad checksum means a rebuild in idle time. Records past the
+  covered store sizes, and files whose size or mtime changed on the disk, are embedded again; nothing else.
+  Entries: `[/path] chunk`, `[fact] key: value`, `[episode N] text`, `[said] user statement`.
 - **Shell**: plain text goes to the agent; `!cmd` runs a machine command (mem, cpu, cores, log, uptime,
   kbd, set, park, stats, poweroff, reboot), `/cmd` a session command (help, clear, ctx, compact, history,
   think, temp, undo, redo, retry, tree, branch, switch, save, load, drop, snap, embed, index, search, bench, fill, gen; help and
@@ -205,7 +290,9 @@ Legend:
    long mode with a Limine stack. The IDT is undefined at this point.
 3. `kmain` (kernel/src/main.rs): console on COM1 + framebuffer, IDT, CPUID check, `enable_avx_fpu`,
    TSC calibration (PIT ch2), memory map log, arena + model + embedder identity maps, AP release, `model_init`
-   (2B), `embed::init` (embedder context) + boot embedding, golden self-test, bench, agent prefix prefill + snapshot (kernel/src/agent.rs), then the shell
+   (2B), `embed::init` (embedder context) + boot embedding, `agentd::init` (stores recovered, index loaded or
+   rebuilt, files compared with the index table), golden self-test, bench, agent prefix from the boot snapshot
+   cache or a prefill (kernel/src/agent.rs), snapshot #0, then the shell
    (kernel/src/shell.rs).
 
 ## Memory
@@ -225,7 +312,8 @@ Legend:
   addresses are negative. So the arena (largest usable region, bump allocator, kernel/src/mem.rs) and
   both models are **identity-mapped in the lower half with 2 MiB pages**, added to Limine's page tables
   before the APs start (they share CR3). `model_init` gets the model's physical (= identity) address.
-- The memory index (rows 4.25 MiB, texts 1 MiB, BM25 scratch) is static data in the kernel image (`.bss`).
+- The memory index (rows 4.25 MiB, texts 1 MiB, BM25 scratch) is static data in the kernel image (`.bss`); its
+  file is read straight into those arrays. agentd's facts, queue and session text live on the kernel heap.
 - No heap and no general frame allocator yet. The snapshot pool (1 GiB taken from the arena at boot, 1 MiB
   chunks, bitmap) is the only memory that is freed and reused.
 
@@ -274,4 +362,4 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 | `sample_top_p_bits` float shim (engine/cpu.asm) | NASM |
 | SMP dispatch (`tp_*`), worker loop, AP entry, parking (engine/smp.asm, adapted from the asm OS) | NASM |
 | Console, IDT, CPU checks, TSC calibration, memory maps, AP release, generation loop | Rust |
-| Shell (! and / commands, completion, history), keyboard layouts, kernel log, agent (prompt, tools, parser, loop), context compaction, transcript, tokenizer pre-split, state snapshots (pool, point tree, undo, branches), embedder context swap and pooling, memory index (Q8_0 rows, BM25, fusion) | Rust |
+| Shell (! and / commands, completion, history), keyboard layouts, kernel log, agent (prompt, tools, parser, loop), context compaction, transcript, tokenizer pre-split, state snapshots (pool, point tree, undo, branches, boot cache), embedder context swap and pooling, memory index (Q8_0 rows, BM25, fusion, persistence), agentd (stores, scheduler, context compiler, consolidation, fact validation) | Rust |

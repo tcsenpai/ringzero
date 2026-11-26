@@ -44,9 +44,16 @@ pub fn ready() -> bool {
     unsafe { READY }
 }
 
+/// Sample hash of the embedder file: saved in the memory index header (a new export means a rebuild).
+static mut HASH: u64 = 0;
+pub fn hash() -> u64 {
+    unsafe { HASH }
+}
+
 /// Boot, after llm::init (the 2B's context is loaded): model_init the embedder into a second context.
 pub fn init(base: *const u8, size: u64) -> bool {
     let t0 = smp::rdtsc();
+    unsafe { HASH = crate::mstore::sample_hash(base, size) };
     save(core::ptr::addr_of_mut!(CTX_2B));
     let r = unsafe { model_init(base, size, MAX_TOK as u64) };
     let ok = r >= 0 && ctx(CTX_DIM) as usize == DIM;

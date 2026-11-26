@@ -75,7 +75,8 @@ fn rate(n: u64, us: u64) -> (u64, u64) {
     (h / 100, h % 100)
 }
 
-fn pick_next() -> u64 {
+/// Next token from the logits of the last forward call (greedy, or top-p at TEMP_BITS).
+pub fn pick_next() -> u64 {
     let logits = ctx(CTX_BUF_LOGITS) as *const f32;
     let n = ctx(CTX_SAMPLE_N);
     unsafe {
@@ -185,12 +186,21 @@ pub fn kv_type() -> &'static str {
     if unsafe { kv_elt_bytes } == 2 { "fp16" } else { "fp32" }
 }
 
+/// End of turn / end of text.
+pub fn is_eos(t: u64) -> bool {
+    t == ctx(CTX_EOS_1) || t == ctx(CTX_EOS_2)
+}
+
+/// Sample hash of the model file (mstore::sample_hash), part of the boot snapshot cache key.
+pub static mut MODEL_HASH: u64 = 0;
+
 pub fn ctx_max_seq() -> u64 {
     ctx(CTX_MAX_SEQ)
 }
 
 pub fn init(base: *const u8, size: u64) -> bool {
     let t0 = smp::rdtsc();
+    unsafe { MODEL_HASH = crate::mstore::sample_hash(base, size) };
     let r = unsafe { model_init(base, size, CTX_LEN) };
     if r < 0 {
         crate::klog!(b'E', "model: model_init failed ({})", r);

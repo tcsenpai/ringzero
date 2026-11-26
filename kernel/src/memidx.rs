@@ -3,9 +3,10 @@
 // every core. Plus BM25 over the same texts (stopwords removed) and the gated fusion from the spike
 // (docs/spikes/EMBEDDER.md): BM25 joins the ranking (RRF) only when the query looks like an identifier or path,
 // or when its top BM25 hit is strong; otherwise the embedding order stands. API (add, search, text, len, clear,
-// set_dim) is what /index, /search, the agent's search_memory tool and the next agentd milestone use.
-// Volatile: the index lives in RAM and is gone at reboot (index persistence is M4.5). Files written through the
-// shell or the agent are chunked into it in idle time by fidx.rs (texts "[/path] chunk").
+// set_dim, save, load) is what /index, /search, the agent's recall tool and agentd use.
+// Persistence (M4.5): agentd saves the index to /sys/mem/index.bin with a header (embedder hash, dim, Q8_0 row
+// layout, chunker version, a checksum) and loads it at boot; any mismatch means a rebuild by re-embedding. Texts
+// carry their source: "[/path] chunk" (fidx.rs), "[fact] key: value", "[episode N] ...", "[said] ..." (agentd).
 use crate::embed::{self, DIM};
 use crate::engine::{ctx, matmul_set_fp16, tp_matmul_q8_0};
 use crate::smp;
@@ -28,9 +29,10 @@ struct Idx {
     off: [u32; CAP + 1],
     embed_us: u64, // sum over adds
     embed_tok: u64,
+    gen: u64, // bumped on every change (agentd saves the index when it differs from the saved one)
 }
 
-static mut IX: Idx = Idx { n: 0, dim: DIM, text_n: 0, off: [0; CAP + 1], embed_us: 0, embed_tok: 0 };
+static mut IX: Idx = Idx { n: 0, dim: DIM, text_n: 0, off: [0; CAP + 1], embed_us: 0, embed_tok: 0, gen: 0 };
 static mut ROWS: [u8; CAP * ROW_MAX] = [0; CAP * ROW_MAX];
 static mut TXT: [u8; TEXT_BYTES] = [0; TEXT_BYTES];
 static mut COS: [f32; CAP] = [0.0; CAP];
@@ -59,9 +61,18 @@ pub fn text(id: usize) -> &'static str {
     let t = unsafe { &*core::ptr::addr_of!(TXT) };
     core::str::from_utf8(&t[x.off[id] as usize..x.off[id + 1] as usize]).unwrap_or("")
 }
+/// An entry with exactly this text exists (dedup of repeated user turns).
+pub fn contains(t: &str) -> bool {
+    let t = t.trim();
+    (0..ix().n).any(|i| text(i) == t)
+}
+pub fn gen() -> u64 {
+    ix().gen
+}
 pub fn clear() {
     let x = ix();
     (x.n, x.text_n, x.embed_us, x.embed_tok) = (0, 0, 0, 0);
+    x.gen += 1;
 }
 /// Matryoshka dim (multiple of 128, 128..1024); only on an empty index (stored rows cannot change dim).
 pub fn set_dim(d: usize) -> Result<(), &'static str> {
@@ -289,6 +300,7 @@ pub fn store(text: &str, v: &[f32], info: embed::Info) -> Result<Added, &'static
     x.n += 1;
     x.embed_us += info.us;
     x.embed_tok += info.n_tok as u64;
+    x.gen += 1;
     Ok(Added { id: x.n - 1, info })
 }
 
@@ -313,6 +325,7 @@ pub fn retain(mut keep: impl FnMut(&str) -> bool) -> usize {
     x.off[w] = tw as u32;
     let dropped = x.n - w;
     (x.n, x.text_n) = (w, tw);
+    x.gen += dropped as u64;
     dropped
 }
 
@@ -417,6 +430,101 @@ pub fn search(q: &str, hits: &mut [Hit]) -> Result<Found, &'static str> {
     Ok(Found { n: k, gate, embed: info, search_us: smp::tsc_to_us(smp::rdtsc() - t0) })
 }
 
+// ---- on disk: header, extra (agentd's file table and store offsets), off[n+1], rows, texts ----
+
+const MAGIC: &[u8; 4] = b"RZIX";
+const VER: u32 = 1;
+/// Row layout id: int8 x dim, then dim/32 fp16 block scales (matmul.asm v2, fp16 mode).
+const LAYOUT: u32 = 0x5108;
+const HDR: usize = 72; // magic ver emb, 7 x u32, embed_us embed_tok sum, 4 bytes pad
+
+fn payload() -> [&'static [u8]; 3] {
+    let x = ix();
+    unsafe {
+        [
+            core::slice::from_raw_parts(x.off.as_ptr() as *const u8, (x.n + 1) * 4),
+            &(&*core::ptr::addr_of!(ROWS))[..x.n * stride(x.dim)],
+            &(&*core::ptr::addr_of!(TXT))[..x.text_n],
+        ]
+    }
+}
+
+/// Write the index to `path`; `emb` = embedder hash, `chunker` = fidx chunker version. Returns bytes.
+pub fn save(path: &str, emb: u64, chunker: u32, extra: &[u8]) -> Result<u64, &'static str> {
+    let x = ix();
+    let p = payload();
+    let sum = p.iter().fold(crate::mstore::fnv(crate::mstore::FNV0, extra), |h, b| crate::mstore::fnv(h, b));
+    let mut h = [0u8; HDR];
+    h[..4].copy_from_slice(MAGIC);
+    let mut o = 4;
+    let mut put = |b: &[u8]| {
+        h[o..o + b.len()].copy_from_slice(b);
+        o += b.len();
+    };
+    put(&VER.to_le_bytes());
+    put(&emb.to_le_bytes());
+    for v in [x.dim as u32, stride(x.dim) as u32, LAYOUT, chunker, x.n as u32, x.text_n as u32, extra.len() as u32] {
+        put(&v.to_le_bytes());
+    }
+    for v in [x.embed_us, x.embed_tok, sum] {
+        put(&v.to_le_bytes());
+    }
+    crate::fs::write_parts(path, &[&h, extra, p[0], p[1], p[2]])
+}
+
+/// Load the index from `path` if its header matches this embedder, dim, layout and chunker. Ok(extra), or
+/// Err(why) with the index left empty.
+pub fn load(path: &str, emb: u64, chunker: u32) -> Result<alloc::vec::Vec<u8>, &'static str> {
+    let mut h = [0u8; HDR];
+    let (k, size) = crate::fs::read_into(path, 0, &mut h).map_err(|_| "no saved index")?;
+    let u32_at = |o: usize| u32::from_le_bytes(h[o..o + 4].try_into().unwrap()) as usize;
+    let u64_at = |o: usize| u64::from_le_bytes(h[o..o + 8].try_into().unwrap());
+    if k < HDR || &h[..4] != MAGIC || u32_at(4) != VER as usize {
+        return Err("bad magic or version");
+    }
+    let (dim, st, n, tn, xl) = (u32_at(16), u32_at(20), u32_at(32), u32_at(36), u32_at(40));
+    let why = if u64_at(8) != emb {
+        "embedder changed"
+    } else if dim != ix().dim {
+        "dim differs"
+    } else if st != stride(dim) || u32_at(24) != LAYOUT as usize {
+        "row layout differs"
+    } else if u32_at(28) != chunker as usize {
+        "chunker version differs"
+    } else if n > CAP || tn > TEXT_BYTES || (HDR + xl + (n + 1) * 4 + n * st + tn) as u64 != size {
+        "size does not match the header"
+    } else {
+        ""
+    };
+    if !why.is_empty() {
+        return Err(why);
+    }
+    clear();
+    let x = ix();
+    let mut extra = alloc::vec![0u8; xl];
+    let mut off = HDR as u64;
+    let mut rd = |b: &mut [u8]| -> Result<(), &'static str> {
+        let (k, _) = crate::fs::read_into(path, off, b)?;
+        off += k as u64;
+        if k == b.len() { Ok(()) } else { Err("short read") }
+    };
+    rd(&mut extra)?;
+    unsafe {
+        rd(core::slice::from_raw_parts_mut(x.off.as_mut_ptr() as *mut u8, (n + 1) * 4))?;
+        rd(&mut (&mut *core::ptr::addr_of_mut!(ROWS))[..n * st])?;
+        rd(&mut (&mut *core::ptr::addr_of_mut!(TXT))[..tn])?;
+    }
+    (x.n, x.text_n) = (n, tn);
+    let sum = payload().iter().fold(crate::mstore::fnv(crate::mstore::FNV0, &extra), |h, b| crate::mstore::fnv(h, b));
+    if sum != u64_at(60) || x.off[n] as usize != tn || x.off[..n].windows(2).any(|w| w[0] > w[1]) {
+        clear();
+        return Err("checksum mismatch");
+    }
+    (x.embed_us, x.embed_tok) = (u64_at(44), u64_at(52));
+    x.gen += 1;
+    Ok(extra)
+}
+
 pub fn stats<const N: usize>(o: &mut crate::log::SBuf<N>) {
     use core::fmt::Write;
     let x = ix();
@@ -427,7 +535,7 @@ pub fn stats<const N: usize>(o: &mut crate::log::SBuf<N>) {
         let _ = write!(o, ", embed avg {} ms/entry ({} tok/entry, {} ms per 100 tok)", x.embed_us / x.n as u64 / 1000,
             x.embed_tok / x.n as u64, x.embed_us / 10 / x.embed_tok.max(1));
     }
-    let _ = write!(o, "; RAM only, lost at reboot; ");
+    let _ = write!(o, "; ");
     crate::fidx::stats(o);
 }
 

@@ -546,6 +546,90 @@ pub fn init_root(pos: u64) -> u64 {
     s.save_bytes
 }
 
+// ---- boot snapshot cache on disk: the prefilled prefix state, so a boot skips the prefix prefill ----
+// File: header (magic, version, key, pos, row bytes, planes, R bytes, FNV of the rest), token ids 0..pos,
+// rows 0..pos of every K/V plane, R. The key hashes the model, the prefix ids and the engine build.
+
+const BS_MAGIC: &[u8; 4] = b"RZBS";
+const BS_HDR: usize = 48;
+
+fn bs_parts(pos: usize) -> alloc::vec::Vec<&'static mut [u8]> {
+    let g = geo();
+    let mut v = alloc::vec::Vec::with_capacity(2 * g.heads + 2);
+    unsafe {
+        v.push(core::slice::from_raw_parts_mut(llm::rec().as_mut_ptr() as *mut u8, pos * 4));
+        for p in 0..2 * g.heads {
+            v.push(core::slice::from_raw_parts_mut(plane(&g, p), pos * g.hb));
+        }
+        v.push(core::slice::from_raw_parts_mut(ctx(CTX_BUF_DN_STATE) as *mut u8, r_bytes()));
+    }
+    v
+}
+
+fn bs_header(key: u64, pos: u64, sum: u64) -> [u8; BS_HDR] {
+    let g = geo();
+    let mut h = [0u8; BS_HDR];
+    h[..4].copy_from_slice(BS_MAGIC);
+    h[4..8].copy_from_slice(&1u32.to_le_bytes());
+    h[8..16].copy_from_slice(&key.to_le_bytes());
+    h[16..24].copy_from_slice(&pos.to_le_bytes());
+    h[24..28].copy_from_slice(&(g.hb as u32).to_le_bytes());
+    h[28..32].copy_from_slice(&(g.heads as u32).to_le_bytes());
+    h[32..40].copy_from_slice(&(r_bytes() as u64).to_le_bytes());
+    h[40..48].copy_from_slice(&sum.to_le_bytes());
+    h
+}
+
+/// Write the live state 0..pos (the boot prefix right after its prefill) to `path`. Returns bytes.
+pub fn save_prefix(path: &str, key: u64, pos: u64) -> Result<u64, &'static str> {
+    let parts = bs_parts(pos as usize);
+    let sum = parts.iter().fold(crate::mstore::FNV0, |h, b| crate::mstore::fnv(h, b));
+    let h = bs_header(key, pos, sum);
+    let mut all: alloc::vec::Vec<&[u8]> = alloc::vec![&h[..]];
+    all.extend(parts.iter().map(|b| &b[..]));
+    crate::fs::write_parts(path, &all)
+}
+
+/// Load a prefix state saved by save_prefix into the live cache. Ok(pos), or Err(why) (the live state is
+/// then garbage: the caller prefills from position 0, which overwrites it).
+pub fn load_prefix(path: &str, key: u64) -> Result<u64, &'static str> {
+    let mut h = [0u8; BS_HDR];
+    let (k, size) = crate::fs::read_into(path, 0, &mut h).map_err(|_| "no cache file")?;
+    let pos = u64::from_le_bytes(h[16..24].try_into().unwrap());
+    let want = bs_header(key, pos, u64::from_le_bytes(h[40..48].try_into().unwrap()));
+    if k < BS_HDR || h[..8] != want[..8] {
+        return Err("bad magic or version");
+    }
+    if h[8..16] != want[8..16] {
+        return Err("key differs (model, prefix or engine changed)");
+    }
+    if h[24..40] != want[24..40] || pos >= ctx(CTX_MAX_SEQ) {
+        return Err("KV geometry differs");
+    }
+    let parts = bs_parts(pos as usize);
+    if size != BS_HDR as u64 + parts.iter().map(|b| b.len() as u64).sum::<u64>() {
+        return Err("size does not match the header");
+    }
+    let (mut off, mut sum) = (BS_HDR as u64, crate::mstore::FNV0);
+    for b in parts {
+        let (k, _) = crate::fs::read_into(path, off, &mut *b)?;
+        if k != b.len() {
+            return Err("short read");
+        }
+        sum = crate::mstore::fnv(sum, b);
+        off += k as u64;
+    }
+    if sum != u64::from_le_bytes(h[40..48].try_into().unwrap()) {
+        return Err("checksum mismatch");
+    }
+    Ok(pos)
+}
+
+/// The live state is ahead of the current point (its save was refused): nothing may overwrite it.
+pub fn unsaved() -> bool {
+    st().unsaved
+}
+
 pub fn pos() -> u64 {
     st().pos
 }

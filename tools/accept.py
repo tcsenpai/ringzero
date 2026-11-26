@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """accept.py HOST PORT OUT STEP... : drive the ringzero shell over the serial TCP port (from the Mac).
 STEP is a line to type at the prompt, 'y:'/'n:' + line (answer y or n at the [y/N] prompt it causes),
-or '^C<sec>:' + line (send Ctrl-C <sec> seconds after the line). Saves the transcript to OUT."""
+or '^C<sec>:' + line (send Ctrl-C <sec> seconds after the line), or 'w<sec>:' + line (wait <sec> seconds at the prompt first), or 'x:' + line (the last step: send it and read
+until the guest closes the connection, e.g. x:!poweroff). Saves the transcript to OUT."""
 import re, socket, sys, time
 PROMPT = re.compile(rb"ringzero(?:\[[^\]\n]*\])?> ")  # ringzero> or ringzero[branch~N]>
 host, port, out, steps = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4:]
@@ -25,7 +26,19 @@ for st in steps:
     ans, intr = None, None
     if st[:2] in ("y:", "n:"): ans, st = st[0], st[2:]
     if st.startswith("^C"): d, st = st[2:].split(":", 1); intr = float(d)
-    t0 = time.time(); s.sendall(st.encode() + b"\r")
+    if re.match(r"w[0-9.]+:", st): d, st = st[1:].split(":", 1); time.sleep(float(d))
+    t0 = time.time(); s.sendall(st[2:].encode() + b"\r" if st.startswith("x:") else st.encode() + b"\r")
+    if st.startswith("x:"):
+        end = time.time() + 60
+        while time.time() < end:
+            try:
+                d = s.recv(65536)
+                if not d: break
+                buf += d
+            except socket.timeout: pass
+            except OSError: break
+        log.append(f"{prompt}{buf.decode(errors='replace').rstrip()}\n    (guest gone after {time.time()-t0:.1f} s)\n")
+        print(log[-1], flush=True); break
     txt = prompt
     if intr is not None:
         time.sleep(intr); s.sendall(b"\x03")

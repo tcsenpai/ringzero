@@ -26,6 +26,14 @@ fn main() {
         println!("cargo:rerun-if-changed={}", src.display());
     }
     println!("cargo:rerun-if-changed={}", engine.join("constants.inc").display());
+    // engine build id for the boot snapshot cache key (agent.rs): FNV-1a of the sources and the KV flag
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for f in ASM.iter().map(|n| format!("{n}.asm")).chain(["constants.inc".into()]) {
+        for b in std::fs::read(engine.join(&f)).expect("engine source").into_iter().chain([kv_f32 as u8]) {
+            h = (h ^ b as u64).wrapping_mul(0x100_0000_01b3);
+        }
+    }
+    println!("cargo:rustc-env=RINGZERO_ENGINE_HASH={h:#x}");
     println!("cargo:rustc-link-arg=-T{}", manifest.join("linker.ld").display());
     println!("cargo:rerun-if-changed={}", manifest.join("linker.ld").display());
 }
