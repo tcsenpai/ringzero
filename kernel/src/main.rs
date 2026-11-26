@@ -26,6 +26,7 @@ mod shell;
 mod smp;
 mod snap;
 mod sys;
+mod upy; // M5 MicroPython
 
 use core::arch::asm;
 use limine::firmware_type::FirmwareType;
@@ -234,6 +235,7 @@ extern "C" fn kmain() -> ! {
     mem::heap_init();
     klog!(b'I', "mem:  kernel heap {} MiB (linked_list_allocator, from the arena)", mem::HEAP_BYTES >> 20);
     fs::init();
+    upy::init(); // M5: MicroPython heap + stack, before the snapshot pool takes the arena
 
     // ---- engine ABI test, model, golden self-test, REPL ----
     let ok = engine::selftest();

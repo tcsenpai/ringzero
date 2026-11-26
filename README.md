@@ -55,6 +55,17 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   to its snapshot point after.
 Results: [docs/M45_RESULT.md](docs/M45_RESULT.md).
 
+Python (M5): MicroPython 1.29.0 (`ports/embed`) is compiled freestanding into the kernel and runs in ring 0
+with an 8 MiB GC heap and its own 1 MiB stack from the engine arena (`RINGZERO_UPY_HEAP_MIB=16 make iso` for
+another heap size). `!py CODE` runs one line (an expression's value is echoed, like the REPL), `!py -f PATH`
+runs a script from the disk; each run is a fresh interpreter and ends with a status line (time, heap used).
+Exceptions print a traceback (long ones cut to the first and last 5 frames) and the kernel goes on. The time
+budget (10 s at the shell, 5 s for the agent) and Ctrl-C raise `KeyboardInterrupt`; a program that swallows it
+is aborted 1 s later. The agent has a `run_code` tool: it gets the captured output, the traceback and the
+status line (6 KiB cap). Included: builtins, f-strings, big ints, double floats, `math`, `cmath`, `sys`, `gc`,
+`array`, `collections`, `struct`, `errno`; no `import` from files, no `input()`, no I/O modules yet. Results:
+[docs/M5_MICROPYTHON_RESULT.md](docs/M5_MICROPYTHON_RESULT.md).
+
 Engine state snapshots: every finished turn is saved as a point (`#7`) in a 1 GiB pool (KV rows of the
 turn + the 19.3 MiB DeltaNet state, about 21 MiB per short turn; going back costs about 0.6 ms). The
 prompt shows the branch, `ringzero[main]> `, and `ringzero[main~1]> ` after an undo. Commands: `/undo [N]`,
@@ -71,7 +82,7 @@ remote instance: [docs/M45_RESULT.md](docs/M45_RESULT.md) (earlier: [M4](docs/M4
 ## Build and run
 
 On a Linux box with `cargo` (rustup, toolchain pinned in `kernel/rust-toolchain.toml`),
-`nasm`, `xorriso`, `git`, `cc`, `qemu-system-x86_64` with KVM, OVMF for UEFI, and
+`nasm`, `xorriso`, `git`, `cc` (gcc), `python3` (MicroPython's header generator), `qemu-system-x86_64` with KVM, OVMF for UEFI, and
 [uv](https://docs.astral.sh/uv/) for the model export.
 
 Quickstart:
@@ -90,7 +101,8 @@ Try at the prompt: `!write /notes/todo.txt comprare il latte`, `!cat /notes/todo
 "crea un file /notes/idea.txt con scritto ciao" or "cosa devo comprare?" (after a few seconds of idle the file
 is in the memory index). Tell it "mi chiamo Cris e il mio numero preferito e 4711", run `/consolidate`, then
 `/facts`; `!poweroff`, boot again and ask "come mi chiamo?": the facts and the memory index are still there, and
-the second boot loads the prompt state from the disk cache.
+the second boot loads the prompt state from the disk cache. Python: `!py 17*23`,
+`!write /hello.py print("ciao", 2**64)` then `!py -f /hello.py`, or ask "quanto fa 17*23? usa python".
 
 Remote instance on the Fedora box (Tailscale HOST-ADDRESS):
 
@@ -162,6 +174,7 @@ Memory index, from the shell:
 |---|---|
 | `kernel/src/blk.rs`, `fs.rs`, `fidx.rs` | virtio-blk on PCI, FAT32 at /, file indexer (M4) |
 | `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log; record stores in /sys/mem (M4.5) |
+| `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
 | `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
@@ -197,6 +210,8 @@ so GPL-2.0-only Linux driver code stays borrowable.
 | `mkfs.vfat` (dosfstools) / `mtools` (host, `make disk`, not vendored) | | GPL-3.0-or-later (host tools, not linked) | disk image |
 | QEMU `it` keymap (copied at run time, not vendored) | QEMU 10 | GPL-2.0-or-later | VNC keysym map |
 | Limine bootloader (binary, fetched at build) | v11.2.1 | BSD-2-Clause | BIOS + UEFI loader |
+| MicroPython (fetched at build by `make upy`, pinned tag + commit check, https://github.com/micropython/micropython) | v1.29.0, commit 0fd6c57 | MIT | Python interpreter (`py/` core via `ports/embed`) |
+| MicroPython `lib/libm_dbl` (musl 1.1.16 libm, same fetch) | v1.29.0 | MIT | double-precision math for MicroPython |
 | llm.asm engine by alesha-pro (vendored, https://github.com/alesha-pro/llm.asm) | fork commit 1c73255 | MIT | inference |
 | `huggingface_hub` (`hf` CLI via uvx, not vendored), `numpy` (exporter, via uv) | latest | Apache-2.0, BSD-3-Clause | `make model` |
 | Qwen3.5-2B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3.5-2B | Apache-2.0 | system agent |

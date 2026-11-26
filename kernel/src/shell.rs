@@ -118,6 +118,7 @@ const CMDS: &[Cmd] = &[
     c("rm", BANG, &["-r"], "[-r] PATH  delete a file, or a directory with -r (asks y/N)"),
     c("df", BANG, &[], "disk size and free space"),
     c("sync", BANG, &[], "flush the disk (poweroff and reboot do it too)"),
+    c("py", BANG, &["-f"], "CODE | -f PATH  run MicroPython (one line echoes values; 10 s budget, Ctrl-C stops it)"),
     c("poweroff", BANG, &[], "power off now"),
     c("reboot", BANG, &[], "reboot now"),
     c("clear", SLASH, &[], "clear the screen, new conversation"),
@@ -813,6 +814,7 @@ pub fn run() -> ! {
             "switch" | "load" => snap::switch(arg, c.name),
             "drop" => snap::drop_cmd(arg),
             "ls" | "cat" | "write" | "mkdir" | "rm" | "df" | "sync" => fs_cmd(c.name, arg),
+            "py" => crate::upy::shell_cmd(arg), // M5
             "poweroff" => sys::poweroff(),
             "reboot" => sys::reboot(),
             _ => {}
