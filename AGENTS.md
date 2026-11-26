@@ -286,7 +286,7 @@ Mycelium's state must remain predictable and auditable at all times.
 ## ringzero project rules
 
 - `docs/ARCHITECTURE.md` holds the OS architecture diagram (mermaid) and must stay current: every change that adds, removes or rewires a component updates the diagram in the same commit.
-- Build and run on the Fedora box (ssh fedoralan), never QEMU on the Mac. Keep Fedora RAM under 90%: one QEMU guest at a time, check `free -m` first.
+- Build and run on the Fedora box: ssh alias `fedorascale` (Tailscale HOST-ADDRESS, always reachable; the LAN alias fedoralan often is not), never QEMU on the Mac. Keep Fedora RAM under 90%: one QEMU guest at a time, check `free -m` first.
 - Commit subjects use one of: feat, fix, refactor, docs, style, test, build.
 
 - Edition naming: "ringzero <Provider><ver>@<size>[-<Provider><ver>@<size>]" listing every model, e.g. "ringzero Qwen35@2b" today and "ringzero Qwen35@2b-Qwen3@0.6b" once the embedder lands (tag QweQwe). Show it in the boot banner.
