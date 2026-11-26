@@ -2,3 +2,4 @@ build/
 kernel/target/
 models/
 .claude/
+__pycache__/

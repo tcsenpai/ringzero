@@ -23,8 +23,10 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-26.
 │               │       └── ✓ 🟢 M4.7a Constrained decoding for tool calls [E1]
 │               └── ✓ 🟢 M5 Code execution: MicroPython freestanding [E1]
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
-│                       └── ○ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
-│                           └── ○ 🟠 Beta release gate [E1] [blocked by T33]
+│                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
+│                           └── ○ 🟠 Beta release gate [E1] [blocked by T35]
+○ 🟠 agentd memory slot relevance fix (before beta) [E1]
+│   └── T34: Beta release gate (circular)
 ✓ 🟠 Compaction recall [E1]
 ✓ 🟠 State snapshots: design (killer feature) [E1]
 ✓ 🟠 M2.5 shell UX + 32k FP16 context + native context management [E1]
@@ -44,5 +46,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-26.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 34 task(s) shown
+ℹ️ 35 task(s) shown
 ```
