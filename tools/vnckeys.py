@@ -25,9 +25,12 @@ MOD = {**{c: SHIFT for c in 'éç°§£"!$%&/()=?^*;:_>|'}, **{c: ALT for c in "
 def mods(ch):
     m = MOD.get(ch, SHIFT if ch.isupper() else ())
     return m if isinstance(m, tuple) else (m,)
+HOLD = int(os.environ.get("HOLD", "0"), 16)  # e.g. HOLD=0xffe7: hold Meta_L for the whole text (Mac Option)
+if HOLD: s.sendall(struct.pack(">BBHI", 4, 1, 0, HOLD))
 for ch in text:
-    for m in mods(ch): s.sendall(struct.pack(">BBHI", 4, 1, 0, m))
+    for m in (() if HOLD else mods(ch)): s.sendall(struct.pack(">BBHI", 4, 1, 0, m))
     key_ev({"€": 0x20AC}.get(ch, ord(ch)))
-    for m in mods(ch): s.sendall(struct.pack(">BBHI", 4, 0, 0, m))
+    for m in (() if HOLD else mods(ch)): s.sendall(struct.pack(">BBHI", 4, 0, 0, m))
+if HOLD: s.sendall(struct.pack(">BBHI", 4, 0, 0, HOLD))
 key_ev(0xFF0D)  # Return
 time.sleep(1); s.close()

@@ -1,5 +1,5 @@
 // PS/2 keyboard, scancode set 1, polled. Layouts are data: a US base table plus per-layout
-// overrides [normal, shift, altgr, altgr+shift] ('\0' = nothing). Shift, Ctrl, AltGr (E0 38).
+// overrides [normal, shift, altgr, altgr+shift] ('\0' = nothing). Shift, Ctrl, AltGr (E0 38), up/down arrows.
 // Ctrl+letter gives the control code (Ctrl+C = 0x03, used to interrupt a generation).
 use core::arch::asm;
 
@@ -41,6 +41,10 @@ pub static LAYOUTS: [Layout; 2] = [
         ],
     },
 ];
+
+/// Arrow keys (history), private-use chars the shell turns into ESC [ A / ESC [ B.
+pub const UP: char = '\u{E000}';
+pub const DOWN: char = '\u{E001}';
 
 static mut LAYOUT: usize = 1; // default: it
 static mut SHIFT: bool = false;
@@ -102,7 +106,9 @@ pub fn getc() -> Option<char> {
             (false, 0x2A | 0x36) => SHIFT = true,
             (false, 0xAA | 0xB6) => SHIFT = false,
             (true, 0x1C) => return Some('\n'), // keypad enter
-            (true, _) => {}                    // shortcut: arrows and other extended keys ignored
+            (true, 0x48) => return Some(UP),
+            (true, 0x50) => return Some(DOWN),
+            (true, _) => {}                    // shortcut: left/right and other extended keys ignored
             (false, s) if s < 0x80 => {
                 let c = lookup(s);
                 if c == N {

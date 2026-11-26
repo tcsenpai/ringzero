@@ -1,7 +1,7 @@
 # AIOS build. Run on the Linux build box (needs cargo, nasm, xorriso, git, cc, qemu).
 LIMINE_TAG ?= v11.2.1-binary
 LIMINE_URL ?= https://codeberg.org/Limine/Limine.git
-MODEL      ?= $(HOME)/coding/qwenbaremetal/models/qwen35-2b-q8_0-v3.asmbin
+MODEL      ?= models/qwen35-2b-q8_0-v3.asmbin
 OVMF_CODE  ?= /usr/share/edk2/ovmf/OVMF_CODE.fd
 OVMF_VARS  ?= /usr/share/edk2/ovmf/OVMF_VARS.fd
 QEMU_DISPLAY ?= none
@@ -12,8 +12,12 @@ ISO    := $(BUILD)/aios.iso
 QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp 8 \
           -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot
 
-.PHONY: kernel iso run-bios run-uefi run-remote clean
+.PHONY: kernel iso model run-bios run-uefi run-remote clean
 .DELETE_ON_ERROR:
+
+# Qwen3.5-2B from Hugging Face -> $(MODEL) (HF_DIR=dir reuses a download, see tools/fetch_model.sh)
+model:
+	tools/fetch_model.sh $(MODEL)
 
 kernel:
 	cd kernel && cargo build --release -j 8
@@ -53,6 +57,10 @@ run-uefi: iso
 # extended key event (macOS Screen Sharing); match it to the guest layout (`kbd`).
 REMOTE_SMP ?= 8
 VNC_PASS   ?= aios
+# a second (test) instance: make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test
+REMOTE_PORT ?= 4555
+REMOTE_VNC  ?= 1
+REMOTE_NAME ?= remote
 QEMU_KEYMAPS ?= /usr/share/qemu/keymaps
 VNC_KEYMAP ?= $(BUILD)/it-aios
 $(BUILD)/it-aios: tools/keymaps/it-altgr
@@ -63,9 +71,9 @@ run-remote: iso $(filter $(BUILD)/%,$(VNC_KEYMAP))
 	 if [ $$avail -lt 6144 ]; then echo "refusing: only $$avail MiB available (want > 6144)"; exit 1; fi
 	qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp $(REMOTE_SMP) \
 	    -cdrom $(ISO) -boot d -no-reboot -vga std \
-	    -object secret,id=vncpw,data=$(VNC_PASS) -display vnc=0.0.0.0:1,password-secret=vncpw -k $(VNC_KEYMAP) \
-	    -chardev socket,id=ser0,host=0.0.0.0,port=4555,server=on,wait=off,logfile=$(BUILD)/remote-serial.log,logappend=on \
-	    -serial chardev:ser0 -monitor unix:$(BUILD)/remote-monitor.sock,server,nowait
+	    -object secret,id=vncpw,data=$(VNC_PASS) -display vnc=0.0.0.0:$(REMOTE_VNC),password-secret=vncpw -k $(VNC_KEYMAP) \
+	    -chardev socket,id=ser0,host=0.0.0.0,port=$(REMOTE_PORT),server=on,wait=off,logfile=$(BUILD)/$(REMOTE_NAME)-serial.log,logappend=on \
+	    -serial chardev:ser0 -monitor unix:$(BUILD)/$(REMOTE_NAME)-monitor.sock,server,nowait
 
 clean:
 	rm -rf $(BUILD) kernel/target

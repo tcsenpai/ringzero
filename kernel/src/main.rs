@@ -1,4 +1,4 @@
-// AIOS kernel, milestones M2+M3: boot under Limine, IDT, engine arena, APs in the asm worker loop,
+// AIOS kernel, milestones M2+M3 (+M2.5: 32k FP16 KV, ! and / shell, context compaction): boot under Limine, IDT, engine arena, APs in the asm worker loop,
 // Qwen3.5-2B golden self-test, system-agent prefix prefill + snapshot, then the shell on COM1 + PS/2.
 #![no_std]
 #![no_main]
@@ -87,7 +87,7 @@ extern "C" fn kmain() -> ! {
     idt::init();
 
     klog!(b'I', "==============================================");
-    klog!(b'I', " AIOS M3  (Rust no_std kernel + NASM LLM engine)");
+    klog!(b'I', " AI OS Qwen35@2b  (AIOS M2.5: Rust no_std kernel + NASM LLM engine)");
     klog!(b'I', "==============================================");
     if let Some(b) = BOOTLOADER.get_response() {
         klog!(b'I', "boot: {} {}, base revision {:?}", b.name(), b.version(), BASE_REVISION.loaded_revision());
@@ -213,7 +213,7 @@ extern "C" fn kmain() -> ! {
         klog!(b'I', "bench: 64-token decode, prompt \"Explain how a CPU cache works in 3 concise sentences.\"");
         llm::bench();
         klog!(b'I', "agent: tool-call parser self-test {}", if agent::selftest() { "PASS" } else { "FAIL" });
-        klog!(b'I', "kbd:  PS/2 layout {} (change with 'kbd us|it')", kbd::layout());
+        klog!(b'I', "kbd:  PS/2 layout {} (change with '!kbd us|it')", kbd::layout());
         agent::init();
         shell::run();
     }

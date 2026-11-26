@@ -11,3 +11,7 @@ braceright 0x1b shift altgr
 EuroSign 0x12 altgr
 asciitilde 0x0d altgr
 grave 0x0c altgr
+# macOS Screen Sharing sends Option (and Command) as Meta_L / Meta_R, which QEMU's it map lacks
+# ("no scancode found for keysym 65511"): map both to right Alt (E0 38), the guest's AltGr.
+Meta_L 0xb8
+Meta_R 0xb8

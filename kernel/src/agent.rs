@@ -2,6 +2,10 @@
 // once at boot and snapshotted (llm::snapshot_*); each `@` turn streams the answer, parses a tool
 // call if the model makes one, validates it against the tool schema, runs it, feeds the result back
 // as a <tool_response> turn and loops (at most MAX_ROUNDS tool rounds per user turn).
+// Context management (M2.5): when the fill crosses COMPACT_PCT (or on /compact) the model writes a short
+// summary, the boot snapshot is restored (it ends just before the system turn's <|im_end|>), the summary
+// is appended to the system prompt and the last exchanges are prefilled again (DeltaNet state cannot be
+// cropped, so the context is rebuilt). The raw transcript stays in HIST.
 use crate::engine::{CAP, CAPTURE};
 use crate::log::SBuf;
 use crate::{klog, llm, print, println, shell, smp, sys};
@@ -46,16 +50,35 @@ const TEMPLATE_TOOLS_TAIL: &str = "\n</tools>\n\nIf you choose to call a functio
 
 const MAX_ROUNDS: usize = 4;
 const MAX_ANSWER: u64 = 512;
+/// Tool results longer than this are cut, with a marker the model can see.
+const RES_CAP: usize = 8192;
+const SUMMARY_MAX: u64 = 300;
+/// Token budget for the exchanges re-prefilled verbatim after a compaction.
+const KEEP_BUDGET: usize = 3000;
+const KEEP: usize = 2;
+const COMPACT_ASK: &str = "[kernel] The context is almost full and is about to be compacted. Write a short note for \
+yourself. First a line starting with 'User:' with every fact the user told you (name, numbers, preferences), \
+including those in the earlier summary of the system prompt if there is one. Then 'Tasks:' with open tasks, then \
+'Tool results:' with results that still matter. At most 120 words, plain text.";
+/// Appended to the system prompt after a compaction (the snapshot ends just before its <|im_end|>).
+const SUMMARY_HEAD: &str = "\n\nSummary of the earlier part of this session (older turns were dropped to free \
+context; these are facts you noted yourself, trust them):\n";
 
 static mut POS: u64 = 0;
 static mut FRESH: bool = true;
-static mut TEXT: SBuf<8192> = SBuf::new();
-static mut TOKS: [u32; 4096] = [0; 4096];
+static mut TEXT: SBuf<32768> = SBuf::new();
+static mut TOKS: [u32; 16384] = [0; 16384];
+static mut RES: SBuf<{ RES_CAP + 512 }> = SBuf::new();
+pub static mut COMPACT_PCT: u64 = 75;
+static mut N_COMPACT: u64 = 0;
+static mut EX_AT_COMPACT: usize = 0; // EX_N at the last compaction (auto needs new exchanges past the kept ones)
+/// "<|im_end|>\n" closing the system turn: not in the snapshot, fed when a conversation starts fresh.
+static mut SYS_END: [u32; 2] = [0; 2];
 
-fn text() -> &'static mut SBuf<8192> {
+fn text() -> &'static mut SBuf<32768> {
     unsafe { &mut *core::ptr::addr_of_mut!(TEXT) }
 }
-fn toks() -> &'static mut [u32; 4096] {
+fn toks() -> &'static mut [u32; 16384] {
     unsafe { &mut *core::ptr::addr_of_mut!(TOKS) }
 }
 
@@ -63,9 +86,173 @@ pub fn pos() -> u64 {
     unsafe { POS }
 }
 
-/// Next `@` starts a fresh conversation from the boot snapshot.
+/// Next turn starts a fresh conversation from the boot snapshot.
 pub fn reset() {
-    unsafe { FRESH = true };
+    unsafe {
+        if !FRESH {
+            hist("kernel", "--- new conversation ---");
+        }
+        FRESH = true;
+        EX_N = 0;
+        EX_AT_COMPACT = 0;
+    }
+}
+
+
+// ---- raw transcript (memory only): "role: text" lines, oldest dropped when full ----
+
+static mut HIST: SBuf<65536> = SBuf::new();
+
+fn hist(role: &str, s: &str) {
+    let h = unsafe { &mut *core::ptr::addr_of_mut!(HIST) };
+    let s = &s[..floor_char(s, 16384)];
+    let need = role.len() + s.len() + 3;
+    if h.n + need > h.b.len() {
+        let mut cut = (need + h.b.len() / 4).min(h.n);
+        while cut < h.n && h.b[cut - 1] != b'\n' {
+            cut += 1;
+        }
+        h.b.copy_within(cut..h.n, 0);
+        h.n -= cut;
+    }
+    let _ = write!(h, "{}: {}\n", role, s);
+}
+
+fn floor_char(s: &str, max: usize) -> usize {
+    let mut k = s.len().min(max);
+    while !s.is_char_boundary(k) {
+        k -= 1;
+    }
+    k
+}
+
+/// `/history [N]`: the last N transcript lines (default 40), kept across compactions.
+pub fn history(n: usize) {
+    let h = unsafe { (*core::ptr::addr_of!(HIST)).as_str() };
+    let total = h.lines().count();
+    h.lines().skip(total.saturating_sub(n)).for_each(|l| println!("{}", l));
+    println!("[history] {} of {} lines, {} bytes", n.min(total), total, h.len());
+}
+
+/// `/ctx`: context fill.
+pub fn ctx_info() {
+    let (p, m) = (pos(), llm::ctx_max_seq());
+    let fresh = unsafe { FRESH };
+    println!("[ctx] {}/{} tokens ({}%){}, boot prefix {} tok, KV {}, compaction at {}%, {} compaction(s) so far, {} exchange(s) kept for re-prefill",
+        p, m, p * 100 / m, if fresh { " (fresh: next turn restores the prefix)" } else { "" },
+        llm::snapshot_pos(), llm::kv_type(), unsafe { COMPACT_PCT }, unsafe { N_COMPACT }, unsafe { EX_N.min(KEEP) });
+}
+
+// ---- last exchanges (question + final answer), re-prefilled after a compaction ----
+
+struct Ex {
+    q: SBuf<4096>,
+    a: SBuf<4096>,
+}
+static mut EX: [Ex; KEEP] = [Ex { q: SBuf::new(), a: SBuf::new() }, Ex { q: SBuf::new(), a: SBuf::new() }];
+static mut EX_N: usize = 0; // exchanges recorded since the last reset
+
+fn push_ex(q: &str, a: &str) {
+    unsafe {
+        let e = &mut (*core::ptr::addr_of_mut!(EX))[EX_N % KEEP];
+        e.q.clear();
+        e.a.clear();
+        let _ = write!(e.q, "{}", q);
+        let _ = write!(e.a, "{}", a);
+        EX_N += 1;
+    }
+}
+
+/// Render the last k exchanges as chat turns (oldest first).
+fn render_ex(t: &mut SBuf<32768>, k: usize) {
+    unsafe {
+        for i in EX_N - k..EX_N {
+            let e = &(*core::ptr::addr_of!(EX))[i % KEEP];
+            let _ = write!(t, "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n{}<|im_end|>\n",
+                e.q.as_str(), e.a.as_str());
+        }
+    }
+}
+
+/// Summarize, restore the boot prefix, prefill the summary and the last exchanges. false = interrupted
+/// or no room (the conversation is reset).
+pub fn compact(why: &str) -> bool {
+    if unsafe { FRESH } {
+        println!("[compact] nothing to compact (fresh conversation)");
+        return false;
+    }
+    let max_seq = llm::ctx_max_seq();
+    let before = pos();
+    let t = text();
+    t.clear();
+    let _ = write!(t, "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n", COMPACT_ASK);
+    let n = llm::encode(&t.b[..t.n], toks());
+    if before + n as u64 + SUMMARY_MAX + 8 >= max_seq {
+        println!("[compact] no room left to summarize, starting a fresh conversation");
+        reset();
+        return false;
+    }
+    println!("[compact] context {}/{} ({}%, {}): summarizing...", before, max_seq, before * 100 / max_seq, why);
+    smp::park_phase(true);
+    let t0 = smp::rdtsc();
+    let mut pos = before;
+    unsafe {
+        (*core::ptr::addr_of_mut!(CAP)).clear();
+        CAPTURE = true;
+    }
+    let fed = llm::feed(&toks()[..n], &mut pos);
+    let (stop, n_sum) = if fed { llm::generate(&mut pos, SUMMARY_MAX) } else { (llm::Stop::Intr, 0) };
+    unsafe { CAPTURE = false };
+    println!("");
+    let t1 = smp::rdtsc();
+    if stop == llm::Stop::Intr {
+        println!("^C [compact] interrupted, conversation reset");
+        smp::park_phase(false);
+        reset();
+        return false;
+    }
+    let mut sum = SBuf::<4096>::new();
+    let cap = unsafe { (*core::ptr::addr_of!(CAP)).as_str() };
+    let cap = cap.rsplit("</think>").next().unwrap_or(cap);
+    let cap = cap.split("<tool_call>").next().unwrap_or(cap).trim();
+    let _ = write!(sum, "{}", cap);
+
+    unsafe { POS = llm::snapshot_restore() }; // system turn still open: the summary is appended to it
+    let ex_avail = unsafe { EX_N.min(KEEP) };
+    let mut n = 0;
+    for k in (0..=ex_avail).rev() {
+        t.clear();
+        let _ = write!(t, "{}{}<|im_end|>\n", SUMMARY_HEAD, sum.as_str());
+        render_ex(t, k);
+        n = llm::encode(&t.b[..t.n], toks());
+        if k == 0 || n <= KEEP_BUDGET {
+            if k < ex_avail {
+                println!("[compact] kept {} of {} recent exchange(s) (token budget {})", k, ex_avail, KEEP_BUDGET);
+            }
+            break;
+        }
+    }
+    pos = unsafe { POS };
+    let ok = llm::feed(&toks()[..n], &mut pos);
+    let t2 = smp::rdtsc();
+    smp::park_phase(false);
+    if !ok {
+        println!("^C [compact] interrupted during re-prefill, conversation reset");
+        reset();
+        return false;
+    }
+    unsafe {
+        POS = pos;
+        N_COMPACT += 1;
+        EX_AT_COMPACT = EX_N;
+    }
+    let (us1, us2) = (smp::tsc_to_us(t1 - t0), smp::tsc_to_us(t2 - t1));
+    // one log line (the ring keeps 128 bytes per line)
+    klog!(b'A', "compact #{} {}: {}->{} tok ({}%->{}%), summary {} tok {} ms, re-prefill {} tok {} ms, total {} ms",
+        unsafe { N_COMPACT }, why, before, pos, before * 100 / max_seq, pos * 100 / max_seq, n_sum, us1 / 1000, n, us2 / 1000, (us1 + us2) / 1000);
+    hist("kernel", "[compaction] summary written by the model:");
+    hist("summary", sum.as_str());
+    true
 }
 
 fn build_prefix() -> usize {
@@ -89,8 +276,9 @@ pub fn init() {
     klog!(b'I', "agent: system prompt + {} tools = {} tokens (fnv {:#x}), prefilling once...", TOOLS.len(), n, h);
     smp::park_phase(true);
     let t0 = smp::rdtsc();
+    unsafe { SYS_END = [toks()[n - 2], toks()[n - 1]] }; // <|im_end|> \n of the system turn
     let mut pos = 0;
-    while !llm::feed(&toks()[..n], &mut pos) {
+    while !llm::feed(&toks()[..n - 2], &mut pos) {
         pos = 0; // Ctrl-C at boot: no shell yet, prefill again
     }
     let t1 = smp::rdtsc();
@@ -99,7 +287,7 @@ pub fn init() {
     smp::park_phase(false);
     let us = smp::tsc_to_us(t1 - t0);
     klog!(b'I', "agent: prefix prefill {} tok in {}.{:03} s ({} tok/s), snapshot {} MiB saved in {} ms",
-        n, us / 1_000_000, us / 1000 % 1000, n as u64 * 1_000_000 / us.max(1), bytes >> 20, smp::tsc_to_us(t2 - t1) / 1000);
+        pos, us / 1_000_000, us / 1000 % 1000, n as u64 * 1_000_000 / us.max(1), bytes >> 20, smp::tsc_to_us(t2 - t1) / 1000);
     unsafe { FRESH = true };
 }
 
@@ -147,7 +335,7 @@ fn parse(s: &str) -> Option<Result<Call<'_>, &'static str>> {
 }
 
 /// Check a call against SPECS. Ok(spec index) or an error for the model.
-fn validate(c: &Call, err: &mut SBuf<1024>) -> Option<usize> {
+fn validate<const N: usize>(c: &Call, err: &mut SBuf<N>) -> Option<usize> {
     let Some(i) = SPECS.iter().position(|(n, _)| *n == c.name) else {
         let _ = write!(err, "error: unknown tool '{}'", c.name);
         return None;
@@ -178,14 +366,14 @@ fn arg<'a>(c: &Call<'a>, k: &str) -> Option<&'a str> {
     c.args[..c.n].iter().find(|(a, _)| *a == k).map(|(_, v)| *v)
 }
 
-fn exec(c: &Call, o: &mut SBuf<1024>) {
+fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
     match c.name {
         "meminfo" => sys::meminfo(o),
         "cpuinfo" => sys::cpuinfo(o),
         "list_cores" => sys::cores(o),
         "uptime" => sys::uptime(o),
         "read_log" => {
-            let k = arg(c, "n").and_then(|v| v.parse::<usize>().ok()).unwrap_or(10).clamp(1, 30);
+            let k = arg(c, "n").and_then(|v| v.parse::<usize>().ok()).unwrap_or(10).clamp(1, 256);
             let mut first = true;
             crate::log::last(k, |l| {
                 if !core::mem::replace(&mut first, false) {
@@ -214,20 +402,28 @@ fn exec(c: &Call, o: &mut SBuf<1024>) {
 pub fn ask(q: &str) {
     let max_seq = llm::ctx_max_seq();
     let mut l = SBuf::<160>::new();
-    let _ = write!(l, "user: @ {}", q);
+    let _ = write!(l, "user: {}", q);
     crate::log::record(b'A', l.as_str());
     unsafe {
+        if !FRESH && POS * 100 >= max_seq * COMPACT_PCT && EX_N - EX_AT_COMPACT > KEEP {
+            compact("auto");
+        }
         if !FRESH && POS + q.len() as u64 + 300 >= max_seq {
             println!("[agent] context full ({}/{}), starting a fresh conversation", pos(), max_seq);
-            FRESH = true;
+            reset();
         }
         if FRESH {
             let t0 = smp::rdtsc();
             POS = llm::snapshot_restore();
+            for t in SYS_END {
+                crate::engine::transformer_forward(t, POS, 0); // close the system turn
+                POS += 1;
+            }
             FRESH = false;
             klog!(b'A', "[agent] fresh conversation: prefix ({} tok) restored in {} us", pos(), smp::tsc_to_us(smp::rdtsc() - t0));
         }
     }
+    hist("user", q);
     let t = text();
     t.clear();
     let think = unsafe { llm::THINK } != 0;
@@ -268,12 +464,16 @@ pub fn ask(q: &str) {
             break;
         }
         let cap = unsafe { (*core::ptr::addr_of!(CAP)).as_str() };
-        let mut res = SBuf::<1024>::new();
+        let res = unsafe { &mut *core::ptr::addr_of_mut!(RES) };
+        res.clear();
         match parse(cap) {
             None => {
                 let mut a = SBuf::<160>::new();
                 let _ = write!(a, "answer ({} tok): {}", n_gen, cap.trim().lines().next().unwrap_or(""));
                 crate::log::record(b'A', a.as_str());
+                let ans = cap.rsplit("</think>").next().unwrap_or(cap).trim();
+                hist("assistant", ans);
+                push_ex(q, ans);
                 break;
             }
             Some(_) if round == MAX_ROUNDS => {
@@ -290,9 +490,16 @@ pub fn ask(q: &str) {
                     print!("{}{}={}", if i > 0 { ", " } else { "" }, k, v);
                 }
                 println!(")");
-                if validate(&c, &mut res).is_some() {
-                    exec(&c, &mut res);
+                if validate(&c, res).is_some() {
+                    exec(&c, res);
                 }
+                if res.n > RES_CAP {
+                    res.n = floor_char(res.as_str(), RES_CAP - 96);
+                    let _ = write!(res, "\n[... truncated by the kernel: the result was longer than {} bytes]", RES_CAP);
+                }
+                let mut h = SBuf::<512>::new();
+                let _ = write!(h, "{}(...) -> {}", c.name, &res.as_str()[..floor_char(res.as_str(), 400)]);
+                hist("tool", h.as_str());
                 let mut l = SBuf::<200>::new();
                 let _ = write!(l, "tool {} -> {}", c.name, res.as_str());
                 crate::log::record(b'A', l.as_str());

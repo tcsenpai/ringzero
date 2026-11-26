@@ -1,4 +1,4 @@
-# AIOS architecture (as of M2+M3)
+# AIOS architecture (as of M2.5)
 
 ## Diagram
 
@@ -18,14 +18,16 @@ flowchart TB
         KBD["kbd.rs<br/>PS/2 set 1, layouts us / it, AltGr, Ctrl"]
         LOG["log.rs<br/>ring of 256 lines, level + timestamp"]
         SYS["sys.rs<br/>meminfo, cpuinfo, cores, uptime,<br/>poweroff, reboot"]
-        SH["shell.rs<br/>line editor, type-ahead, Ctrl-C,<br/>builtins, settings"]
-        AG["agent.rs<br/>system prompt + tool registry,<br/>lenient parser, validator, tool loop"]
-        LLM["llm.rs<br/>golden self-test, bench, tokenizer split,<br/>feed / generate, prefix snapshot"]
+        SH["shell.rs<br/>text -> agent, !machine, /session commands,<br/>Tab completion, suggestions, history, Ctrl-C"]
+        AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
+        CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
+        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, tokenizer split,<br/>feed / generate, prefix snapshot"]
         ENG["engine.rs<br/>FFI, output capture"]
     end
 
     subgraph A["NASM engine (ring 0, AVX2/FMA/F16C)"]
         TR["transformer.asm<br/>Qwen3.5: 6 full-attn + 18 DeltaNet layers"]
+        KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(AIOS_KV=f32: FP32, 768 MiB)"]
         MM["matmul.asm Q8_0"]
         MA["math.asm"]
         TOK["tokenizer.asm BPE"]
@@ -42,14 +44,18 @@ flowchart TB
     end
 
     KMAIN --> IDT & MEM & SMP & CON & LLM & AG & SH
-    SH -- "builtins" --> SYS
-    SH -- "@ text" --> AG
+    SH -- "!cmd" --> SYS
+    SH -- "plain text" --> AG
+    SH -- "/ctx /compact /history" --> CM
+    AG -- "fill >= 75%" --> CM
+    CM -- "summary turn, snapshot_restore,<br/>re-prefill" --> LLM
     AG -- "tool calls" --> SYS
     AG -- "read_log" --> LOG
     AG -- "set_setting" --> SH
     AG -- "y/N confirm" --> SH
     AG --> LLM --> ENG --> TR
     TR --> MM & MA & WK
+    TR -- "vcvtps2ph / vcvtph2ps" --> KV
     LLM --> TOK
     TOK -- "sys_write_all" --> ENG --> CON
     TR -- "sys_mmap_anon" --> MEM
@@ -60,7 +66,7 @@ flowchart TB
     LOG -.->|klog! prints| CON
 ```
 
-Data flow of `@ how much free memory?`:
+Data flow of `how much free memory?` (plain text goes to the agent):
 
 ```mermaid
 sequenceDiagram
@@ -69,8 +75,9 @@ sequenceDiagram
     participant A as agent.rs
     participant L as llm.rs + engine
     participant T as sys.rs (tool)
-    U->>S: "@ how much free memory?" (Ctrl-C polled between tokens)
+    U->>S: "how much free memory?" (Ctrl-C polled between tokens)
     S->>A: ask(q)
+    A->>A: fill >= 75% of 32768? compact first (see below)
     A->>L: fresh conversation? snapshot_restore (KV rows 0..743 + DeltaNet state, ~1.5 ms)
     A->>L: encode user turn, feed (prefill), generate (stream to console)
     L-->>A: stop at </tool_call>, captured text (markup hidden on screen)
@@ -82,21 +89,47 @@ sequenceDiagram
     Note over A: up to 4 tool rounds per user turn, poweroff/reboot ask y/N at the shell first
 ```
 
+Compaction (auto at 75% fill, or `/compact`):
+
+```mermaid
+sequenceDiagram
+    participant A as agent.rs
+    participant L as llm.rs + engine
+    A->>L: internal user turn "summarize facts, preferences, open tasks, tool results (<= 120 words)"
+    L-->>A: summary (at most 300 tokens, streamed, captured)
+    A->>L: snapshot_restore (boot prefix: tools + system prompt, without the closing <|im_end|>)
+    A->>L: feed "Summary of the earlier part of this session ... trust them: SUMMARY<|im_end|>" (inside the system turn) + last 2 exchanges verbatim (<= 3000 tok)
+    Note over A: DeltaNet state cannot be cropped, so the context is rebuilt from the snapshot.<br/>The raw transcript (64 KiB ring) is kept for /history. Every compaction is logged (fill before/after, summary tokens, ms).
+```
+
 Legend:
 
 - **Boot**: Limine loads the kernel and the 1.9 GiB model as a module. `kmain` brings up the IDT, memory,
   SMP (APs enter the asm worker loop), checks the engine ABI, runs the golden self-test and the bench, then
   `agent::init` prefills the system prompt + tool list once (743 tokens, about 15 s) and snapshots the
   engine state. Then `shell::run`.
-- **Shell**: one line = one builtin; `@ <text>` goes to the agent. Input from COM1 and PS/2 is polled into
+- **Shell**: plain text goes to the agent; `!cmd` runs a machine command (mem, cpu, cores, log, uptime,
+  kbd, set, park, stats, poweroff, reboot), `/cmd` a session command (help, clear, ctx, compact, history,
+  think, temp, bench, fill, gen; help and stats answer to both). Tab completes command names and first
+  arguments, a bare `/` or `!` (pause or Enter) lists the commands, up/down recall the last 16 lines. Input from COM1 and PS/2 is polled into
   a type-ahead ring; 0x03 / Ctrl+C sets a flag that `llm::feed` and `llm::generate` check between tokens.
 - **Agent**: Qwen3.5 native tool format (JSON tool lines in the system turn, `<tool_call><function=..>`
   calls, `<tool_response>` results in a user turn). The tokenizer splits special tokens and applies the
   Qwen pre-tokenizer regex before the engine BPE, so the prefix ids equal the HF tokenizer's
   (`tools/hf_prefix.py`, FNV hash printed at boot).
-- **Prefix snapshot**: KV cache rows `0..P` of the 6 full-attention layers (head-major layout) plus the
-  DeltaNet recurrent and conv state (36 MiB in the arena). `clear` marks the conversation fresh; the next
-  `@` restores it instead of prefilling again. Multi-turn keeps the live state.
+- **Prefix snapshot**: KV cache rows `0..P` of the 6 full-attention layers (head-major layout, FP16 or
+  FP32 elements as the engine reports in `kv_elt_bytes`) plus the DeltaNet recurrent and conv state
+  (27 MiB with FP16 KV). `/clear` marks the conversation fresh; the next turn restores it instead of
+  prefilling again. Multi-turn keeps the live state.
+- **KV cache**: 32768 tokens. FP16 (default build) stores K/V rows with `vcvtps2ph` and reads them with
+  `vcvtph2ps` inside `gqa_attn_range` (12 KiB/token, 384 MiB); `AIOS_KV=f32 make iso` builds the FP32
+  cache (24 KiB/token, 768 MiB). `model_init` takes the 32768 override although the .asmbin header says 4096.
+- **Context manager**: fill is tracked in tokens (`/ctx`, stats line). Past `compact` percent (75 by
+  default, `!set compact N`) the next turn first compacts (diagram above), if more than 2 exchanges came
+  after the last compaction (no compaction loop at low thresholds). The boot snapshot stops 2 tokens short
+  of the system turn's `<|im_end|>\n`, so the summary lands in the system prompt (the model distrusted it
+  as a user turn); a fresh conversation feeds those 2 tokens. Tool results are capped at
+  8 KiB with a visible truncation marker.
 - **Log**: `klog!` prints and records `[sec.ms] L text` (I info, W warn, E error, A agent) in a 256-line
   ring, read by `log` and by the `read_log` tool.
 - **Keyboard**: scancode set 1, layouts as data (`us`, `it` default), Shift, Ctrl, AltGr (E0 38, and left
@@ -169,10 +202,10 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 
 | Part | Language |
 |---|---|
-| Inference engine (math, matmul, tokenizer, transformer), vendored unmodified | NASM |
+| Inference engine (math, matmul, tokenizer, transformer), vendored; AIOS changes marked in transformer.asm: FP16 KV store/read, max_seq override | NASM |
 | `enable_avx_fpu` (engine/cpu.asm, from the old boot.asm) | NASM |
 | Boot, paging, AP startup | Limine |
 | `sample_top_p_bits` float shim (engine/cpu.asm) | NASM |
 | SMP dispatch (`tp_*`), worker loop, AP entry, parking (engine/smp.asm, adapted from the asm OS) | NASM |
 | Console, IDT, CPU checks, TSC calibration, memory maps, AP release, generation loop | Rust |
-| Shell, keyboard layouts, kernel log, agent (prompt, tools, parser, loop), tokenizer pre-split, prefix snapshot | Rust |
+| Shell (! and / commands, completion, history), keyboard layouts, kernel log, agent (prompt, tools, parser, loop), context compaction, transcript, tokenizer pre-split, prefix snapshot | Rust |

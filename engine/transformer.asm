@@ -1,5 +1,7 @@
 ; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/transformer.asm).
-; Do not edit here: change upstream and re-vendor. Unmodified below this header.
+; Do not edit here: change upstream and re-vendor. AIOS changes (M2.5), all marked "AIOS": optional
+; FP16 KV cache (-DKV_F16): vcvtps2ph on store, dot_f16_avx2 / saxpy_f16_avx2 in gqa_attn_range; and
+; model_init lets max_seq_override exceed the header's max_seq_len.
 ; ============================================================================
 %ifdef QWEN35
 ; transformer.asm — Qwen3 / Qwen3.5 Transformer Forward Pass & Model Loader
@@ -28,6 +30,18 @@ bits 64
 default rel
 
 %include "constants.inc"
+
+; AIOS: KV cache element type (FP16 with -DKV_F16, else FP32 as upstream)
+%ifdef KV_F16
+%define KV_SHIFT 1
+%define KV_DOT   dot_f16_avx2
+%define KV_SAXPY saxpy_f16_avx2
+%else
+%define KV_SHIFT 2
+%define KV_DOT   dot_f32_avx2
+%define KV_SAXPY saxpy_f32_avx2
+%endif
+global kv_elt_bytes
 
 %ifndef FAST_Q8
 %define FAST_Q8 1
@@ -232,8 +246,8 @@ model_init:
     mov     eax, [r15 + HDR_MAX_SEQ_LEN]
     test    r12, r12
     jz      .use_hdr_seq
-    cmp     r12, rax
-    ja      .use_hdr_seq
+    ; AIOS (M2.5): a non-zero override wins even above the header value (the v3 .asmbin
+    ; stores the converter default 4096; Qwen3.5-2B config.json: max_position_embeddings 262144)
     mov     rax, r12
 .use_hdr_seq:
     mov     [rbx + CTX_MAX_SEQ], rax
@@ -491,7 +505,7 @@ model_init:
 %endif
     imul    rax, [rbx + CTX_MAX_SEQ]
     imul    rax, [rbx + CTX_KV_DIM]
-    shl     rax, 2
+    shl     rax, KV_SHIFT               ; AIOS: 2 (f32) or 1 (KV_F16)
     ALLOC_BUF CTX_BUF_K_CACHE, rax
     ALLOC_BUF CTX_BUF_V_CACHE, rax
 
@@ -972,12 +986,50 @@ transformer_forward:
 %endif
     imul    rax, [rbx + CTX_MAX_SEQ]
     imul    rax, [rbx + CTX_KV_DIM]
-    shl     rax, 2
+    shl     rax, KV_SHIFT
     mov     [rsp + 120], rax
 
 %if FAST_Q8
     ; Head-major contiguous KV layout: cache[l, kv_h, pos, head_dim]
     ; Eliminates 4KB L1D set aliasing & TLB thrashing across timesteps!
+%ifdef KV_F16
+    ; AIOS: K/V rows are stored as FP16 (vcvtps2ph, round to nearest even)
+    mov     r14, [rbx + CTX_HEAD_DIM]
+    shl     r14, 2                      ; f32 head_bytes in buf_k / buf_v
+    mov     r15, [rbx + CTX_MAX_SEQ]
+    imul    r15, [rbx + CTX_HEAD_DIM]
+    shl     r15, 1                      ; kv_head_stride = max_seq * head_dim * 2
+    mov     rcx, [rsp + 0]              ; pos
+    imul    rcx, [rbx + CTX_HEAD_DIM]
+    shl     rcx, 1                      ; pos_off = pos * head_dim * 2
+    add     rax, rcx
+    mov     rdi, [rbx + CTX_BUF_K_CACHE]
+    add     rdi, rax
+    mov     rdx, [rbx + CTX_BUF_V_CACHE]
+    add     rdx, rax
+    mov     rsi, [rbx + CTX_BUF_K]
+    mov     r8,  [rbx + CTX_BUF_V]
+    mov     r12, [rbx + CTX_N_KV_HEADS]
+.kvh_lp:
+    xor     r9d, r9d                    ; element index, 8 per step
+.kvh_cvt:
+    cmp     r9, [rbx + CTX_HEAD_DIM]
+    jae     .kvh_next
+    vmovups ymm0, [rsi + r9*4]
+    vmovups ymm1, [r8 + r9*4]
+    vcvtps2ph [rdi + r9*2], ymm0, 0
+    vcvtps2ph [rdx + r9*2], ymm1, 0
+    add     r9, 8
+    jmp     .kvh_cvt
+.kvh_next:
+    add     rsi, r14
+    add     r8,  r14
+    add     rdi, r15
+    add     rdx, r15
+    dec     r12
+    jnz     .kvh_lp
+    jmp     .kv_stored
+%endif
     mov     r14, [rbx + CTX_HEAD_DIM]
     shl     r14, 2                      ; head_bytes (512)
     mov     r15, [rbx + CTX_MAX_SEQ]
@@ -1011,6 +1063,7 @@ transformer_forward:
     add     rdx, r15
     dec     r12
     jnz     .kv_head_lp
+.kv_stored:
 
     ; --- 3f. Parallel GQA Attention over heads h = 0 .. n_heads - 1 ---
     mov     rdi, [rsp + 120]            ; layer_kv_base
@@ -1558,6 +1611,69 @@ deltanet_heads_range:
     ret
 
 %endif
+%ifdef KV_F16
+; ----------------------------------------------------------------------------
+; AIOS: FP16 KV cache helpers (F16C). Same contract as dot_f32_avx2 / saxpy_f32_avx2,
+; but b / src are FP16. n multiple of 32.
+; float dot_f16_avx2(const float *a, const uint16 *b, uint64 n) -> xmm0
+; ----------------------------------------------------------------------------
+dot_f16_avx2:
+    vxorps  ymm0, ymm0, ymm0
+    vxorps  ymm1, ymm1, ymm1
+    vxorps  ymm2, ymm2, ymm2
+    vxorps  ymm3, ymm3, ymm3
+    xor     eax, eax
+.lp:
+    cmp     rax, rdx
+    jae     .red
+    vcvtph2ps ymm4, [rsi + rax*2]
+    vcvtph2ps ymm5, [rsi + rax*2 + 16]
+    vcvtph2ps ymm6, [rsi + rax*2 + 32]
+    vcvtph2ps ymm7, [rsi + rax*2 + 48]
+    vfmadd231ps ymm0, ymm4, [rdi + rax*4]
+    vfmadd231ps ymm1, ymm5, [rdi + rax*4 + 32]
+    vfmadd231ps ymm2, ymm6, [rdi + rax*4 + 64]
+    vfmadd231ps ymm3, ymm7, [rdi + rax*4 + 96]
+    add     rax, 32
+    jmp     .lp
+.red:
+    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm2, ymm2, ymm3
+    vaddps  ymm0, ymm0, ymm2
+    vextractf128 xmm1, ymm0, 1
+    vaddps  xmm0, xmm0, xmm1
+    vhaddps xmm0, xmm0, xmm0
+    vhaddps xmm0, xmm0, xmm0
+    ret
+
+; void saxpy_f16_avx2(float *dst, const uint16 *src, uint64 n, float alpha): dst[i] += alpha * src[i]
+saxpy_f16_avx2:
+    vbroadcastss ymm0, xmm0
+    xor     eax, eax
+.lp:
+    cmp     rax, rdx
+    jae     .done
+    vcvtph2ps ymm5, [rsi + rax*2]
+    vcvtph2ps ymm6, [rsi + rax*2 + 16]
+    vcvtph2ps ymm7, [rsi + rax*2 + 32]
+    vcvtph2ps ymm8, [rsi + rax*2 + 48]
+    vmovups ymm1, [rdi + rax*4]
+    vmovups ymm2, [rdi + rax*4 + 32]
+    vmovups ymm3, [rdi + rax*4 + 64]
+    vmovups ymm4, [rdi + rax*4 + 96]
+    vfmadd231ps ymm1, ymm0, ymm5
+    vfmadd231ps ymm2, ymm0, ymm6
+    vfmadd231ps ymm3, ymm0, ymm7
+    vfmadd231ps ymm4, ymm0, ymm8
+    vmovups [rdi + rax*4], ymm1
+    vmovups [rdi + rax*4 + 32], ymm2
+    vmovups [rdi + rax*4 + 64], ymm3
+    vmovups [rdi + rax*4 + 96], ymm4
+    add     rax, 32
+    jmp     .lp
+.done:
+    ret
+%endif
 %if FAST_Q8
 ; ----------------------------------------------------------------------------
 ; void gqa_attn_range(uint64 layer_kv_base, uint64 pos, uint64 scale_gqa_packed,
@@ -1573,13 +1689,14 @@ gqa_attn_range:
     push    r13
     push    r14
     push    r15
-    sub     rsp, 40                     ; 6 pushes(48) + 40 + ret(8) = 96 (16B aligned)
+    sub     rsp, 56                     ; 6 pushes(48) + 56 + ret(8) = 112 (16B aligned)
     ; [rsp + 0]  = layer_kv_base
     ; [rsp + 8]  = pos
     ; [rsp + 16] = att_scale (f32)
     ; [rsp + 20] = gqa_ratio (u32)
     ; [rsp + 24] = h1
-    ; [rsp + 32] = kv_head_stride (max_seq * head_dim * 4)
+    ; [rsp + 32] = kv_head_stride (max_seq * head_dim * KV elt bytes)
+    ; [rsp + 40] = KV step per t (head_dim * KV elt bytes)
 
     mov     [rsp + 0], rdi
     mov     [rsp + 8], rsi
@@ -1591,8 +1708,10 @@ gqa_attn_range:
     lea     rbx, [rel g_ctx]
     mov     rbp, [rbx + CTX_HEAD_DIM]
     shl     rbp, 2                      ; rbp = head_bytes (step per t = 512B contiguous!)
-    mov     rax, [rbx + CTX_MAX_SEQ]
-    imul    rax, rbp
+    mov     rax, rbp
+    shr     rax, 2 - KV_SHIFT           ; AIOS: head_dim * KV elt bytes
+    mov     [rsp + 40], rax
+    imul    rax, [rbx + CTX_MAX_SEQ]
     mov     [rsp + 32], rax             ; kv_head_stride
 
     mov     r12, rcx                    ; h = h0
@@ -1632,12 +1751,12 @@ gqa_attn_range:
     mov     rdi, r14
     mov     rsi, r15
     mov     rdx, [rbx + CTX_HEAD_DIM]
-    call    dot_f32_avx2
+    call    KV_DOT
     pop     r11
     pop     rcx
     vmulss  xmm0, xmm0, [rsp + 16]
     vmovss  [r11 + rcx*4], xmm0
-    add     r15, rbp                    ; contiguous +512B!
+    add     r15, [rsp + 40]             ; contiguous KV step
     inc     rcx
     jmp     .sc_lp
 
@@ -1678,10 +1797,10 @@ gqa_attn_range:
     mov     rdi, r14
     mov     rsi, r15
     mov     rdx, [rbx + CTX_HEAD_DIM]
-    call    saxpy_f32_avx2
+    call    KV_SAXPY
     pop     r11
     pop     rcx
-    add     r15, rbp                    ; contiguous +512B!
+    add     r15, [rsp + 40]             ; contiguous KV step
     inc     rcx
     jmp     .v_lp
 
@@ -1690,7 +1809,7 @@ gqa_attn_range:
     jmp     .h_lp
 
 .h_done:
-    add     rsp, 40
+    add     rsp, 56
     pop     r15
     pop     r14
     pop     r13
@@ -1701,6 +1820,8 @@ gqa_attn_range:
 %endif
 
 section .rodata
+align 8
+kv_elt_bytes: dq 1 << KV_SHIFT     ; AIOS: read by the kernel's prefix snapshot
 %ifdef QWEN35
 align 16
 t_one:      dd 1.0

@@ -22,7 +22,7 @@ const CTX_TOK_THINK_END: usize = 536;
 const CTX_TOK_NL: usize = 560;
 const MAX_PROMPT_TOKENS: u64 = 8192;
 const MAX_GEN_TOKENS: u64 = 8192;
-pub const CTX_LEN: u64 = 2048; // kernel.asm opt_ctx_len default
+pub const CTX_LEN: u64 = 32768; // M2.5 (M1-M3: 2048, kernel.asm opt_ctx_len default)
 
 // docs/qwen35-2b/golden_2b.json
 const GOLDEN_PROMPT: &[u8] = b"Say hi in 5 words.\0";
@@ -39,7 +39,28 @@ const TOPP_BITS: u32 = 0x3F73_3333; // 0.95f
 struct Opts {
     max_tok: u64,
     print_toks: bool,
+    /// /gen debug: print prompt size + FNV, generated ids and the top1 - top2 logit margin per token
+    margins: bool,
 }
+
+/// top1 - top2 logit of the current logits (ordered-int compare, no float compares in the scan).
+fn margin() -> f32 {
+    let l = unsafe { core::slice::from_raw_parts(ctx(CTX_BUF_LOGITS) as *const u32, ctx(CTX_SAMPLE_N) as usize) };
+    let key = |b: u32| if b & 0x8000_0000 != 0 { !b } else { b | 0x8000_0000 };
+    let (mut b1, mut b2) = (0u32, 0u32); // raw bits of the best two
+    let (mut k1, mut k2) = (0u32, 0u32);
+    for &b in l {
+        let k = key(b);
+        if k > k1 {
+            (k2, b2, k1, b1) = (k1, b1, k, b);
+        } else if k > k2 {
+            (k2, b2) = (k, b);
+        }
+    }
+    f32::from_bits(b1) - f32::from_bits(b2)
+}
+
+static mut MARGINS: [f32; 512] = [0.0; 512];
 
 pub struct Stats {
     pub n_prompt: u64,
@@ -101,6 +122,9 @@ fn run(prompt: &[u8], o: &Opts) -> Stats {
     let max_tok = o.max_tok.min(MAX_GEN_TOKENS);
     let mut n_gen = 0u64;
     while n_gen < max_tok && next != eos1 && next != eos2 {
+        if o.margins && n_gen < 512 {
+            unsafe { MARGINS[n_gen as usize] = margin() };
+        }
         unsafe { *gtoks.add(n_gen as usize) = next as u32 };
         n_gen += 1;
         unsafe { tok_write_stdout(next) };
@@ -126,8 +150,19 @@ fn run(prompt: &[u8], o: &Opts) -> Stats {
         decode_us: smp::tsc_to_us(t3 - t2),
         pos,
     };
-    if o.print_toks {
+    if o.print_toks || o.margins {
         print_csv("GEN_TOKENS ", unsafe { core::slice::from_raw_parts(gtoks, n_gen as usize) });
+    }
+    if o.margins {
+        let p = unsafe { core::slice::from_raw_parts(ptoks, n as usize) };
+        let mut h = 0xcbf2_9ce4_8422_2325u64;
+        p.iter().for_each(|&x| h = (h ^ x as u64).wrapping_mul(0x100_0000_01b3));
+        println!("PROMPT {} tokens fnv {:#x}, KV {}", n, h, kv_type());
+        print!("MARGINS ");
+        for i in 0..(n_gen as usize).min(512) {
+            print!("{}{:.3}", if i > 0 { "," } else { "" }, unsafe { MARGINS[i] });
+        }
+        println!("");
     }
     print_speed(&s);
     s
@@ -137,12 +172,17 @@ pub fn print_speed(s: &Stats) {
     let (pa, pb) = rate(s.n_prompt, s.prefill_us);
     let (da, db) = rate(s.n_gen.saturating_sub(1).max(1), s.decode_us);
     println!(
-        "[prefill] {} tok in {}.{:02} ms ({}.{:02} tok/s)  [decode] {} tok in {}.{:02} ms ({}.{:02} tok/s, output {} ms)  cores {}  ctx {}/{}",
+        "[prefill] {} tok in {}.{:02} ms ({}.{:02} tok/s)  [decode] {} tok in {}.{:02} ms ({}.{:02} tok/s, output {} ms)  cores {}  ctx {}/{} ({}%)",
         s.n_prompt, s.prefill_us / 1000, s.prefill_us % 1000 / 10, pa, pb,
         s.n_gen, s.decode_us / 1000, s.decode_us % 1000 / 10, da, db,
         smp::tsc_to_us(OUT_TSC.load(core::sync::atomic::Ordering::Relaxed)) / 1000,
-        smp::threads(), s.pos, ctx(CTX_MAX_SEQ)
+        smp::threads(), s.pos, ctx(CTX_MAX_SEQ), s.pos * 100 / ctx(CTX_MAX_SEQ).max(1)
     );
+}
+
+/// KV cache element type of this build.
+pub fn kv_type() -> &'static str {
+    if unsafe { kv_elt_bytes } == 2 { "fp16" } else { "fp32" }
 }
 
 pub fn ctx_max_seq() -> u64 {
@@ -157,9 +197,10 @@ pub fn init(base: *const u8, size: u64) -> bool {
         return false;
     }
     crate::klog!(b'I',
-        "model: model_init ok in {} ms, max_seq {}, arena {} MiB, vocab sample_n {}",
+        "model: model_init ok in {} ms, max_seq {}, KV cache {}, arena {} MiB, vocab sample_n {}",
         smp::tsc_to_us(smp::rdtsc() - t0) / 1000,
         ctx(CTX_MAX_SEQ),
+        kv_type(),
         ctx(CTX_ARENA_SIZE) >> 20,
         ctx(CTX_SAMPLE_N)
     );
@@ -169,7 +210,7 @@ pub fn init(base: *const u8, size: u64) -> bool {
 /// Golden boot self-test (greedy, single turn). Prints SELFTEST PASS/FAIL.
 pub fn selftest() -> bool {
     crate::klog!(b'I', "selftest: prompt \"Say hi in 5 words.\" (golden_2b.json), greedy, {} threads", smp::threads());
-    let s = run(GOLDEN_PROMPT, &Opts { max_tok: 16, print_toks: true });
+    let s = run(GOLDEN_PROMPT, &Opts { max_tok: 16, print_toks: true, margins: false });
     let p = unsafe { core::slice::from_raw_parts(ctx(CTX_BUF_PROMPT) as *const u32, s.n_prompt as usize) };
     let g = unsafe { core::slice::from_raw_parts(ctx(CTX_BUF_GEN) as *const u32, s.n_gen as usize) };
     let ok = p == GOLDEN_PROMPT_IDS && g == GOLDEN_GEN_IDS;
@@ -184,7 +225,78 @@ pub fn selftest() -> bool {
 
 /// 64-token decode bench (single turn from pos 0: overwrites the agent prefix, restore it afterwards).
 pub fn bench() -> Stats {
-    run(BENCH_PROMPT, &Opts { max_tok: 64, print_toks: false })
+    run(BENCH_PROMPT, &Opts { max_tok: 64, print_toks: false, margins: false })
+}
+
+/// `/gen N text`: greedy single turn from position 0 (engine chat template), N tokens at most, prints the
+/// generated ids and per-token logit margins (to compare the FP16 and FP32 KV builds). Overwrites the prefix.
+pub fn gen_debug(max_tok: u64, text: &str) {
+    static mut P: [u8; 16384] = [0; 16384];
+    let p = unsafe { &mut *core::ptr::addr_of_mut!(P) };
+    let k = text.len().min(p.len() - 1);
+    p[..k].copy_from_slice(&text.as_bytes()[..k]);
+    p[k] = 0;
+    let temp = unsafe { core::ptr::addr_of_mut!(TEMP_BITS).replace(0) };
+    run(&p[..=k], &Opts { max_tok: max_tok.clamp(1, 512), print_toks: false, margins: true });
+    unsafe { TEMP_BITS = temp };
+}
+
+const FILL_TEXT: &[u8] = b"The history of operating systems starts with machines that ran one program at a time, loaded by hand from \
+punched cards. Batch monitors came next, then time sharing, which let many users share one computer through terminals. \
+Virtual memory, file systems and processes became the common vocabulary, and small kernels grew into large ones. \
+Personal computers brought simple systems back, until networking and multitasking made them as complex as the old ones. ";
+
+/// `/fill N`: prefill an N-token user turn from position 0 (a repeated paragraph), then decode 64 tokens with
+/// EOS ignored, to measure prefill and decode speed at a given context fill. Overwrites the agent prefix.
+pub fn bench_fill(n: u64) {
+    static mut T: [u32; 32768] = [0; 32768];
+    let t = unsafe { &mut *core::ptr::addr_of_mut!(T) };
+    let max_seq = ctx(CTX_MAX_SEQ);
+    let n = (n as usize).clamp(64, (max_seq - 80) as usize);
+    let mut tail = [0u32; 32];
+    let nt = encode(b"<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n", &mut tail);
+    let mut k = encode(b"<|im_start|>user\nRead this text, then continue it.\n\n", t);
+    let np = encode(FILL_TEXT, &mut t[k..]);
+    let p0 = k;
+    k += np;
+    while k < n - nt {
+        t[k] = t[p0 + (k - p0) % np];
+        k += 1;
+    }
+    t[k..k + nt].copy_from_slice(&tail[..nt]);
+    let n = k + nt;
+    println!("[fill] {} tokens (KV {}), progress every 4096", n, kv_type());
+    smp::park_phase(true);
+    let t0 = smp::rdtsc();
+    for i in 0..n {
+        if i % 64 == 0 && crate::shell::poll_intr() {
+            println!("^C [fill] interrupted at {}", i);
+            smp::park_phase(false);
+            return;
+        }
+        if i > 0 && i % 4096 == 0 {
+            let (a, b) = rate(i as u64, smp::tsc_to_us(smp::rdtsc() - t0));
+            println!("[fill] {}/{} tok, {}.{:02} tok/s so far", i, n, a, b);
+        }
+        unsafe { transformer_forward(t[i], i as u64, (i + 1 == n) as i32) };
+    }
+    let t1 = smp::rdtsc();
+    OUT_TSC.store(0, core::sync::atomic::Ordering::Relaxed);
+    let mut pos = n as u64;
+    let mut next = pick_next();
+    for g in 0..65 {
+        unsafe { tok_write_stdout(next) };
+        if g == 64 {
+            break;
+        }
+        unsafe { transformer_forward(next as u32, pos, 1) };
+        pos += 1;
+        next = pick_next();
+    }
+    let t2 = smp::rdtsc();
+    println!("");
+    smp::park_phase(false);
+    print_speed(&Stats { n_prompt: n as u64, n_gen: 65, prefill_us: smp::tsc_to_us(t1 - t0), decode_us: smp::tsc_to_us(t2 - t1), pos });
 }
 
 
@@ -385,9 +497,10 @@ static mut SNAP_BUF: *mut u8 = core::ptr::null_mut();
 static mut SNAP_POS: u64 = 0;
 
 /// Calls f(cache_ptr, bytes) for every contiguous KV run of positions 0..pos (head-major layout
-/// cache[l][kv_h][pos][head_dim], transformer.asm FAST_Q8), K then V, then the DeltaNet block.
+/// cache[l][kv_h][pos][head_dim] of FP16 or FP32 elements, transformer.asm FAST_Q8), K then V, then
+/// the DeltaNet block.
 fn snap_regions(pos: u64, mut f: impl FnMut(*mut u8, usize)) {
-    let hb = ctx(CTX_HEAD_DIM) * 4;
+    let hb = ctx(CTX_HEAD_DIM) * unsafe { kv_elt_bytes };
     let stride = ctx(CTX_MAX_SEQ) * hb;
     let heads = ctx(CTX_N_FULL) * ctx(CTX_N_KV_HEADS);
     for cache in [ctx(CTX_BUF_K_CACHE), ctx(CTX_BUF_V_CACHE)] {
@@ -415,6 +528,10 @@ pub fn snapshot_save(pos: u64) -> u64 {
         SNAP_POS = pos;
     }
     size
+}
+
+pub fn snapshot_pos() -> u64 {
+    unsafe { SNAP_POS }
 }
 
 /// Restore the saved prefix state. Returns the position to continue from.

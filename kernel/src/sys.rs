@@ -10,7 +10,7 @@ pub static TOTAL: AtomicU64 = AtomicU64::new(0); // usable + bootloader-reclaima
 pub static MODEL_BYTES: AtomicU64 = AtomicU64::new(0);
 pub static mut BRAND: SBuf<64> = SBuf::new();
 
-pub fn meminfo(o: &mut SBuf<1024>) {
+pub fn meminfo<const N: usize>(o: &mut SBuf<N>) {
     let (usable, total) = (USABLE.load(Relaxed) / MIB, TOTAL.load(Relaxed) / MIB);
     let used = mem::used() / MIB;
     let model = MODEL_BYTES.load(Relaxed) / MIB;
@@ -22,7 +22,7 @@ pub fn meminfo(o: &mut SBuf<1024>) {
     );
 }
 
-pub fn cpuinfo(o: &mut SBuf<1024>) {
+pub fn cpuinfo<const N: usize>(o: &mut SBuf<N>) {
     let hz = smp::TSC_HZ.load(Relaxed);
     let _ = write!(
         o,
@@ -33,7 +33,7 @@ pub fn cpuinfo(o: &mut SBuf<1024>) {
     );
 }
 
-pub fn cores(o: &mut SBuf<1024>) {
+pub fn cores<const N: usize>(o: &mut SBuf<N>) {
     let n = smp::MAX_THREADS.load(Relaxed);
     let _ = write!(
         o,
@@ -42,7 +42,7 @@ pub fn cores(o: &mut SBuf<1024>) {
     );
 }
 
-pub fn uptime(o: &mut SBuf<1024>) {
+pub fn uptime<const N: usize>(o: &mut SBuf<N>) {
     let ms = crate::log::ms_since_boot();
     let s = ms / 1000;
     let _ = write!(o, "up {}h {}m {}s ({}.{:03} s)", s / 3600, s / 60 % 60, s % 60, s, ms % 1000);
