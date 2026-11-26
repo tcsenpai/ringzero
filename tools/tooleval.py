@@ -10,6 +10,7 @@ Counted per prompt: tool calls ([tool] lines), parser errors ([tool] malformed c
 (unknown tool, unknown parameter, bad value, missing parameter), the grammar line ([grammar] ...: valid
 call / INVALID / leaves the grammar), decode speed of the rounds that made a call, whether the first call is a
 right tool, and (spike set) whether the arguments match the spike's rules (docs/spikes/toolcall/score.py).
+SLOT=N (env) sets `!set slot N` instead of 0 and keeps `/agentd log 12` (the slot's candidates) per prompt.
 SETS: comma list of spike, inos, it (default spike,inos). `it`: 10 short Italian knowledge / reasoning questions
 (docs/MODEL_CHOICE.md); `auto` is a substring pre-check of the answer, the verdict is by hand."""
 import json, os, re, socket, sys, time
@@ -88,13 +89,16 @@ def drive(host, port, mode, prompts):
 
     s.sendall(b"\r"); until(20)
     cmd(f"!set constrain {mode}")
-    cmd("!set slot 0"); cmd("!set consolidate 0")  # agentd's memory slot would carry earlier eval prompts in
+    slot = os.environ.get("SLOT", "0")  # SLOT=200: memory slot on (T35 A/B); its decisions are kept per prompt
+    cmd(f"!set slot {slot}"); cmd("!set consolidate 0")  # the slot carries earlier eval prompts in (one session)
     out = []
     for text, exp in prompts:
         cmd("/clear")
         t0 = time.time()
         txt = cmd(text)
         out.append({"text": text, "expect": exp, "out": txt.replace("\r", ""), "secs": round(time.time() - t0, 1)})
+        if slot != "0":
+            out[-1]["agentd"] = cmd("/agentd log 12").replace("\r", "")
         print(f"[{mode}] {len(out)}/{len(prompts)} {time.time() - t0:5.1f}s {text}", flush=True)
         cmd("!set temperature 0"); cmd("!set cores 8")
     s.close()  # the serial chardev takes one client at a time

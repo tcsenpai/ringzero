@@ -134,10 +134,69 @@ line (logged: "no EPISODE line in the output, no episode saved").
 - `!poweroff` could not be scripted with accept.py (it waited for a prompt that never came): `x:` steps send a line
   and read until the guest closes the connection; `w<sec>:` waits at the prompt first (idle tests).
 
+## T35: memory slot noise fix (before the beta)
+
+Problem (M4.7 A/B, docs/M47_RESULT.md): with the slot on, each fresh conversation of the eval got "the user said
+earlier: ..." lines from the earlier eval prompts and the model followed them. Measured again on the working model
+(Qwen3.5-4B q4, 8G) before the fix: in-OS exact calls 18/24 with the slot vs 22/24 without.
+
+What the logged candidates showed (`/agentd log` now has one line per candidate: id, cosine, emb / bm25 / emb+bm25,
+verdict, text): the worst noise was not low-scoring. Earlier *requests* score high against new requests of the
+same kind ("crea la cartella /home/progetti" for "crea la cartella /notes/m47": 0.71; "create notes.txt with hello"
+for "leggi /notes/todo.txt": 0.72), so no threshold separates them from real recall (M4.5: the statement 0.65-0.66,
+an episode 0.58). The rest was short files (`ciao`, `hello`, `comprare il latte`: 0.45-0.60 against almost
+anything) and BM25 hits with no meaning in common (cos 0.22-0.36).
+
+Fix (kernel/src/agentd.rs, deterministic, every decision logged):
+
+| Rule | Where | Why |
+|---|---|---|
+| a user statement becomes `[said]` only when its turn ends without a tool other than remember / forget / recall | `said_begin` / `said_tool` / `said_end` (live turns and the journal replay: a U record and its T records) | a request the agent carried out is done; logged as `said: not indexed (the turn ran a tool)` (34 of the 54 eval prompts on the 4B) |
+| `[said]` also needs a first-person word (mi, mio, mia, sono, ho, ricordati, I, my, me, remember, ...) | `said()` | the 2B answered "create notes.txt with hello" without a tool, and that line came back for every /notes request |
+| cosine >= 0.55 for an embedding hit (was 0.45), >= 0.40 for a BM25-gated hit (was: any) | `slot()` | short files and generic lines sit at 0.45-0.55 |
+| note body >= 20 characters | `slot()` | `ciao`, `hello`, `comprare il latte` |
+| not the message itself | `slot()` | the same statement typed again |
+| at most 3 recalled lines (facts are pinned, not counted) | `slot()` | cap |
+
+Not done on purpose: same-session turns are not excluded. After `/clear` the old turns are not in the context any
+more, and before a consolidation `[said]` is the only carrier of a statement made before `/clear` (consolidation
+covers the current line only); after `/compact` the M4.5 test (b) needs exactly those turns. The filters above
+remove the noise without it.
+
+A/B (`tools/tooleval.py`, constrain on, temperature 0, `/clear` per prompt, consolidation off; each run boots a
+fresh copy of the user's disk without `/sys`, the files indexed before the first prompt; `SLOT=200` keeps the
+slot's decisions per prompt; raw results on fedora in `~/coding/ringzero/build/t35/`):
+
+| Exact calls | 4B q4 slot off | 4B slot on, old rules | **4B slot on, T35** | 2B q8 slot off | 2B slot on, T35 without the first-person rule | **2B slot on, T35** |
+|---|---|---|---|---|---|---|
+| spike (30) | 22 | 23 | **22** | 21 | 20 | **20** |
+| in-OS (24) | 22 | 18 | **23** | 20 | 17 | **20** |
+| first call right, spike (25) / in-OS (22) | 22 / 19 | 19 / 16 | **22 / 20** | 22 / 19 | 21 / 17 | **21 / 19** |
+| spike exact args (15 with rules) | 9 | 8 | **9** | 9 | 8 | **8** |
+
+Slot candidates in the 4B runs: old rules kept 155, T35 kept 10 (196 below the threshold, 25 too short, 6 BM25
+below its floor). The prompts that still differ: 4B "cosa sai di me?" answered from the pinned fact
+`colore_preferito: verde` instead of calling `recall` (right answer, no call), and two "usa python" prompts that
+went right with the slot; 2B "how much free RAM and how many cores?" lost the `cpuinfo` call with
+`/demo/data.json` (cos 0.57) in the slot.
+
+Recall tests on the final build (fresh disk, both models):
+
+| Test | 4B q4 (8G) | 2B q8 (6G) |
+|---|---|---|
+| (a) "mi chiamo Cris e il mio numero preferito e 4711", `/consolidate`, `!poweroff`, boot; "come mi chiamo?" (the conversation restored from hibernation) | `remember` x2; after the boot `recall(user_name)` -> "Ti chiami Cris." | "Mi chiamo Cris." |
+| (a) `/clear`, "qual e il mio numero preferito?" (new conversation) | slot: 2 facts + statement + episode -> "Il tuo numero preferito è 4711." **PASS** | slot: fact + statement + episode -> "Il tuo numero preferito è 4711." **PASS** |
+| (b) "mia sorella si chiama Giulia e vive a Torino", `/compact`, "come si chiama mia sorella e dove vive?" | `remember` x2; slot after compaction: 4 facts + the statement -> "Tua sorella si chiama Giulia e vive a Torino." **PASS** | no `remember`; slot: fact + the statement -> "La mia sorella si chiama Giulia e vive a Torino." **PASS** (the statement carries it) |
+
+Limits: the first-person rule is a word list for Italian and English; a statement without one ("domani parto per
+Roma") is no longer a `[said]` entry, only the episode and the facts of a consolidation keep it. Indexes saved
+before this build keep their old `[said]` entries until `/index clear` (a rebuild replays the journal with the
+new rules). The thresholds are tuned on these two eval sets and the M4.5 tests, not on a larger set.
+
 ## Not done / limits
 
-- The memory slot recalls some noise: very short files (`ciao`, `comprare il latte`) score 0.45-0.51 against
-  almost any query, and BM25 matches on a name pull long file chunks in. They cost tokens, not answers, so far.
+- The memory slot recalled noise (very short files, BM25 matches on a name, earlier requests): fixed in T35
+  (above).
 - Every fact is pinned (all of them go into the slot within 120 tokens, newest first); there is no `/pin` and no
   eviction by relevance.
 - A consolidation runs only on the current conversation's context: after `/clear` the turns of the old line are

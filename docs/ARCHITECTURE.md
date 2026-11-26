@@ -16,7 +16,7 @@ flowchart TB
         BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
         FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
         FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
-        AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok), facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
+        AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35), facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
         MST["mstore.rs: /sys/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
         CON["console.rs<br/>COM1 + framebuffer glyphs"]
@@ -205,9 +205,9 @@ sequenceDiagram
     A->>D: slot(q)
     D->>D: facts, newest first, within 120 tok
     D->>X: embed the queued memory texts, then search(q): top 4
-    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...); keep cos >= 0.45 or BM25 matches, within 200 tok
+    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...); of the top 4 keep cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars, not q, at most 3, within 200 tok (each candidate logged)
     D-->>A: "[memory from earlier conversations, ...]\n- user_name: Cris\n- the user said earlier: ...\n\n" (logged: ids, cos, tokens, ms)
-    A->>D: on_user(q): journal 'U' record, "[said] q" queued (statements only)
+    A->>D: on_user(q): journal 'U' record; "[said] q" queued when the turn ends (statements with a first-person word, and only if no tool but remember / forget / recall ran)
     A->>L: user turn = slot + q, then the usual tool loop
     A->>D: on_tool / on_answer: journal 'T' / 'A' records
 ```
@@ -295,7 +295,8 @@ Legend:
   the index covers, the table of indexed files with size and mtime), then offsets, rows and texts. Loaded at boot
   in about a millisecond; any header mismatch or a bad checksum means a rebuild in idle time. Records past the
   covered store sizes, and files whose size or mtime changed on the disk, are embedded again; nothing else.
-  Entries: `[/path] chunk`, `[fact] key: value`, `[episode N] text`, `[said] user statement`.
+  Entries: `[/path] chunk`, `[fact] key: value`, `[episode N] text`, `[said] user statement` (T35: only a statement
+  with a first-person word, and not for a turn that acted with a tool; the journal replay applies the same rule).
 - **Shell**: plain text goes to the agent; `!cmd` runs a machine command (mem, cpu, cores, log, uptime,
   kbd, set, park, stats, poweroff, reboot), `/cmd` a session command (help, clear, ctx, compact, history,
   think, temp, undo, redo, retry, tree, branch, switch, save, load, drop, snap, embed, index, search, bench, fill, gen; help and

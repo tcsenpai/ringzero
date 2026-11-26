@@ -32,7 +32,16 @@ const SLICE_MS: u64 = 100;
 pub static mut SLOT_BUDGET: usize = 200;
 const FACT_BUDGET: usize = 120;
 const RECALL_K: usize = 4;
-const RECALL_MIN: f32 = 0.45;
+// T35: what a recalled note needs to enter the slot (tuned on the slot's logged candidates, docs/M45_RESULT.md).
+// Unrelated earlier prompts and short files scored 0.45-0.55 against almost any query.
+/// embedding cosine for a note found by the embedding alone
+const RECALL_MIN: f32 = 0.55;
+/// cosine floor for a note the BM25 gate brought in (a shared word, e.g. a name, with no meaning in common)
+const RECALL_MIN_BM25: f32 = 0.40;
+/// shortest note body, in characters ("ciao", "hello", "comprare il latte" carry nothing for a new message)
+const NOTE_MIN: usize = 20;
+/// recalled lines at most (facts are pinned and not counted)
+const SLOT_LINES: usize = 3;
 const MAX_FACTS: usize = 64;
 const CONS_MAX: u64 = 220;
 /// Idle seconds at the prompt before a session is consolidated (0 = only /consolidate). `!set consolidate N`.
@@ -156,12 +165,14 @@ struct St {
     waited: u64, // slices a due consolidation waited behind other jobs
     ms: [u64; 4],
     preempted: u64,
+    said: Option<String>, // T35: the last user statement, indexed as [said] once its turn ends without acting
+    acted: bool,          // that turn called a tool other than remember / forget / recall
 }
 
 static mut ST: St = St {
     on: false, facts: Vec::new(), memq: VecDeque::new(), cur: None, cons: None, saved_gen: 0, size: [0; 3],
     off: [0; 3], n_ep: 0, n_rec: [0; 3], session: String::new(), session_turns: 0, n_cons: 0, after_compact: false,
-    last_input: 0, last: None, waited: 0, ms: [0; 4], preempted: 0,
+    last_input: 0, last: None, waited: 0, ms: [0; 4], preempted: 0, said: None, acted: false,
 };
 
 fn st() -> &'static mut St {
@@ -188,7 +199,8 @@ fn fact_text(k: &str, v: &str) -> String {
 fn apply(store: usize, r: &mstore::Rec, state: bool, queue: bool, ep: u64) {
     let s = st();
     match (store, r.kind) {
-        (0, b'U') if queue && said(r.p) => s.memq.push_back(format!("[said] {}", &r.p[..crate::agent::floor_char(r.p, 600)])),
+        (0, b'U') => said_begin(r.p, queue),
+        (0, b'T') => said_tool(r.p.split(" -> ").next().unwrap_or("")),
         (1, b'S') => {
             let mut it = r.p.splitn(3, '\t');
             let (k, v, src) = (it.next().unwrap_or(""), it.next().unwrap_or(""), it.next().unwrap_or(""));
@@ -237,6 +249,7 @@ fn replay(state: bool, from: [u64; 3]) {
             ep += (r.kind == b'E') as u64;
             apply(i, &r, state, r.off >= from, ep)
         });
+        said_end();
         (r, ep)
     };
     for i in 0..3 {
@@ -385,6 +398,7 @@ fn save_index(why: &str) {
 
 /// Before poweroff / reboot: save the index if it changed and nothing is still queued.
 pub fn shutdown() {
+    said_end();
     let s = st();
     if !s.on || !embed::ready() {
         return;
@@ -402,29 +416,61 @@ pub fn shutdown() {
 // ---- hooks from agent.rs ----
 
 /// User turns that go into the index as "[said]": statements, not questions (a question states no fact and
-/// only crowds the slot with the same question asked again).
+/// only crowds the slot with the same question asked again), that speak about the user (T35: a first-person
+/// word, Italian or English). "create notes.txt with hello" that the 2B answered without a tool came back as
+/// "the user said earlier" for every /notes request; "mi chiamo Cris", "mia sorella vive a Torino" stay.
 fn said(q: &str) -> bool {
+    const SELF: [&str; 16] = ["io", "mi", "mio", "mia", "miei", "mie", "me", "sono", "ho", "ricordati", "ricorda",
+        "i", "my", "me", "mine", "remember"];
     !q.trim_end().ends_with('?')
+        && q.to_lowercase().split(|c: char| !c.is_alphanumeric()).any(|w| SELF.contains(&w))
+}
+
+// T35: a statement becomes "[said]" only when its turn ends without acting on the machine. A request the agent
+// carried out with a tool ("crea la cartella /home/x", "leggi /notes/todo.txt") is done: recalled later it only
+// pulled the model toward the old request (docs/M45_RESULT.md). Turns that only used remember / forget / recall
+// are statements about the user and stay. The same rule runs on the journal replay (U, then its T records).
+fn said_begin(q: &str, queue: bool) {
+    said_end();
+    let s = st();
+    s.said = (queue && said(q)).then(|| format!("[said] {}", &q[..crate::agent::floor_char(q, 600)]));
+    s.acted = false;
+}
+fn said_tool(name: &str) {
+    if !matches!(name, "remember" | "forget" | "recall") {
+        st().acted = true;
+    }
+}
+/// The turn ended (or the next one starts): index its statement unless the turn acted.
+fn said_end() {
+    let s = st();
+    if let Some(t) = s.said.take() {
+        if s.acted {
+            crate::dlog!("said: not indexed (the turn ran a tool): {}", &t[7..crate::agent::floor_char(&t, 70)]);
+        } else {
+            s.memq.push_back(t);
+        }
+    }
 }
 
 /// A user turn starts (journal + grounding text for facts).
 pub fn on_user(q: &str) {
     let s = st();
     append(0, b'U', q);
-    if s.on && embed::ready() && said(q) {
-        s.memq.push_back(format!("[said] {}", &q[..crate::agent::floor_char(q, 600)]));
-    }
+    said_begin(q, s.on && embed::ready());
     s.session.push_str(q);
     s.session.push('\n');
     s.session_turns += 1;
 }
 pub fn on_tool(name: &str, res: &str) {
+    said_tool(name);
     append(0, b'T', &format!("{} -> {}", name, &res[..crate::agent::floor_char(res, 1024)]));
 }
 pub fn on_answer(a: &str) {
     if !a.is_empty() {
         append(0, b'A', a);
     }
+    said_end();
 }
 pub fn on_compact(summary: &str) {
     append(0, b'C', summary);
@@ -592,14 +638,16 @@ fn tokens(t: &str) -> usize {
 }
 
 /// The memory slot for the first user message of a conversation (or after a compaction): facts, newest
-/// first, within FACT_BUDGET tokens, then recalled notes for q (cos >= RECALL_MIN or a BM25 match) up to
-/// SLOT_BUDGET tokens in all. Empty when there is nothing to say.
+/// first, within FACT_BUDGET tokens, then at most SLOT_LINES notes recalled for q (of the top RECALL_K: cos >=
+/// RECALL_MIN, or >= RECALL_MIN_BM25 for a BM25 match; NOTE_MIN characters or more; not q itself) up to
+/// SLOT_BUDGET tokens in all. Empty when there is nothing to say. Every candidate and its verdict is logged.
 pub fn slot(q: &str, why: &str, o: &mut String) {
     let s = st();
     if unsafe { SLOT_BUDGET } == 0 {
         crate::dlog!("slot ({}): off (!set slot 0)", why);
         return;
     }
+    said_end();
     let t0 = smp::rdtsc();
     let mut body = String::new();
     let mut nf = 0;
@@ -618,11 +666,27 @@ pub fn slot(q: &str, why: &str, o: &mut String) {
         let n = hits(q, &mut h);
         for x in &h[..n] {
             let t = memidx::text(x.id);
-            if t.starts_with("[fact] ") || (x.cos < RECALL_MIN && x.via == memidx::Via::Emb) {
-                continue;
-            }
             let line = format!("- {}\n", render(t, 240));
-            if tokens(SLOT_HEAD) + tokens(&body) + tokens(&line) > unsafe { SLOT_BUDGET } {
+            let note = t.split_once("] ").map_or(t, |x| x.1).trim();
+            let floor = if x.via == memidx::Via::Emb { RECALL_MIN } else { RECALL_MIN_BM25 };
+            let drop = if t.starts_with("[fact] ") {
+                Some("a fact, pinned above")
+            } else if x.cos < floor {
+                Some(if x.via == memidx::Via::Emb { "below the threshold" } else { "keyword match, below the bm25 floor" })
+            } else if note.chars().count() < NOTE_MIN {
+                Some("too short")
+            } else if t.starts_with("[said] ") && note.eq_ignore_ascii_case(q.trim()) {
+                Some("the message itself")
+            } else if nr >= SLOT_LINES {
+                Some("line cap")
+            } else if tokens(SLOT_HEAD) + tokens(&body) + tokens(&line) > unsafe { SLOT_BUDGET } {
+                Some("over the token budget")
+            } else {
+                None
+            };
+            crate::dlog!("slot cand #{} cos {:.3} {}: {} | {}", x.id, x.cos, x.via.name(), drop.unwrap_or("kept"),
+                &line[2..crate::agent::floor_char(&line, 60)].trim_end());
+            if drop.is_some() {
                 continue;
             }
             body.push_str(&line);
@@ -632,7 +696,7 @@ pub fn slot(q: &str, why: &str, o: &mut String) {
     }
     let ms = smp::tsc_to_us(smp::rdtsc() - t0) / 1000;
     if body.is_empty() {
-        crate::dlog!("slot ({}): empty (no facts, nothing recalled above {:.2}), {} ms", why, RECALL_MIN, ms);
+        crate::dlog!("slot ({}): empty (no facts, nothing recalled passed the filters), {} ms", why, ms);
         return;
     }
     o.push_str(SLOT_HEAD);
@@ -688,6 +752,7 @@ fn pick() -> Option<(Job, &'static str)> {
 
 /// One slice of the best job; called by the shell's line editor while it waits for input. true = it worked.
 pub fn idle(stop: &mut dyn FnMut() -> bool) -> bool {
+    said_end(); // at the prompt: the last turn is over (it may have ended without an answer)
     let s = st();
     let Some((job, why)) = pick() else {
         s.last = None;
@@ -1012,5 +1077,7 @@ pub fn selftest() -> bool {
     let d = crate::sys::days(1970, 1, 1) == 0 && crate::sys::days(2000, 3, 1) == 11_017 && civil(11_017) == (2000, 3, 1)
         && civil(crate::sys::days(2026, 11, 26)) == (2026, 11, 26);
     let r = render("[said] ciao", 100) == "the user said earlier: ciao" && render("[/a/b.txt] x\ny", 100) == "file /a/b.txt: x y";
-    k && v && g && d && r
+    let sd = self::said("mi chiamo Cris e il mio numero preferito e 4711") && self::said("my sister lives in Turin")
+        && !self::said("create notes.txt with hello") && !self::said("come mi chiamo?") && !self::said("imposta la lingua su italiano");
+    k && v && g && d && r && sd
 }

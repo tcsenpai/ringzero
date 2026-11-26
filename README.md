@@ -54,7 +54,11 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   36-40 s, and a cold boot reaches the prompt in about 28 s instead of 71 s (QEMU start to prompt, shared box). The key covers the model, the prefix tokens and the engine build; any change means a prefill.
 - Context compiler: the first message of every conversation, and the first turn after a compaction, gets a
   memory slot of at most 200 tokens: saved facts, then notes recalled for that message (earlier statements of the
-  user, episodes, file chunks). This fixes the M2.5 compaction recall failure.
+  user, episodes, file chunks). This fixes the M2.5 compaction recall failure. Recalled notes are filtered (T35):
+  cosine 0.55 or more (0.40 for a keyword match), 20 characters or more, at most 3 lines, not the message itself;
+  only statements about the user (a first-person word: mi, mio, sono, my, I, ...) are kept as earlier statements,
+  and not when the agent carried them out with a tool (remember / forget / recall do not count). `/agentd log` lists every
+  candidate with its score and verdict.
 - Idle work runs in one priority queue at the prompt (embed memory texts, embed file chunks, save the index,
   consolidate), in slices that any keystroke stops between engine steps. Consolidation (after 60 s idle, or
   `/consolidate`) has the 2B summarize the session into an episode and propose facts; the kernel validates them

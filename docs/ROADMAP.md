@@ -1,6 +1,6 @@
 # Roadmap
 
-Generated from the mycelium plan (`myc list --all`), 2026-11-26.
+Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 
 ```text
 
@@ -24,8 +24,8 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-26.
 │               └── ✓ 🟢 M5 Code execution: MicroPython freestanding [E1]
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
-│                           └── ○ 🟠 Beta release gate [E1] [blocked by T35]
-○ 🟠 agentd memory slot relevance fix (before beta) [E1]
+│                           └── ○ 🟠 Beta release gate [E1]
+✓ 🟠 agentd memory slot relevance fix (before beta) [E1]
 │   └── T34: Beta release gate (circular)
 ✓ 🟠 Compaction recall [E1]
 ✓ 🟠 State snapshots: design (killer feature) [E1]
