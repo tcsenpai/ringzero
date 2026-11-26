@@ -15,6 +15,10 @@ uart_16550 = "0.9.0"
 raw-cpuid = "11.6.0"
 noto-sans-mono-bitmap = { version = "0.4.0", default-features = false, features = ["size_16", "regular", "unicode-basic-latin", "unicode-latin-1-supplement", "unicode-specials"] }
 spin = "0.10.0"
+linked_list_allocator = "0.10.6"
+virtio-drivers = { version = "0.13.0", default-features = false }
+# 0.4 (unreleased on crates.io): its own no_std IO traits; 0.3.6 needs the dead core_io crate
+fatfs = { git = "https://github.com/rafalh/rust-fatfs", rev = "38b3a7950bf0e765e34286d1dfe76c519ee347e2", default-features = false, features = ["alloc", "lfn", "unicode"] }
 
 [profile.dev]
 panic = "abort"

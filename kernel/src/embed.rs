@@ -97,11 +97,21 @@ pub fn sqrt(x: f64) -> f64 {
 /// normalization, so x * w_final is enough and the forward skips the lm_head (compute_logits 0).
 /// BSP only, between whole 2B forward calls (never inside a generation step).
 pub fn embed(text: &str, is_query: bool, dim: usize, out: &mut [f32]) -> Result<Info, &'static str> {
+    let job = begin(text, is_query)?;
+    resume(job, dim, out, || false).map(|r| r.expect("not stopped"))
+}
+
+// One embedding in flight at a time; the idle indexer (fidx.rs) runs it in slices. The embedder's KV rows
+// 0..NEXT stay valid between slices as long as no other embed() starts (EPOCH changes, the job restarts).
+static mut EPOCH: u64 = 0;
+static mut N: usize = 0;
+static mut NEXT: usize = 0;
+static mut BUSY_US: u64 = 0;
+
+/// Tokenize (with the embedder's vocabulary) and start a job; returns its id for resume().
+pub fn begin(text: &str, is_query: bool) -> Result<u64, &'static str> {
     if !ready() {
         return Err("no embedder loaded");
-    }
-    if dim == 0 || dim > DIM || dim % 32 != 0 || out.len() < dim {
-        return Err("bad embedding dim");
     }
     let t0 = smp::rdtsc();
     let t = unsafe { &mut *core::ptr::addr_of_mut!(TEXT) };
@@ -112,12 +122,39 @@ pub fn embed(text: &str, is_query: bool, dim: usize, out: &mut [f32]) -> Result<
     }
     t.push(text.as_bytes()); // shortcut: texts past 8 KiB are cut here (and past MAX_TOK tokens below)
     let toks = unsafe { &mut *core::ptr::addr_of_mut!(TOKS) };
-    let (n_tok, raw_norm) = with_embedder(|| {
-        let n = llm::encode_plain(&t.b[..t.n], &mut toks[..MAX_TOK - 1]);
-        toks[n] = TOK_EOT;
-        let n = n + 1;
-        for (i, &tk) in toks[..n].iter().enumerate() {
-            unsafe { transformer_forward(tk, i as u64, 0) };
+    let n = with_embedder(|| llm::encode_plain(&t.b[..t.n], &mut toks[..MAX_TOK - 1]));
+    toks[n] = TOK_EOT;
+    unsafe {
+        EPOCH += 1;
+        (N, NEXT, BUSY_US) = (n + 1, 0, smp::tsc_to_us(smp::rdtsc() - t0));
+        Ok(EPOCH)
+    }
+}
+
+/// Run the job's forward calls until done (Some) or until stop() says so between two of them (None, call
+/// again later). Err if another embedding started in between (begin again).
+pub fn resume(job: u64, dim: usize, out: &mut [f32], mut stop: impl FnMut() -> bool) -> Result<Option<Info>, &'static str> {
+    if dim == 0 || dim > DIM || dim % 32 != 0 || out.len() < dim {
+        return Err("bad embedding dim");
+    }
+    if job != unsafe { EPOCH } {
+        return Err("preempted by another embedding");
+    }
+    let t0 = smp::rdtsc();
+    let toks = unsafe { &*core::ptr::addr_of!(TOKS) };
+    let n = unsafe { N };
+    let done = with_embedder(|| {
+        let mut i = unsafe { NEXT };
+        while i < n {
+            if stop() {
+                break;
+            }
+            unsafe { transformer_forward(toks[i], i as u64, 0) };
+            i += 1;
+        }
+        unsafe { NEXT = i };
+        if i < n {
+            return None;
         }
         let x = unsafe { core::slice::from_raw_parts(ctx(CTX_BUF_X) as *const f32, DIM) };
         let w = unsafe { core::slice::from_raw_parts(ctx(CTX_FINAL_NORM_PTR) as *const f32, DIM) };
@@ -126,11 +163,14 @@ pub fn embed(text: &str, is_query: bool, dim: usize, out: &mut [f32]) -> Result<
             out[i] = x[i] * w[i];
             ss += out[i] as f64 * out[i] as f64;
         }
-        (n, sqrt(ss))
+        Some(sqrt(ss))
     });
+    unsafe { BUSY_US += smp::tsc_to_us(smp::rdtsc() - t0) };
+    let Some(raw_norm) = done else { return Ok(None) };
     let inv = if raw_norm > 0.0 { 1.0 / raw_norm } else { 0.0 };
     out[..dim].iter_mut().for_each(|v| *v = (*v as f64 * inv) as f32);
-    Ok(Info { n_tok, us: smp::tsc_to_us(smp::rdtsc() - t0), raw_norm: raw_norm as f32 })
+    unsafe { EPOCH += 1 }; // done: the job id is spent
+    Ok(Some(Info { n_tok: n, us: unsafe { BUSY_US }, raw_norm: raw_norm as f32 }))
 }
 
 /// Boot: one embedding through the context swap (the 2B's golden self-test runs after it).

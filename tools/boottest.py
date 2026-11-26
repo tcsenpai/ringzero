@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """boottest.py ISO bios|uefi OUTDIR [SMP] [CMD ...] : boot ISO in QEMU/KVM headless (guest RAM MEM=6G, the
 default since the embedder), log serial with host timestamps, type each CMD at the ringzero prompt (one per prompt), stop at the prompt after the
-last CMD (or at PANIC/EXCEPTION/M0 FAIL, or 900 s), save a screenshot as PNG."""
+last CMD (or at PANIC/EXCEPTION/M0 FAIL, or 900 s), save a screenshot as PNG. DISK=build/disk.img attaches a
+virtio-blk data disk like the make run targets."""
 import os, re, shutil, socket, subprocess, sys, time
 from screenshot import mon, ppm_to_png
 
@@ -17,6 +18,8 @@ ser_path, mon_path = f"{out}/ser", f"{out}/mon"
 cmd = ["qemu-system-x86_64", "-enable-kvm", "-cpu", "host", "-M", "q35", "-m", mem, "-smp", smp,
        "-cdrom", iso, "-boot", "d", "-vga", "std", "-display", "none", "-no-reboot",
        "-serial", f"unix:{ser_path},server,nowait", "-monitor", f"unix:{mon_path},server,nowait"]
+if os.environ.get("DISK"):
+    cmd += ["-drive", f"file={os.environ['DISK']},if=none,id=disk0,format=raw", "-device", "virtio-blk-pci,drive=disk0"]
 if mode == "uefi":
     shutil.copy("/usr/share/edk2/ovmf/OVMF_VARS.fd", f"{out}/vars.fd")
     cmd += ["-drive", "if=pflash,format=raw,readonly=on,file=/usr/share/edk2/ovmf/OVMF_CODE.fd",

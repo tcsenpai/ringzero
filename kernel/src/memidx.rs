@@ -4,7 +4,8 @@
 // (docs/spikes/EMBEDDER.md): BM25 joins the ranking (RRF) only when the query looks like an identifier or path,
 // or when its top BM25 hit is strong; otherwise the embedding order stands. API (add, search, text, len, clear,
 // set_dim) is what /index, /search, the agent's search_memory tool and the next agentd milestone use.
-// Volatile: the index lives in RAM and is gone at reboot (persistence comes with virtio-blk, M4/M4.5).
+// Volatile: the index lives in RAM and is gone at reboot (index persistence is M4.5). Files written through the
+// shell or the agent are chunked into it in idle time by fidx.rs (texts "[/path] chunk").
 use crate::embed::{self, DIM};
 use crate::engine::{ctx, matmul_set_fp16, tp_matmul_q8_0};
 use crate::smp;
@@ -252,17 +253,31 @@ pub struct Added {
 
 /// Embed a document and store it. Err if the index or its text space is full.
 pub fn add(text: &str) -> Result<Added, &'static str> {
+    room(text)?;
+    let v = unsafe { &mut *core::ptr::addr_of_mut!(VEC) };
+    let info = embed::embed(text.trim(), false, ix().dim, v)?;
+    store(text, &v[..ix().dim], info)
+}
+
+/// Err if `text` would not fit (checked before spending time on its embedding).
+pub fn room(text: &str) -> Result<(), &'static str> {
     let x = ix();
     let text = text.trim();
     if text.is_empty() {
         return Err("empty text");
     }
-    let text = &text[..crate::agent::floor_char(text, TEXT_MAX)];
-    if x.n == CAP || x.text_n + text.len() > TEXT_BYTES {
+    if x.n == CAP || x.text_n + text.len().min(TEXT_MAX) > TEXT_BYTES {
         return Err("memory index full");
     }
-    let v = unsafe { &mut *core::ptr::addr_of_mut!(VEC) };
-    let info = embed::embed(text, false, x.dim, v)?;
+    Ok(())
+}
+
+/// Store a text with its embedding v (len = dim()): one Q8_0 row + the text.
+pub fn store(text: &str, v: &[f32], info: embed::Info) -> Result<Added, &'static str> {
+    room(text)?;
+    let x = ix();
+    let text = text.trim();
+    let text = &text[..crate::agent::floor_char(text, TEXT_MAX)];
     let st = stride(x.dim);
     let rows = unsafe { &mut *core::ptr::addr_of_mut!(ROWS) };
     quantize(&v[..x.dim], &mut rows[x.n * st..(x.n + 1) * st]);
@@ -275,6 +290,30 @@ pub fn add(text: &str) -> Result<Added, &'static str> {
     x.embed_us += info.us;
     x.embed_tok += info.n_tok as u64;
     Ok(Added { id: x.n - 1, info })
+}
+
+/// Keep only the entries whose text passes `keep` (file chunks of a rewritten or removed file); returns how
+/// many were dropped. Ids after a dropped entry shift down.
+pub fn retain(mut keep: impl FnMut(&str) -> bool) -> usize {
+    let x = ix();
+    let st = stride(x.dim);
+    let (rows, t) = unsafe { (&mut *core::ptr::addr_of_mut!(ROWS), &mut *core::ptr::addr_of_mut!(TXT)) };
+    let (mut w, mut tw) = (0, 0);
+    for r in 0..x.n {
+        let (a, b) = (x.off[r] as usize, x.off[r + 1] as usize);
+        if !keep(core::str::from_utf8(&t[a..b]).unwrap_or("")) {
+            continue;
+        }
+        rows.copy_within(r * st..(r + 1) * st, w * st);
+        t.copy_within(a..b, tw);
+        x.off[w] = tw as u32;
+        tw += b - a;
+        w += 1;
+    }
+    x.off[w] = tw as u32;
+    let dropped = x.n - w;
+    (x.n, x.text_n) = (w, tw);
+    dropped
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -388,10 +427,12 @@ pub fn stats<const N: usize>(o: &mut crate::log::SBuf<N>) {
         let _ = write!(o, ", embed avg {} ms/entry ({} tok/entry, {} ms per 100 tok)", x.embed_us / x.n as u64 / 1000,
             x.embed_tok / x.n as u64, x.embed_us / 10 / x.embed_tok.max(1));
     }
-    let _ = write!(o, "; RAM only, lost at reboot");
+    let _ = write!(o, "; RAM only, lost at reboot; ");
+    crate::fidx::stats(o);
 }
 
-/// Boot self-check of the pure-Rust parts (fp16, Q8_0 round trip, ln, identifier gate).
+/// Boot self-check of the pure-Rust parts (fp16, Q8_0 round trip, ln, identifier gate, retain); run on the
+/// empty index at boot.
 pub fn selftest() -> bool {
     let f16 = [1.0f32, 0.5, 1e-3, 6.1e-5, 65504.0, -2.0].iter().all(|&v| {
         let r = f16_f32(f16_bits(v));
@@ -405,5 +446,10 @@ pub fn selftest() -> bool {
     let l = (ln(10.0) - 2.302_585_093).abs() < 1e-9 && (ln(0.25) + 1.386_294_361).abs() < 1e-9;
     let g = identifier_like("notes/todo.md") && identifier_like("HL-L2350DW") && identifier_like("JLPT")
         && identifier_like("casa-wifi") && !identifier_like("how are my files backed up?") && !identifier_like("restic Backblaze");
-    f16 && q8 && l && g
+    let z = [0.0f32; DIM];
+    let info = || embed::Info { n_tok: 0, us: 0, raw_norm: 0.0 };
+    ["[/a/x] one", "[/b] two", "[/a/y] three"].iter().for_each(|t| { let _ = store(t, &z[..ix().dim], info()); });
+    let r = retain(|t| !t.starts_with("[/a/")) == 2 && len() == 1 && text(0) == "[/b] two";
+    clear();
+    f16 && q8 && l && g && r
 }

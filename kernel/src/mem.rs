@@ -25,13 +25,23 @@ fn pt_alloc() -> u64 {
 
 /// Identity-map [phys, phys+len) (rounded out to 2 MiB) in the lower half, writable, write-back.
 pub fn map_low(phys: u64, len: u64) {
+    map(phys, len, 0x83); // present | writable | 2 MiB
+}
+
+/// Device MMIO (PCI BARs): identity map like map_low, uncached (PCD | PWT). BSP only, after the APs run:
+/// the APs never touch these pages, so no TLB shootdown is needed.
+pub fn map_mmio(phys: u64, len: u64) {
+    map(phys, len, 0x9b);
+}
+
+fn map(phys: u64, len: u64, flags: u64) {
     let hhdm = HHDM.load(Relaxed);
     let mut cr3: u64;
     unsafe { asm!("mov {}, cr3", out(reg) cr3, options(nomem, nostack)) };
     let ent = |table: u64, i: u64| (hhdm + (table & ADDR) + i * 8) as *mut u64;
     let mut a = phys & !(MB2 - 1);
     while a < phys + len {
-        assert!(a < 1 << 39, "map_low: only the first 512 GiB");
+        assert!(a < 1 << 47, "map: lower half only");
         unsafe {
             let l4 = ent(cr3, a >> 39 & 511);
             if *l4 & 1 == 0 {
@@ -42,7 +52,7 @@ pub fn map_low(phys: u64, len: u64) {
                 *l3 = pt_alloc() | 3;
             }
             assert!(*l3 & 0x80 == 0, "map_low: 1 GiB page already there");
-            *ent(*l3, a >> 21 & 511) = a | 0x83; // present | writable | 2 MiB
+            *ent(*l3, a >> 21 & 511) = a | flags;
         }
         a += MB2;
     }
@@ -53,13 +63,28 @@ pub fn map_low(phys: u64, len: u64) {
 pub fn init(hhdm: u64, phys: u64, len: u64) {
     HHDM.store(hhdm, Relaxed);
     PT_NEXT.store(phys, Relaxed);
-    PT_END.store(phys + 64 * 1024, Relaxed);
-    let start = (phys + 64 * 1024 + MB2 - 1) & !(MB2 - 1);
+    PT_END.store(phys + 256 * 1024, Relaxed);
+    let start = (phys + 256 * 1024 + MB2 - 1) & !(MB2 - 1);
     let end = (phys + len) & !(MB2 - 1);
     map_low(start, end - start);
     ARENA_BASE.store(start, Relaxed);
     ARENA_CUR.store(start, Relaxed);
     ARENA_END.store(end, Relaxed);
+}
+
+// Kernel heap (alloc, for the FAT driver and the file indexer): a fixed slice of the arena, taken at boot.
+#[global_allocator]
+static HEAP: linked_list_allocator::LockedHeap = linked_list_allocator::LockedHeap::empty();
+pub const HEAP_BYTES: usize = 16 << 20;
+
+pub fn heap_init() {
+    let p = sys_mmap_anon(HEAP_BYTES as u64);
+    assert!((p as i64) > 0, "heap: arena full");
+    unsafe { HEAP.lock().init(p, HEAP_BYTES) };
+}
+
+pub fn heap_used() -> usize {
+    HEAP.lock().used()
 }
 
 pub fn used() -> u64 {

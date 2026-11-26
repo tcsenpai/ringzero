@@ -19,7 +19,7 @@ or to act on it, and never invent numbers. Reply in English or in Italian, match
 user's latest message, briefly, in plain text without markdown headers.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
-const TOOLS: [&str; 9] = [
+const TOOLS: [&str; 14] = [
     r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: free, used and total RAM in MiB.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does.", "parameters": {"type": "object", "properties": {}}}}"#,
@@ -28,7 +28,12 @@ const TOOLS: [&str; 9] = [
     r#"{"type": "function", "function": {"name": "poweroff", "description": "Shut down the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "reboot", "description": "Reboot the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "set_setting", "description": "Change a system setting. temperature: sampling temperature, 0 = greedy. cores: CPU cores used for inference. keyboard: PS/2 keyboard layout, us or it.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "enum": ["temperature", "cores", "keyboard"]}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
-    r#"{"type": "function", "function": {"name": "search_memory", "description": "Search the memory index (notes about the user and this machine) by meaning and keywords. Returns the best matching notes with scores.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "what to look for, as a question or keywords"}}, "required": ["query"]}}}"#,
+    r#"{"type": "function", "function": {"name": "search_memory", "description": "Search the memory index (notes about the user and this machine, files on the disk) by meaning and keywords. Returns the best matching notes with scores.", "parameters": {"type": "object", "properties": {"query": {"type": "string", "description": "what to look for, as a question or keywords"}}, "required": ["query"]}}}"#,
+    r#"{"type": "function", "function": {"name": "ls", "description": "List a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "cat", "description": "Read a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "write_file", "description": "Create or replace a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}}"#,
+    r#"{"type": "function", "function": {"name": "mkdir", "description": "Create a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "rm", "description": "Delete a file or an empty directory (asks the user).", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
 ];
 
 enum Ty {
@@ -37,7 +42,7 @@ enum Ty {
 }
 
 // (name, params (name, type, required)), same order and content as TOOLS
-const SPECS: [(&str, &[(&str, Ty, bool)]); 9] = [
+const SPECS: [(&str, &[(&str, Ty, bool)]); 14] = [
     ("meminfo", &[]),
     ("cpuinfo", &[]),
     ("list_cores", &[]),
@@ -47,6 +52,11 @@ const SPECS: [(&str, &[(&str, Ty, bool)]); 9] = [
     ("reboot", &[]),
     ("set_setting", &[("key", Ty::Str(&["temperature", "cores", "keyboard"]), true), ("value", Ty::Str(&[]), true)]),
     ("search_memory", &[("query", Ty::Str(&[]), true)]),
+    ("ls", &[("path", Ty::Str(&[]), true)]),
+    ("cat", &[("path", Ty::Str(&[]), true)]),
+    ("write_file", &[("path", Ty::Str(&[]), true), ("content", Ty::Str(&[]), true)]),
+    ("mkdir", &[("path", Ty::Str(&[]), true)]),
+    ("rm", &[("path", Ty::Str(&[]), true)]),
 ];
 
 const TEMPLATE_TOOLS_HEAD: &str = "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>";
@@ -409,6 +419,11 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
                 }
             }
         }
+        "ls" | "cat" | "write_file" | "mkdir" | "rm" => {
+            if let Err(e) = fs_tool(c, o, fx) {
+                let _ = write!(o, "error: {}", e);
+            }
+        }
         "set_setting" => {
             let (k, v) = (arg(c, "key").unwrap_or(""), arg(c, "value").unwrap_or(""));
             if shell::set_setting(k, v, o) {
@@ -417,6 +432,64 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
         }
         _ => {}
     }
+}
+
+/// The disk tools. Paths are checked by fs::check (absolute, no '..'); rm always asks the human.
+fn fs_tool<const N: usize>(c: &Call, o: &mut SBuf<N>, fx: &mut SBuf<160>) -> Result<(), &'static str> {
+    use crate::{fidx, fs};
+    let p = fs::canon(arg(c, "path").unwrap_or(""))?;
+    let mut note = |what: &str| {
+        let _ = write!(fx, "{}{} {}", if fx.n > 0 { ", " } else { "" }, what, p);
+    };
+    match c.name {
+        "ls" => {
+            if fs::ls(&p, o)? == 0 {
+                let _ = write!(o, "(empty directory)");
+            }
+        }
+        "cat" => {
+            let (b, size) = fs::read(&p, 0, RES_CAP - 256)?;
+            if !fs::is_text(&b) {
+                return Err("not a text file");
+            }
+            o.push(&b);
+            if (b.len() as u64) < size {
+                let _ = write!(o, "\n[... truncated by the kernel: first {} of {} bytes]", b.len(), size);
+            }
+        }
+        "write_file" => {
+            let data = arg(c, "content").unwrap_or("");
+            fs::write(&p, data.as_bytes())?;
+            fidx::enqueue(&p, data.as_bytes());
+            note("write_file");
+            let _ = write!(o, "wrote {} bytes to {}", data.len(), p);
+        }
+        "mkdir" => {
+            let made = fs::mkdir(&p)?;
+            if made {
+                note("mkdir");
+            }
+            let _ = write!(o, "{} {}", p, if made { "created" } else { "already exists" });
+        }
+        _ => {
+            let (dir, k) = fs::stat(&p)?;
+            if dir && k > 0 {
+                return Err("directory is not empty; the agent removes only files and empty directories");
+            }
+            let mut q = SBuf::<320>::new();
+            let _ = write!(q, "\n[agent] wants to delete {} {}{}. Proceed?", if dir { "directory" } else { "file" }, p,
+                if dir { alloc::string::String::new() } else { alloc::format!(" ({} B)", k) });
+            if shell::confirm(q.as_str()) {
+                fs::rm(&p, false)?;
+                fidx::forget(&p);
+                note("rm");
+                let _ = write!(o, "deleted {}", p);
+            } else {
+                let _ = write!(o, "cancelled: the user answered no, {} is kept", p);
+            }
+        }
+    }
+    Ok(())
 }
 
 /// One user turn at the shell.

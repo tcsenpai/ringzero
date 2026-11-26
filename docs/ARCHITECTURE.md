@@ -1,4 +1,4 @@
-# ringzero architecture (as of the embedder milestone, edition ringzero Qwen35@2b-Qwen3@0.6b)
+# ringzero architecture (as of M4 disk + filesystem, edition ringzero Qwen35@2b-Qwen3@0.6b)
 
 ## Diagram
 
@@ -12,7 +12,10 @@ flowchart TB
     subgraph K["Rust no_std kernel (ring 0, soft-float)"]
         KMAIN["main.rs kmain<br/>boot sequence"]
         IDT["idt.rs<br/>exceptions, wake IPI, idle timer"]
-        MEM["mem.rs<br/>bump arena, lower-half identity map"]
+        MEM["mem.rs<br/>bump arena, lower-half identity map,<br/>uncached MMIO map, 16 MiB kernel heap (linked_list_allocator)"]
+        BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
+        FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount)"]
+        FIDX["fidx.rs: file indexer<br/>queue of written text files, ~1000 B chunks '[/path] text',<br/>idle slices <= 100 ms, preempted by input between forward calls"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
         CON["console.rs<br/>COM1 + framebuffer glyphs"]
         KBD["kbd.rs<br/>PS/2 set 1, layouts us / it, AltGr, Ctrl"]
@@ -44,10 +47,22 @@ flowchart TB
         PS2["8042 PS/2<br/>(VNC keys)"]
         GOP["framebuffer<br/>(VNC :1)"]
         LAPIC["x2APIC / TSC-deadline"]
+        VBLK["virtio-blk-pci<br/>build/disk.img (512 MiB FAT32)"]
         ACPI["ICH9 PM (S5), 8042 reset"]
     end
 
-    KMAIN --> IDT & MEM & SMP & CON & LLM & EMB & AG & SH
+    KMAIN --> IDT & MEM & SMP & CON & FS & LLM & EMB & AG & SH
+    SH -- "!ls !cat !write !mkdir !rm !df !sync" --> FS
+    AG -- "ls, cat, write_file, mkdir, rm (y/N) tools" --> FS
+    SH -- "!write, !rm" --> FIDX
+    AG -- "write_file, rm" --> FIDX
+    SH -- "idle at the prompt: one slice" --> FIDX
+    FIDX -- "read chunk" --> FS
+    FIDX -- "embed::begin / resume (stop between forward calls)" --> EMB
+    FIDX -- "store chunk row, retain (drop old chunks)" --> IDX
+    FS --> BLK --> VBLK
+    BLK -- "DMA pages, bounce ring, map_mmio" --> MEM
+    SYS -- "sync before poweroff / reboot" --> FS
     SH -- "!cmd" --> SYS
     SH -- "/embed /index /search" --> IDX
     AG -- "search_memory tool<br/>(between 2B forward calls)" --> IDX

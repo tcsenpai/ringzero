@@ -52,6 +52,12 @@ fn poll_input() {
     }
 }
 
+/// Input waiting (a byte or a Ctrl-C), without taking it: ends an idle-indexer slice.
+fn input_waiting() -> bool {
+    poll_input();
+    unsafe { TA_HEAD != TA_TAIL || INTR }
+}
+
 /// True once per Ctrl-C. Called between tokens.
 pub fn poll_intr() -> bool {
     poll_input();
@@ -105,6 +111,13 @@ const CMDS: &[Cmd] = &[
     c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
+    c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
+    c("cat", BANG, &[], "PATH  print a file"),
+    c("write", BANG, &[], "PATH TEXT  create or replace a file (\\n in TEXT = new line)"),
+    c("mkdir", BANG, &[], "PATH  create a directory (and missing parents)"),
+    c("rm", BANG, &["-r"], "[-r] PATH  delete a file, or a directory with -r (asks y/N)"),
+    c("df", BANG, &[], "disk size and free space"),
+    c("sync", BANG, &[], "flush the disk (poweroff and reboot do it too)"),
     c("poweroff", BANG, &[], "power off now"),
     c("reboot", BANG, &[], "reboot now"),
     c("clear", SLASH, &[], "clear the screen, new conversation"),
@@ -261,6 +274,10 @@ pub fn readline(buf: &mut [u8], prompt: Option<&str>) -> usize {
                 if let (Some(p), 1) = (prompt, n) {
                     suggest(p, &buf[..1]);
                 }
+            }
+            // at the shell prompt only (not in a y/N question): a slice of file indexing, ended by any input
+            if prompt.is_some() && crate::fidx::idle(&mut input_waiting) {
+                continue;
             }
             smp::idle_wait();
             continue;
@@ -513,13 +530,82 @@ fn search_cmd(q: &str) {
         Ok(f) => {
             for (i, x) in h[..f.n].iter().enumerate() {
                 let t = memidx::text(x.id);
-                println!("{}. #{:<4} cos {:.3}  bm25 {:>5.2}  {:<8} {}", i + 1, x.id, x.cos, x.bm25, x.via.name(), &t[..agent::floor_char(t, 100)]);
+                let t = t[..agent::floor_char(t, 100)].replace('\n', " ");
+                println!("{}. #{:<4} cos {:.3}  bm25 {:>5.2}  {:<8} {}", i + 1, x.id, x.cos, x.bm25, x.via.name(), t);
             }
             println!("[search] {} entries, dim {}, query {} tok embedded in {}.{:03} ms, search {} us, BM25 {}",
                 memidx::len(), memidx::dim(), f.embed.n_tok, f.embed.us / 1000, f.embed.us % 1000, f.search_us,
                 if f.gate.is_empty() { "not used (embedding order)" } else { f.gate });
         }
         Err(m) => println!("[search] {}", m),
+    }
+}
+
+/// `!ls !cat !write !mkdir !rm !df !sync`
+fn fs_cmd(name: &str, arg: &str) {
+    use crate::{fidx, fs};
+    let r: Result<(), &str> = (|| {
+        match name {
+            "ls" => {
+                let p = if arg.is_empty() { "/" } else { arg };
+                let mut o = alloc::string::String::new();
+                let n = fs::ls(p, &mut o)?;
+                println!("{}", if n == 0 { "(empty)" } else { o.as_str() });
+            }
+            "cat" => {
+                let (b, size) = fs::read(arg, 0, 64 << 10)?;
+                println!("{}", alloc::string::String::from_utf8_lossy(&b));
+                if (b.len() as u64) < size {
+                    println!("[fs] first {} of {} bytes shown", b.len(), size);
+                }
+            }
+            "write" => {
+                let (p, text) = arg.split_once(' ').unwrap_or((arg, ""));
+                let p = fs::canon(p)?;
+                let data = text.trim().replace("\\n", "\n");
+                fs::write(&p, data.as_bytes())?;
+                fidx::enqueue(&p, data.as_bytes());
+                println!("[fs] wrote {} bytes to {}{}", data.len(), p, if fidx::pending() { " (queued for the memory index)" } else { "" });
+            }
+            "mkdir" => {
+                let p = fs::canon(arg)?;
+                println!("[fs] {} {}", p, if fs::mkdir(&p)? { "created" } else { "already exists" });
+            }
+            "rm" => {
+                let (rec, p) = match arg.split_once(' ') {
+                    Some(("-r", p)) => (true, p.trim()),
+                    _ => (false, arg),
+                };
+                let p = fs::canon(p)?;
+                let (dir, k) = fs::stat(&p)?;
+                if dir && k > 0 && !rec {
+                    return Err("directory is not empty (use !rm -r)");
+                }
+                let mut q = SBuf::<320>::new();
+                let _ = if dir { write!(q, "delete directory {}{}?", p, if k > 0 { alloc::format!(" and the {} entries inside", k) } else { alloc::string::String::new() }) }
+                    else { write!(q, "delete file {} ({} B)?", p, k) };
+                if confirm(q.as_str()) {
+                    fs::rm(&p, rec)?;
+                    let n = fidx::forget(&p);
+                    println!("[fs] deleted {}{}", p, if n > 0 { alloc::format!(" ({} index chunks dropped)", n) } else { alloc::string::String::new() });
+                } else {
+                    println!("[fs] kept {}", p);
+                }
+            }
+            "df" => {
+                let mut o = SBuf::<256>::new();
+                fs::df(&mut o);
+                println!("[fs] {}", o.as_str());
+            }
+            _ => {
+                fs::sync()?;
+                println!("[fs] synced");
+            }
+        }
+        Ok(())
+    })();
+    if let Err(e) = r {
+        println!("[fs] {}: {}", name, e);
     }
 }
 
@@ -622,8 +708,8 @@ pub fn run() -> ! {
                 }
             }
             "stats" => println!(
-                "[stats] threads {}, parked now {}, wake IPIs {}, arena used {} MiB, agent ctx {}/{} ({}%), KV {}, kbd {}",
-                smp::threads(), smp::parked(), smp::wakeups(), crate::mem::used() >> 20, agent::pos(), llm::ctx_max_seq(),
+                "[stats] threads {}, parked now {}, wake IPIs {}, arena used {} MiB, heap used {} KiB, agent ctx {}/{} ({}%), KV {}, kbd {}",
+                smp::threads(), smp::parked(), smp::wakeups(), crate::mem::used() >> 20, crate::mem::heap_used() >> 10, agent::pos(), llm::ctx_max_seq(),
                 agent::pos() * 100 / llm::ctx_max_seq().max(1), llm::kv_type(), kbd::layout()
             ),
             "kbd" | "set" | "temp" | "think" => {
@@ -668,6 +754,7 @@ pub fn run() -> ! {
             "save" => snap::save_cmd(arg),
             "switch" | "load" => snap::switch(arg, c.name),
             "drop" => snap::drop_cmd(arg),
+            "ls" | "cat" | "write" | "mkdir" | "rm" | "df" | "sync" => fs_cmd(c.name, arg),
             "poweroff" => sys::poweroff(),
             "reboot" => sys::reboot(),
             _ => {}

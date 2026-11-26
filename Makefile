@@ -8,14 +8,20 @@ GUEST_MEM  ?= 6G
 OVMF_CODE  ?= /usr/share/edk2/ovmf/OVMF_CODE.fd
 OVMF_VARS  ?= /usr/share/edk2/ovmf/OVMF_VARS.fd
 QEMU_DISPLAY ?= none
+# FAT32 data disk (virtio-blk, mounted at / in the guest): `make disk` creates it once and never overwrites it
+DISK       ?= build/disk.img
+DISK_MB    ?= 512
+# run-local's own disk, so it can run next to run-remote (QEMU's image lock refuses two writers on one file)
+LOCAL_DISK ?= build/disk-local.img
+DRIVE   = -drive file=$(1),if=none,id=disk0,format=raw -device virtio-blk-pci,drive=disk0
 
 BUILD  := build
 KERNEL := kernel/target/x86_64-unknown-none/release/ringzero-kernel
 ISO    := $(BUILD)/ringzero.iso
 QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp 8 \
-          -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot
+          -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot $(call DRIVE,$(DISK))
 
-.PHONY: kernel iso model run-bios run-uefi run-remote clean
+.PHONY: kernel iso model disk run-bios run-uefi run-remote run-local clean
 .DELETE_ON_ERROR:
 
 # Qwen3.5-2B -> $(MODEL) and Qwen3-Embedding-0.6B -> $(EMBED) from Hugging Face, each skipped when the .asmbin
@@ -50,10 +56,19 @@ iso: kernel $(BUILD)/limine/limine
 	$(BUILD)/limine/limine bios-install $(ISO)
 	rm -rf $(BUILD)/iso_root
 
-run-bios: iso
+# whole-volume FAT32, no partition table (mtools on the host: mdir -i build/disk.img ::/)
+disk: $(DISK)
+$(BUILD)/%.img:
+	mkdir -p $(BUILD)
+	@if [ -e $@ ]; then echo "$@ exists, not touching it"; exit 0; fi; \
+	 truncate -s $(DISK_MB)M $@.tmp && \
+	 { mkfs.vfat -F 32 -n RINGZERO $@.tmp >/dev/null || mformat -F -v RINGZERO -i $@.tmp ::; } && mv -n $@.tmp $@ && \
+	 echo "created $@ ($(DISK_MB) MiB FAT32)"
+
+run-bios: iso $(DISK)
 	$(QEMU)
 
-run-uefi: iso
+run-uefi: iso $(DISK)
 	cp $(OVMF_VARS) $(BUILD)/ovmf_vars.fd
 	$(QEMU) -drive if=pflash,format=raw,readonly=on,file=$(OVMF_CODE) \
 	        -drive if=pflash,format=raw,file=$(BUILD)/ovmf_vars.fd
@@ -74,14 +89,26 @@ VNC_KEYMAP ?= $(BUILD)/it-ringzero
 $(BUILD)/it-ringzero: tools/keymaps/it-altgr
 	mkdir -p $(BUILD) && cat $(QEMU_KEYMAPS)/it $< > $@
 
-run-remote: iso $(filter $(BUILD)/%,$(VNC_KEYMAP))
+run-remote: iso $(DISK) $(filter $(BUILD)/%,$(VNC_KEYMAP))
 	@avail=$$(awk '/MemAvailable/ {print int($$2/1024)}' /proc/meminfo); \
 	 if [ $$avail -lt 8192 ]; then echo "refusing: only $$avail MiB available (want > 8192 for a $(GUEST_MEM) guest)"; exit 1; fi
 	qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp $(REMOTE_SMP) \
 	    -cdrom $(ISO) -boot d -no-reboot -vga std \
 	    -object secret,id=vncpw,data=$(VNC_PASS) -display vnc=0.0.0.0:$(REMOTE_VNC),password-secret=vncpw -k $(VNC_KEYMAP) \
 	    -chardev socket,id=ser0,host=0.0.0.0,port=$(REMOTE_PORT),server=on,wait=off,logfile=$(BUILD)/$(REMOTE_NAME)-serial.log,logappend=on \
-	    -serial chardev:ser0 -monitor unix:$(BUILD)/$(REMOTE_NAME)-monitor.sock,server,nowait
+	    -serial chardev:ser0 -monitor unix:$(BUILD)/$(REMOTE_NAME)-monitor.sock,server,nowait $(call DRIVE,$(DISK))
+
+# The same VM in a QEMU window on the Fedora desktop (PS/2 keys from the window, guest layout `!kbd it|us`),
+# serial on this terminal (Ctrl-C goes to the guest; close the window to quit) and in build/local-serial.log.
+# Own disk image by default; LOCAL_DISK=build/disk.img shares run-remote's disk while run-remote is stopped.
+LOCAL_DISPLAY ?= gtk
+run-local: iso $(LOCAL_DISK)
+	@avail=$$(awk '/MemAvailable/ {print int($$2/1024)}' /proc/meminfo); \
+	 if [ $$avail -lt 8192 ]; then echo "refusing: only $$avail MiB available (want > 8192 for a $(GUEST_MEM) guest)"; exit 1; fi
+	qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp $(REMOTE_SMP) \
+	    -cdrom $(ISO) -boot d -no-reboot -vga std -display $(LOCAL_DISPLAY) -name ringzero \
+	    -chardev stdio,id=ser0,signal=off,logfile=$(BUILD)/local-serial.log,logappend=on -serial chardev:ser0 \
+	    -monitor unix:$(BUILD)/local-monitor.sock,server,nowait $(call DRIVE,$(LOCAL_DISK))
 
 clean:
 	rm -rf $(BUILD) kernel/target

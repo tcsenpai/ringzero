@@ -6,7 +6,7 @@ to it on the same engine for a memory index. The inference engine is the NASM
 assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
-Status: **Embedder in kernel** (edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
+Status: **M4 disk + filesystem** (edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
 uptime, settings, poweroff/reboot with confirmation) in its native tool format. `!cmd` runs a machine
@@ -21,8 +21,18 @@ whole forward calls, so the 2B's state is never touched. `/embed [-q] TEXT` prin
 6 ms per token, 0.61 s per 100 tokens; cosine >= 0.9986 against the HF fp32 model), `/index add TEXT` stores a
 note in the RAM memory index (Q8_0 rows), `/search QUERY` returns the top 5 by embedding similarity, with BM25
 joining only for identifier-like queries or a strong keyword match, and shows which signal matched. The agent
-has a `search_memory` tool over the same index. The index lives in RAM (lost at reboot) until the disk
-milestone. Results: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md).
+has a `search_memory` tool over the same index. The index lives in RAM (lost at reboot; persistence is M4.5).
+Results: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md).
+
+Disk (M4): a virtio-blk disk (`build/disk.img`, 512 MiB FAT32, made once by `make disk`) is mounted at `/` at
+boot; the banner prints its size and free space. Shell: `!ls [PATH]`, `!cat PATH`, `!write PATH TEXT` (`\n` =
+new line, parents created), `!mkdir PATH`, `!rm [-r] PATH` (asks y/N), `!df`, `!sync` (poweroff and reboot sync
+too). The agent has `ls`, `cat` (8 KiB tool cap), `write_file`, `mkdir` and `rm` (always asks the human y/N);
+paths must be absolute, without `.` or `..`, at most 255 bytes, files at most 64 KiB. Text files written through
+the shell or the agent are chunked (~1000 bytes, ~200-250 tokens) into the memory index in idle time at the
+prompt, in slices that any keystroke or Ctrl-C ends within one embedder forward call; `/index stats` shows the
+queue, and `/search` or `search_memory` return the chunks as `[/path] text`. Results:
+[docs/M4_RESULT.md](docs/M4_RESULT.md).
 
 Engine state snapshots: every finished turn is saved as a point (`#7`) in a 1 GiB pool (KV rows of the
 turn + the 19.3 MiB DeltaNet state, about 21 MiB per short turn; going back costs about 0.6 ms). The
@@ -34,7 +44,7 @@ Only the model goes back: tool side effects stay, and `/undo` says so. Design:
 [docs/design/SNAPSHOTS.md](docs/design/SNAPSHOTS.md).
 
 Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to the
-remote instance: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md) (earlier: [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
+remote instance: [docs/M4_RESULT.md](docs/M4_RESULT.md) (earlier: [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
 [M2+M3](docs/M2M3_RESULT.md), [M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
 
 ## Build and run
@@ -50,8 +60,14 @@ make model               # Qwen/Qwen3.5-2B (~4.5 GB) -> models/qwen35-2b-q8_0-v3
                          # Qwen/Qwen3-Embedding-0.6B (1.2 GB) -> models/qwen3-embed-0.6b-q8_0-v3.asmbin (613 MiB),
                          # each skipped when the .asmbin is there
 make iso                 # kernel + Limine + both models -> build/ringzero.iso
+make disk                # build/disk.img, 512 MiB FAT32 (mkfs.vfat, mtools fallback); never overwrites it
 make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[main]>), VNC HOST:5901 (password aios)
+make run-local           # or: the same VM in a QEMU window on the box's desktop (own disk build/disk-local.img)
 ```
+
+Try at the prompt: `!write /notes/todo.txt comprare il latte`, `!cat /notes/todo.txt`, `!ls /`, then ask
+"crea un file /notes/idea.txt con scritto ciao" or "cosa devo comprare?" (after a few seconds of idle the file
+is in the memory index). `!poweroff` and boot again: the files are still there.
 
 More:
 
@@ -65,11 +81,19 @@ make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window
 make run-remote          # headless: serial on TCP 4555 (nc HOST 4555), VNC on :1 (5901, password aios),
                          # serial output appended to build/remote-serial.log, monitor on build/remote-monitor.sock
-make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test   # a second instance next to it
+make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test DISK=build/disk-test.img   # a second instance
+                         # (its own disk: QEMU's image lock refuses two guests writing one image)
+make run-local           # QEMU window (-display gtk, PS/2 keys, guest layout !kbd it|us), serial on the terminal
+                         # (Ctrl-C goes to the guest, close the window to quit) + build/local-serial.log, monitor on
+                         # build/local-monitor.sock, disk build/disk-local.img; LOCAL_DISK=build/disk.img uses the
+                         # remote's disk, only while run-remote is stopped
+make disk DISK=build/disk-test.img DISK_MB=256   # another data disk (whole-volume FAT32, no partition table)
+mdir -i build/disk.img ::/notes          # read the disk on the host with mtools (guest stopped);
+                         # fsck.vfat -a build/disk.img clears the dirty flag after a guest that was killed
 tail -f build/remote-serial.log                                       # watch the remote shell
 python3 tools/screenshot.py build/remote-monitor.sock build/screen.png   # framebuffer screenshot
 make iso MODEL=/path/to/qwen3-0.6b-q8_0.asmbin   # other model file (EMBED= for the embedder)
-python3 tools/boottest.py build/ringzero.iso uefi build/t 8 /bench /stats   # headless: timed serial log,
+DISK=build/disk.img python3 tools/boottest.py build/ringzero.iso uefi build/t 8 /bench /stats   # headless: timed serial log,
                          # types each command at the ringzero[main]> prompt, saves screen.png
 ```
 
@@ -90,6 +114,7 @@ Memory index, from the shell:
 
 | Path | What |
 |---|---|
+| `kernel/src/blk.rs`, `fs.rs`, `fidx.rs` | virtio-blk on PCI, FAT32 at /, file indexer (M4) |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
 | `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
@@ -117,7 +142,12 @@ so GPL-2.0-only Linux driver code stays borrowable.
 | `raw-cpuid` | 11.6.0 | MIT | CPU feature checks |
 | `noto-sans-mono-bitmap` | 0.4.0 | MIT (crate metadata) | framebuffer glyphs |
 | `spin` | 0.10.1 | MIT | console lock |
-| transitive: `bitflags` 2.13, `lock_api` 0.4, `scopeguard` 1.2 | | MIT OR Apache-2.0 | |
+| `linked_list_allocator` | 0.10.6 | Apache-2.0 OR MIT | kernel heap |
+| `virtio-drivers` (rcore-os) | 0.13.0 | MIT | virtio-blk + PCI transport |
+| `fatfs` (rafalh/rust-fatfs, git rev 38b3a79, 0.4.0 unreleased) | 0.4.0 | MIT | FAT32 |
+| transitive: `bitflags` 2.13, `lock_api` 0.4, `scopeguard` 1.2, `log` 0.4, `spinning_top` 0.2, `safe-mmio` 0.3, `thiserror` 2.0, `enumn` 0.1 (+ build-time `proc-macro2`, `quote`, `syn`, `unicode-ident`) | | MIT OR Apache-2.0 (`unicode-ident`: + Unicode-3.0) | |
+| transitive: `zerocopy` 0.8 | | BSD-2-Clause OR Apache-2.0 OR MIT | virtio-drivers |
+| `mkfs.vfat` (dosfstools) / `mtools` (host, `make disk`, not vendored) | | GPL-3.0-or-later (host tools, not linked) | disk image |
 | QEMU `it` keymap (copied at run time, not vendored) | QEMU 10 | GPL-2.0-or-later | VNC keysym map |
 | Limine bootloader (binary, fetched at build) | v11.2.1 | BSD-2-Clause | BIOS + UEFI loader |
 | llm.asm engine by alesha-pro (vendored, https://github.com/alesha-pro/llm.asm) | fork commit 1c73255 | MIT | inference |

@@ -15,10 +15,11 @@ pub fn meminfo<const N: usize>(o: &mut SBuf<N>) {
     let used = mem::used() / MIB;
     let model = MODEL_BYTES.load(Relaxed) / MIB;
     let pool = crate::snap::pool_bytes() / MIB;
+    let heap = crate::mem::HEAP_BYTES as u64 / MIB;
     let _ = write!(
         o,
-        "RAM total {} MiB, free {} MiB, used {} MiB (model weights {} MiB, LLM engine arena {} MiB, state snapshot pool {} MiB, kernel and firmware {} MiB)",
-        total, usable.saturating_sub(used), total - usable.saturating_sub(used), model, used - pool, pool,
+        "RAM total {} MiB, free {} MiB, used {} MiB (model weights {} MiB, LLM engine arena {} MiB, state snapshot pool {} MiB, kernel heap {} MiB, kernel and firmware {} MiB)",
+        total, usable.saturating_sub(used), total - usable.saturating_sub(used), model, used - pool - heap, pool, heap,
         total.saturating_sub(usable + model)
     );
 }
@@ -52,6 +53,7 @@ pub fn uptime<const N: usize>(o: &mut SBuf<N>) {
 /// ACPI S5 on QEMU q35 (ICH9 PM1a_CNT at 0x604, SLP_TYP 0 | SLP_EN).
 /// shortcut: fixed port, no FADT parsing; real hardware needs the ACPI tables. Halts if it fails.
 pub fn poweroff() -> ! {
+    let _ = crate::fs::sync();
     crate::klog!(b'W', "power off");
     unsafe {
         core::arch::asm!("out dx, ax", in("dx") 0x604u16, in("ax") 0x2000u16, options(nomem, nostack));
@@ -63,6 +65,7 @@ pub fn poweroff() -> ! {
 
 /// Reset through the 8042 (pulse CPU reset line), then a triple fault as fallback.
 pub fn reboot() -> ! {
+    let _ = crate::fs::sync();
     crate::klog!(b'W', "reboot");
     unsafe {
         core::arch::asm!("out 0x64, al", in("al") 0xFEu8, options(nomem, nostack));
