@@ -47,16 +47,25 @@ run-uefi: iso
 	        -drive if=pflash,format=raw,file=$(BUILD)/ovmf_vars.fd
 
 # Headless guest for remote use: serial console on TCP 4555 (nc HOST 4555), framebuffer on VNC :1
-# (port 5901, password VNC_PASS; LAN-only throwaway test VM), QEMU monitor on build/remote.mon.
+# (port 5901, password VNC_PASS; LAN-only throwaway test VM). Everything the guest prints on serial
+# (including the echoed input) is appended to build/remote-serial.log; QEMU monitor (screendump) on
+# build/remote-monitor.sock. VNC_KEYMAP: keysym -> scancode map for VNC clients without the QEMU
+# extended key event (macOS Screen Sharing); match it to the guest layout (`kbd`).
 REMOTE_SMP ?= 8
 VNC_PASS   ?= aios
-run-remote: iso
+QEMU_KEYMAPS ?= /usr/share/qemu/keymaps
+VNC_KEYMAP ?= $(BUILD)/it-aios
+$(BUILD)/it-aios: tools/keymaps/it-altgr
+	mkdir -p $(BUILD) && cat $(QEMU_KEYMAPS)/it $< > $@
+
+run-remote: iso $(filter $(BUILD)/%,$(VNC_KEYMAP))
 	@avail=$$(awk '/MemAvailable/ {print int($$2/1024)}' /proc/meminfo); \
 	 if [ $$avail -lt 6144 ]; then echo "refusing: only $$avail MiB available (want > 6144)"; exit 1; fi
 	qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 4G -smp $(REMOTE_SMP) \
 	    -cdrom $(ISO) -boot d -no-reboot -vga std \
-	    -object secret,id=vncpw,data=$(VNC_PASS) -display vnc=0.0.0.0:1,password-secret=vncpw \
-	    -serial tcp:0.0.0.0:4555,server,nowait -monitor unix:$(BUILD)/remote.mon,server,nowait
+	    -object secret,id=vncpw,data=$(VNC_PASS) -display vnc=0.0.0.0:1,password-secret=vncpw -k $(VNC_KEYMAP) \
+	    -chardev socket,id=ser0,host=0.0.0.0,port=4555,server=on,wait=off,logfile=$(BUILD)/remote-serial.log,logappend=on \
+	    -serial chardev:ser0 -monitor unix:$(BUILD)/remote-monitor.sock,server,nowait
 
 clean:
 	rm -rf $(BUILD) kernel/target

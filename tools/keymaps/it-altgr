@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Appended to QEMU's "it" keymap by `make run-remote` (-> build/it-aios): the AltGr level it lacks (@ # [ ] { } ~ ` EUR), so plain VNC
+# clients (keysyms only, e.g. macOS Screen Sharing on an Italian keyboard) can type them. The client
+# must hold Alt/Option (or AltGr): the guest treats both Alt keys as AltGr.
+at 0x27 altgr
+numbersign 0x28 altgr
+bracketleft 0x1a altgr
+bracketright 0x1b altgr
+braceleft 0x1a shift altgr
+braceright 0x1b shift altgr
+EuroSign 0x12 altgr
+asciitilde 0x0d altgr
+grave 0x0c altgr

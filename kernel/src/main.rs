@@ -1,14 +1,19 @@
-// AIOS kernel, milestone M1: boot under Limine, IDT, engine arena, APs in the asm worker loop,
-// Qwen3.5-2B golden self-test, then a chat REPL on COM1 (+ PS/2 keyboard).
+// AIOS kernel, milestones M2+M3: boot under Limine, IDT, engine arena, APs in the asm worker loop,
+// Qwen3.5-2B golden self-test, system-agent prefix prefill + snapshot, then the shell on COM1 + PS/2.
 #![no_std]
 #![no_main]
 
+mod agent;
 mod console;
 mod engine;
 mod idt;
+mod kbd;
 mod llm;
+mod log;
 mod mem;
+mod shell;
 mod smp;
+mod sys;
 
 use core::arch::asm;
 use limine::firmware_type::FirmwareType;
@@ -81,20 +86,20 @@ extern "C" fn kmain() -> ! {
     console::init(fb);
     idt::init();
 
-    println!("==============================================");
-    println!(" AIOS M1  (Rust no_std kernel + NASM LLM engine)");
-    println!("==============================================");
+    klog!(b'I', "==============================================");
+    klog!(b'I', " AIOS M3  (Rust no_std kernel + NASM LLM engine)");
+    klog!(b'I', "==============================================");
     if let Some(b) = BOOTLOADER.get_response() {
-        println!("boot: {} {}, base revision {:?}", b.name(), b.version(), BASE_REVISION.loaded_revision());
+        klog!(b'I', "boot: {} {}, base revision {:?}", b.name(), b.version(), BASE_REVISION.loaded_revision());
     }
     if let Some(f) = FIRMWARE.get_response() {
         let fw = f.firmware_type();
         let name = if fw == FirmwareType::X86_BIOS { "BIOS" } else if fw == FirmwareType::UEFI_64 { "UEFI x64" } else { "other" };
-        println!("boot: firmware {}", name);
+        klog!(b'I', "boot: firmware {}", name);
     }
     match fb_desc {
-        Some((w, h, bpp)) => println!("fb:   {}x{} {} bpp", w, h, bpp),
-        None => println!("fb:   none"),
+        Some((w, h, bpp)) => klog!(b'I', "fb:   {}x{} {} bpp", w, h, bpp),
+        None => klog!(b'I', "fb:   none"),
     }
 
     // ---- CPU: check features, enable SSE/AVX for the engine ----
@@ -103,18 +108,19 @@ extern "C" fn kmain() -> ! {
     let ef = cpuid.get_extended_feature_info().expect("cpuid leaf 7");
     let (avx, avx2, fma, f16c, xsave) = (fi.has_avx(), ef.has_avx2(), fi.has_fma(), fi.has_f16c(), fi.has_xsave());
     if let Some(b) = cpuid.get_processor_brand_string() {
-        println!("cpu:  {}", b.as_str().trim());
+        klog!(b'I', "cpu:  {}", b.as_str().trim());
+        unsafe { (*core::ptr::addr_of_mut!(sys::BRAND)).push(b.as_str().trim().as_bytes()) };
     }
-    println!("cpu:  AVX={} AVX2={} FMA={} F16C={} XSAVE={}", avx, avx2, fma, f16c, xsave);
+    klog!(b'I', "cpu:  AVX={} AVX2={} FMA={} F16C={} XSAVE={}", avx, avx2, fma, f16c, xsave);
     if !(avx && avx2 && fma && f16c && xsave) {
         panic!("engine needs AVX2+FMA+F16C+XSAVE");
     }
     unsafe { engine::enable_avx_fpu() };
     let osxsave = CpuId::new().get_feature_info().unwrap().has_oxsave();
-    println!("cpu:  enabled: CR4.OSXSAVE={} XCR0={:#x} (want 0x7)", osxsave, xgetbv0());
+    klog!(b'I', "cpu:  enabled: CR4.OSXSAVE={} XCR0={:#x} (want 0x7)", osxsave, xgetbv0());
 
     let hz = smp::calibrate_tsc();
-    println!("time: TSC {}.{:03} MHz (PIT ch2, 20 ms window), entry TSC={} (~{} ms after TSC 0)",
+    klog!(b'I', "time: TSC {}.{:03} MHz (PIT ch2, 20 ms window), entry TSC={} (~{} ms after TSC 0)",
         hz / 1_000_000, hz / 1000 % 1000, tsc_entry, tsc_entry / (hz / 1000).max(1));
 
     // ---- memory map ----
@@ -138,7 +144,7 @@ extern "C" fn kmain() -> ! {
             top = top.max(e.base + e.length);
         }
     }
-    println!(
+    klog!(b'I', 
         "mem:  {} entries, usable {} MiB, bootloader-reclaimable {} MiB, kernel+modules {} MiB, top {:#x}",
         mm.entries().len(),
         usable / MIB,
@@ -146,10 +152,12 @@ extern "C" fn kmain() -> ! {
         modk / MIB,
         top
     );
-    println!("mem:  largest usable run {:#x} + {} MiB, HHDM offset {:#x}", largest.0, largest.1 / MIB, hhdm);
+    klog!(b'I', "mem:  largest usable run {:#x} + {} MiB, HHDM offset {:#x}", largest.0, largest.1 / MIB, hhdm);
 
+    sys::USABLE.store(usable, core::sync::atomic::Ordering::Relaxed);
+    sys::TOTAL.store(usable + reclaim + modk, core::sync::atomic::Ordering::Relaxed);
     mem::init(hhdm, largest.0, largest.1);
-    println!("mem:  engine arena identity-mapped at {:#x} ({} MiB), page size {} KiB (HHDM view: {} KiB)",
+    klog!(b'I', "mem:  engine arena identity-mapped at {:#x} ({} MiB), page size {} KiB (HHDM view: {} KiB)",
         mem::base(), largest.1 / MIB, mem::page_size(mem::base()) / 1024, mem::page_size(hhdm + mem::base()) / 1024);
     // the model too: lower-half identity map with 2 MiB pages, before the APs start (shared CR3)
     let mods = MODULES.get_response().map(|r| r.modules()).unwrap_or(&[]);
@@ -162,20 +170,20 @@ extern "C" fn kmain() -> ! {
     // ---- SMP ----
     match MP.get_response() {
         Some(mp) => {
-            println!("smp:  {} CPUs reported by Limine MP, BSP LAPIC id {}", mp.cpus().len(), mp.bsp_lapic_id());
+            klog!(b'I', "smp:  {} CPUs reported by Limine MP, BSP LAPIC id {}", mp.cpus().len(), mp.bsp_lapic_id());
             smp::start(mp);
         }
-        None => println!("smp:  no MP response, running on the BSP only"),
+        None => klog!(b'I', "smp:  no MP response, running on the BSP only"),
     }
 
     // ---- modules (the model) ----
-    println!("mod:  {} module(s)", mods.len());
+    klog!(b'I', "mod:  {} module(s)", mods.len());
     for m in mods {
         let p = m.addr();
         let h = unsafe { core::slice::from_raw_parts(p as *const u8, 64) };
         let u32_at = |o: usize| u32::from_le_bytes([h[o], h[o + 1], h[o + 2], h[o + 3]]);
         let magic = core::str::from_utf8(&h[0..4]).unwrap_or("????");
-        println!(
+        klog!(b'I', 
             "mod:  {} size {} B ({} MiB) at virt {:p} phys {:#x}",
             m.path().to_str().unwrap_or("?"),
             m.size(),
@@ -183,7 +191,7 @@ extern "C" fn kmain() -> ! {
             p,
             p as u64 - hhdm
         );
-        println!(
+        klog!(b'I', 
             "mod:  magic \"{}\" header version {} dim {} layers {} vocab {}",
             magic,
             u32_at(4),
@@ -195,15 +203,19 @@ extern "C" fn kmain() -> ! {
 
     // ---- engine ABI test, model, golden self-test, REPL ----
     let ok = engine::selftest();
-    println!("engine: M0 ABI self-test {}", if ok { "PASS" } else { "FAIL" });
+    klog!(b'I', "engine: M0 ABI self-test {}", if ok { "PASS" } else { "FAIL" });
     let (Some(m), Some(mp)) = (mods.first(), model_phys) else { panic!("no model module") };
-    println!("mem:  model identity-mapped at {:#x}, page size {} KiB (HHDM view: {} KiB)",
+    klog!(b'I', "mem:  model identity-mapped at {:#x}, page size {} KiB (HHDM view: {} KiB)",
         mp, mem::page_size(mp) / 1024, mem::page_size(m.addr() as u64) / 1024);
+    sys::MODEL_BYTES.store(m.size(), core::sync::atomic::Ordering::Relaxed);
     if llm::init(mp as *const u8, m.size()) {
         llm::selftest();
-        println!("bench: 64-token decode, prompt \"Explain how a CPU cache works in 3 concise sentences.\"");
+        klog!(b'I', "bench: 64-token decode, prompt \"Explain how a CPU cache works in 3 concise sentences.\"");
         llm::bench();
-        llm::repl();
+        klog!(b'I', "agent: tool-call parser self-test {}", if agent::selftest() { "PASS" } else { "FAIL" });
+        klog!(b'I', "kbd:  PS/2 layout {} (change with 'kbd us|it')", kbd::layout());
+        agent::init();
+        shell::run();
     }
     loop {
         unsafe { asm!("cli; hlt") };
@@ -212,7 +224,7 @@ extern "C" fn kmain() -> ! {
 
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
-    println!("PANIC: {}", info);
+    klog!(b'E', "PANIC: {}", info);
     loop {
         unsafe { asm!("cli; hlt") };
     }

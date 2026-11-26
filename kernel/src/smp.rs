@@ -1,6 +1,6 @@
 // SMP + time: TSC calibration against the PIT, x2APIC helpers, AP release through Limine MP into
 // the asm worker loop (engine/smp.asm), worker parking policy and the BSP idle wait.
-use crate::{idt, println};
+use crate::idt;
 use core::arch::asm;
 use core::ptr::{addr_of, addr_of_mut};
 use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering::*};
@@ -180,7 +180,7 @@ pub fn start(mp: &MpResponse) -> u64 {
     let online = unsafe { tp_n_online.load(Acquire) } as u64;
     MAX_THREADS.store(online + 1, Relaxed);
     set_threads(online + 1);
-    println!(
+    crate::klog!(b'I',
         "smp:  {} of {} APs online in the worker loop, x2APIC={}, TSC-deadline idle timer={}",
         online, want, x2, x2 && deadline
     );

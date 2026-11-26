@@ -1,4 +1,106 @@
-# AIOS architecture (as of M1)
+# AIOS architecture (as of M2+M3)
+
+## Diagram
+
+```mermaid
+flowchart TB
+    subgraph FW["Firmware + boot"]
+        BIOS["SeaBIOS / OVMF"] --> LIM["Limine v11<br/>paging, HHDM, MP, framebuffer,<br/>kernel ELF + model.asmbin module"]
+    end
+    LIM --> KMAIN
+
+    subgraph K["Rust no_std kernel (ring 0, soft-float)"]
+        KMAIN["main.rs kmain<br/>boot sequence"]
+        IDT["idt.rs<br/>exceptions, wake IPI, idle timer"]
+        MEM["mem.rs<br/>bump arena, lower-half identity map"]
+        SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
+        CON["console.rs<br/>COM1 + framebuffer glyphs"]
+        KBD["kbd.rs<br/>PS/2 set 1, layouts us / it, AltGr, Ctrl"]
+        LOG["log.rs<br/>ring of 256 lines, level + timestamp"]
+        SYS["sys.rs<br/>meminfo, cpuinfo, cores, uptime,<br/>poweroff, reboot"]
+        SH["shell.rs<br/>line editor, type-ahead, Ctrl-C,<br/>builtins, settings"]
+        AG["agent.rs<br/>system prompt + tool registry,<br/>lenient parser, validator, tool loop"]
+        LLM["llm.rs<br/>golden self-test, bench, tokenizer split,<br/>feed / generate, prefix snapshot"]
+        ENG["engine.rs<br/>FFI, output capture"]
+    end
+
+    subgraph A["NASM engine (ring 0, AVX2/FMA/F16C)"]
+        TR["transformer.asm<br/>Qwen3.5: 6 full-attn + 18 DeltaNet layers"]
+        MM["matmul.asm Q8_0"]
+        MA["math.asm"]
+        TOK["tokenizer.asm BPE"]
+        WK["smp.asm<br/>tp_* dispatch + worker loop on APs 1..7"]
+        CPU["cpu.asm<br/>enable_avx_fpu, float shims"]
+    end
+
+    subgraph D["Devices (QEMU q35)"]
+        COM1["COM1 16550<br/>TCP 4555 + log file"]
+        PS2["8042 PS/2<br/>(VNC keys)"]
+        GOP["framebuffer<br/>(VNC :1)"]
+        LAPIC["x2APIC / TSC-deadline"]
+        ACPI["ICH9 PM (S5), 8042 reset"]
+    end
+
+    KMAIN --> IDT & MEM & SMP & CON & LLM & AG & SH
+    SH -- "builtins" --> SYS
+    SH -- "@ text" --> AG
+    AG -- "tool calls" --> SYS
+    AG -- "read_log" --> LOG
+    AG -- "set_setting" --> SH
+    AG -- "y/N confirm" --> SH
+    AG --> LLM --> ENG --> TR
+    TR --> MM & MA & WK
+    LLM --> TOK
+    TOK -- "sys_write_all" --> ENG --> CON
+    TR -- "sys_mmap_anon" --> MEM
+    SH --> KBD --> PS2
+    SH --> CON --> COM1 & GOP
+    SMP --> LAPIC
+    SYS --> ACPI
+    LOG -.->|klog! prints| CON
+```
+
+Data flow of `@ how much free memory?`:
+
+```mermaid
+sequenceDiagram
+    participant U as User (serial / VNC)
+    participant S as shell.rs
+    participant A as agent.rs
+    participant L as llm.rs + engine
+    participant T as sys.rs (tool)
+    U->>S: "@ how much free memory?" (Ctrl-C polled between tokens)
+    S->>A: ask(q)
+    A->>L: fresh conversation? snapshot_restore (KV rows 0..743 + DeltaNet state, ~1.5 ms)
+    A->>L: encode user turn, feed (prefill), generate (stream to console)
+    L-->>A: stop at </tool_call>, captured text (markup hidden on screen)
+    A->>A: lenient parse + validate against the schema
+    A->>T: meminfo()
+    T-->>A: "RAM total 4095 MiB, free 2057 MiB, ..."
+    A->>L: <tool_response> turn, feed, generate
+    L-->>U: "La memoria libera è di 2057 MiB."
+    Note over A: up to 4 tool rounds per user turn, poweroff/reboot ask y/N at the shell first
+```
+
+Legend:
+
+- **Boot**: Limine loads the kernel and the 1.9 GiB model as a module. `kmain` brings up the IDT, memory,
+  SMP (APs enter the asm worker loop), checks the engine ABI, runs the golden self-test and the bench, then
+  `agent::init` prefills the system prompt + tool list once (743 tokens, about 15 s) and snapshots the
+  engine state. Then `shell::run`.
+- **Shell**: one line = one builtin; `@ <text>` goes to the agent. Input from COM1 and PS/2 is polled into
+  a type-ahead ring; 0x03 / Ctrl+C sets a flag that `llm::feed` and `llm::generate` check between tokens.
+- **Agent**: Qwen3.5 native tool format (JSON tool lines in the system turn, `<tool_call><function=..>`
+  calls, `<tool_response>` results in a user turn). The tokenizer splits special tokens and applies the
+  Qwen pre-tokenizer regex before the engine BPE, so the prefix ids equal the HF tokenizer's
+  (`tools/hf_prefix.py`, FNV hash printed at boot).
+- **Prefix snapshot**: KV cache rows `0..P` of the 6 full-attention layers (head-major layout) plus the
+  DeltaNet recurrent and conv state (36 MiB in the arena). `clear` marks the conversation fresh; the next
+  `@` restores it instead of prefilling again. Multi-turn keeps the live state.
+- **Log**: `klog!` prints and records `[sec.ms] L text` (I info, W warn, E error, A agent) in a 256-line
+  ring, read by `log` and by the `read_log` tool.
+- **Keyboard**: scancode set 1, layouts as data (`us`, `it` default), Shift, Ctrl, AltGr (E0 38, and left
+  Alt for macOS VNC clients). `kbd` builtin or `set_setting keyboard`.
 
 ## Boot flow
 
@@ -10,7 +112,8 @@
    long mode with a Limine stack. The IDT is undefined at this point.
 3. `kmain` (kernel/src/main.rs): console on COM1 + framebuffer, IDT, CPUID check, `enable_avx_fpu`,
    TSC calibration (PIT ch2), arena + model identity maps, AP release, `model_init`, golden
-   self-test, `/bench`, then the REPL (kernel/src/llm.rs).
+   self-test, bench, agent prefix prefill + snapshot (kernel/src/agent.rs), then the shell
+   (kernel/src/shell.rs).
 
 ## Memory
 
@@ -71,4 +174,5 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 | Boot, paging, AP startup | Limine |
 | `sample_top_p_bits` float shim (engine/cpu.asm) | NASM |
 | SMP dispatch (`tp_*`), worker loop, AP entry, parking (engine/smp.asm, adapted from the asm OS) | NASM |
-| Console, IDT, CPU checks, TSC calibration, memory maps, AP release, generation loop, REPL | Rust |
+| Console, IDT, CPU checks, TSC calibration, memory maps, AP release, generation loop | Rust |
+| Shell, keyboard layouts, kernel log, agent (prompt, tools, parser, loop), tokenizer pre-split, prefix snapshot | Rust |

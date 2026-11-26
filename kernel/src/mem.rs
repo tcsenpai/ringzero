@@ -72,7 +72,7 @@ pub fn base() -> u64 {
 
 /// Engine import: 64-byte aligned, zeroed, never freed (same contract as runtime.asm). -12 on OOM.
 #[unsafe(no_mangle)]
-extern "C" fn sys_mmap_anon(size: u64) -> *mut u8 {
+pub extern "C" fn sys_mmap_anon(size: u64) -> *mut u8 {
     let p = (ARENA_CUR.load(Relaxed) + 63) & !63;
     let n = (size + 63) & !63;
     if p + n > ARENA_END.load(Relaxed) {

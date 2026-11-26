@@ -1,0 +1,97 @@
+aios> clear
+[2J[H[agent] new conversation (the system prompt is restored from the boot snapshot on the next @)
+    (step took 0.0 s)
+
+aios> mem
+RAM total 4095 MiB, free 2057 MiB, used 2038 MiB (model weights 1922 MiB, LLM engine arena 106 MiB, kernel and firmware 10 MiB)
+    (step took 0.0 s)
+
+aios> @ how much free memory?
+[agent] fresh conversation: prefix (743 tok) restored in 1582 us
+
+[prefill] 17 tok in 395.92 ms (42.93 tok/s)  [decode] 14 tok in 447.62 ms (29.04 tok/s, output 0 ms)  cores 8  ctx 776/2048
+[tool] meminfo()
+[tool] -> RAM total 4095 MiB, free 2057 MiB, used 2038 MiB (model weights 1922 MiB, LLM engine arena 106 MiB, kernel and firmware 10 MiB)
+La memoria libera è di 2057 MiB.
+[prefill] 74 tok in 1636.48 ms (45.21 tok/s)  [decode] 13 tok in 409.55 ms (29.30 tok/s, output 0 ms)  cores 8  ctx 865/2048
+    (step took 2.9 s)
+
+aios> @ quanti core hai?
+
+[prefill] 17 tok in 361.57 ms (47.01 tok/s)  [decode] 14 tok in 413.76 ms (31.41 tok/s, output 0 ms)  cores 8  ctx 898/2048
+[tool] cpuinfo()
+[tool] -> AMD Ryzen AI 9 HX 370 w/ Radeon 890M; 8 cores; TSC 1997 MHz; features used by the LLM engine: AVX2 FMA F16C
+Ho 8 core.
+[prefill] 66 tok in 1382.94 ms (47.72 tok/s)  [decode] 5 tok in 182.82 ms (21.87 tok/s, output 0 ms)  cores 8  ctx 971/2048
+    (step took 2.4 s)
+
+aios> @ show me the last 5 kernel log lines
+
+[prefill] 21 tok in 439.00 ms (47.83 tok/s)  [decode] 24 tok in 700.24 ms (32.84 tok/s, output 0 ms)  cores 8  ctx 1018/2048
+[tool] read_log(n=5)
+[tool] -> [   48.761] A answer (13 tok): La memoria libera è di 2057 MiB.
+[   48.784] A user: @ quanti core hai?
+[   49.560] A tool cpuinfo -> AMD Ryzen AI 9 HX 370 w/ Radeon 890M; 8 cores; TSC 1997 MHz; features used by the LLM engine: AVX2
+[   51.127] A answer (5 tok): Ho 8 core.
+[   51.159] A user: @ show me the last 5 kernel log lines
+Le ultime 5 righe del log del kernel sono:
+
+```
+[   48.761] A answer (13 tok): La memoria libera è di 2057 MiB.
+[   48.784] A user: @ quanti core hai?
+[   49.560] A tool cpuinfo -> AMD Ryzen AI 9 HX 370 w/ Radeon 890M; 8 cores; TSC 1997 MHz; features used by the LLM engine: AVX2
+[   51.127] A answer (5 tok): Ho 8 core.
+[   51.159] A user: @ show me the last 5 kernel log lines
+```
+[prefill] 171 tok in 3618.92 ms (47.25 tok/s)  [decode] 172 tok in 5005.27 ms (34.16 tok/s, output 8 ms)  cores 8  ctx 1363/2048
+    (step took 9.8 s)
+
+aios> @ spegni la macchina
+
+[prefill] 16 tok in 347.35 ms (46.06 tok/s)  [decode] 14 tok in 445.92 ms (29.15 tok/s, output 0 ms)  cores 8  ctx 1395/2048
+[tool] poweroff()
+
+[agent] wants to POWER OFF the machine. Proceed? [y/N] n
+[tool] -> cancelled: the user answered no, the machine stays on
+L'utente ha risposto "no", quindi la macchina rimane accesa.
+[prefill] 27 tok in 575.49 ms (46.91 tok/s)  [decode] 15 tok in 468.32 ms (29.89 tok/s, output 1 ms)  cores 8  ctx 1439/2048
+    (step took 2.0 s)
+
+aios> uptime
+up 0h 1m 2s (62.948 s)
+    (step took 0.0 s)
+
+aios> @ write a long detailed essay about the history of operating systems
+La storia degli sistemi operativi è un viaggio affascinante attraverso le evoluzioni tecnologiche, che ha trasformato il modo in cui le persone interagiscono con i computer. Questo percorso, che va dalle prime macchine a computer a sistemi operativi complessi come Windows, Linux e macOS, riflette i cambiamenti nella società, nell'informatica e nella filosofia tecnologica.
+
+**L'Inizio: Dal Man
+[prefill] 23 tok in 485.61 ms (47.36 tok/s)  [decode] 84 tok in 2572.41 ms (32.26 tok/s, output 62 ms)  cores 8  ctx 1548/2048
+^C [agent] interrupted
+    (step took 3.1 s)
+
+aios> frobnicate
+unknown command 'frobnicate'. Type 'help', or '@ frobnicate' to ask the agent.
+    (step took 0.0 s)
+
+aios> log 6
+[   60.959] A user: @ spegni la macchina
+[   61.776] A confirmation: no
+[   61.776] A tool poweroff -> cancelled: the user answered no, the machine stays on
+[   62.847] A answer (15 tok): L'utente ha risposto "no", quindi la macchina rimane accesa.
+[   62.990] A user: @ write a long detailed essay about the history of operating systems
+[   66.094] A turn interrupted by Ctrl-C
+    (step took 0.1 s)
+
+aios> kbd
+keyboard layout it (available: us, it)
+    (step took 0.1 s)
+
+aios> clear
+[2J[H[agent] new conversation (the system prompt is restored from the boot snapshot on the next @)
+    (step took 0.1 s)
+
+aios> @ reply with only a smiley emoji
+[agent] fresh conversation: prefix (743 tok) restored in 1894 us
+😊
+[prefill] 19 tok in 398.53 ms (47.67 tok/s)  [decode] 1 tok in 70.84 ms (14.11 tok/s, output 0 ms)  cores 8  ctx 765/2048
+    (step took 0.5 s)

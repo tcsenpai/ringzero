@@ -23,12 +23,14 @@ struct Console {
     // partial UTF-8 sequence for the framebuffer (a token can end mid-character)
     ubuf: [u8; 4],
     ulen: usize,
+    // last char had no glyph: a run of unknown glyphs prints one placeholder
+    missing: bool,
 }
 
 unsafe impl Send for Console {}
 
 static CONSOLE: Mutex<Console> =
-    Mutex::new(Console { serial: None, fb: None, x: 0, y: 0, ubuf: [0; 4], ulen: 0 });
+    Mutex::new(Console { serial: None, fb: None, x: 0, y: 0, ubuf: [0; 4], ulen: 0, missing: false });
 
 pub fn init(fb: Option<Fb>) {
     let mut c = CONSOLE.lock();
@@ -80,14 +82,29 @@ impl Console {
         if (ch as u32) < 0x20 {
             return;
         }
+        // emoji, pictographs, variation selectors, ZWJ: no glyphs in the font, skip silently
+        if matches!(ch as u32, 0x1F000..=0x1FAFF | 0x2600..=0x27BF | 0xFE00..=0xFE0F | 0x200D | 0x2B00..=0x2BFF) {
+            return;
+        }
+        // '€' is outside the font's ranges: overlay 'C' and '='
+        let glyphs = if ch == '€' { ['C', '='] } else { [ch, ch] };
+        let Some(r) = get_raster(glyphs[0], W, H) else {
+            if !core::mem::replace(&mut self.missing, true) {
+                self.fb_char('\u{FFFD}');
+                self.missing = true;
+            }
+            return;
+        };
+        self.missing = false;
+        let r2 = get_raster(glyphs[1], W, H).unwrap_or(get_raster(' ', W, H).unwrap());
         if self.x + cw > fb.width {
             self.newline();
         }
         let Some(fb) = &self.fb else { return };
-        let r = get_raster(ch, W, H).unwrap_or_else(|| get_raster('?', W, H).unwrap());
-        for (dy, row) in r.rows().enumerate() {
-            for (dx, &v) in row.iter().enumerate() {
-                let px = (v as u32) << 16 | (v as u32) << 8 | v as u32;
+        for (dy, (row, row2)) in r.rows().zip(r2.rows()).enumerate() {
+            for (dx, (&a, &b)) in row.iter().zip(row2.iter()).enumerate() {
+                let v = a.max(b) as u32;
+                let px = v << 16 | v << 8 | v;
                 let off = (self.y + dy) * fb.pitch + (self.x + dx) * 4;
                 unsafe { (fb.addr.add(off) as *mut u32).write_volatile(px) };
             }
@@ -163,6 +180,19 @@ pub fn write_bytes(b: &[u8]) {
             c.fb_char(ch);
         }
     }
+}
+
+/// Clear the framebuffer and the serial terminal (ANSI), cursor home.
+pub fn clear_screen() {
+    let mut c = CONSOLE.lock();
+    if let Some(sp) = &mut c.serial {
+        sp.inner_mut().send_bytes_exact(b"\x1b[2J\x1b[H");
+    }
+    if let Some(f) = &c.fb {
+        unsafe { core::ptr::write_bytes(f.addr, 0, f.pitch * f.height) };
+    }
+    c.x = 0;
+    c.y = 0;
 }
 
 /// Non-blocking read of one byte from COM1.

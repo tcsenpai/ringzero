@@ -12,6 +12,7 @@ unsafe extern "C" {
     pub fn argmax_f32(x: *const f32, n: u64) -> u64;
     pub fn model_init(base: *const u8, size: u64, max_seq_override: u64) -> i64;
     pub fn transformer_forward(token: u32, pos: u64, compute_logits: i32);
+    pub fn tok_encode_bpe(text: *const u8, len: u64, out: *mut u32, max: u64) -> u64;
     pub fn tok_build_chat_prompt(prompt: *const u8, out: *mut u32, max: u64, raw: u64, think: u64) -> u64;
     pub fn tok_write_stdout(token: u64);
     /// cpu.asm shim: floats as raw bits (soft-float Rust cannot pass xmm args).
@@ -30,10 +31,25 @@ pub fn ctx(off: usize) -> u64 {
 #[unsafe(no_mangle)]
 extern "C" fn sys_write_all(_fd: u64, buf: *const u8, len: u64) -> i64 {
     let t0 = crate::smp::rdtsc();
-    crate::console::write_bytes(unsafe { core::slice::from_raw_parts(buf, len as usize) });
+    let b = unsafe { core::slice::from_raw_parts(buf, len as usize) };
+    // BSP only (the engine prints from transformer_forward's caller), so plain statics are fine
+    unsafe {
+        if CAPTURE {
+            (*core::ptr::addr_of_mut!(CAP)).push(b);
+        }
+        if !ECHO {
+            return 0;
+        }
+    }
+    crate::console::write_bytes(b);
     OUT_TSC.fetch_add(crate::smp::rdtsc() - t0, core::sync::atomic::Ordering::Relaxed);
     0
 }
+
+/// Model output capture (agent turns) and echo switch (off hides tool-call markup).
+pub static mut CAPTURE: bool = false;
+pub static mut ECHO: bool = true;
+pub static mut CAP: crate::log::SBuf<16384> = crate::log::SBuf::new();
 
 /// TSC cycles spent printing model output (serial + framebuffer).
 pub static OUT_TSC: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(0);
