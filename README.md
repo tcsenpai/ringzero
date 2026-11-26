@@ -121,9 +121,43 @@ conversation instead of resetting it, and `/undo` after a compaction returns to 
 Only the model goes back: tool side effects stay, and `/undo` says so. Design:
 [docs/design/SNAPSHOTS.md](docs/design/SNAPSHOTS.md).
 
+Model options (M7): Qwen3.5-2B or Qwen3.5-4B, in Q8_0 or Q4_0 (W4A8, own asm kernels, bit-exact against the Q8
+kernel), see [Which model for which machine](#which-model-for-which-machine) and
+[docs/M7_Q4_RESULT.md](docs/M7_Q4_RESULT.md).
+
 Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to the
 remote instance: [docs/M47_RESULT.md](docs/M47_RESULT.md) (earlier: [M5b WASI](docs/M5B_WASI_RESULT.md), [M5 MicroPython](docs/M5_MICROPYTHON_RESULT.md), [M4.5](docs/M45_RESULT.md), [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
 [M2+M3](docs/M2M3_RESULT.md), [M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
+
+## Which model for which machine
+
+Every option is built from the same tree; pick it with `MODEL` and `QUANT` on every `make` command (`make model`,
+`make iso`, `make run-*`). `make model` downloads and exports only the selected model. The CPU must have
+AVX2 + FMA + F16C (the engine refuses to start otherwise); AVX-VNNI, when present, speeds up the batched prompt
+prefill (picked at boot, same results bit for bit). Numbers: 8 vCPU KVM guest on a Ryzen AI 9 HX 370 shared with
+another guest ([docs/M7_Q4_RESULT.md](docs/M7_Q4_RESULT.md)); quality = KLD and top-1 agreement vs the HF model.
+
+| Option | Edition | Weights | Guest RAM (default) | Host RAM free | Decode tok/s | Prefill tok/s | Quality vs HF |
+|---|---|---:|---:|---:|---:|---:|---|
+| `MODEL=2b` (default, `QUANT=q8`) | `Qwen35@2b-Qwen3@0.6b` | 2.0 GB | 6G | 8 GiB | 34 | 160-230 | golden self-test (= HF greedy) |
+| `MODEL=4b QUANT=q4` | `Qwen35@4b.q4-Qwen3@0.6b` | 3.4 GB | 6G (128 MiB snapshot pool; 8G for more) | 8 GiB | 19 | 65-90 | KLD 0.028, top-1 92.7%, PPL +1.5% |
+| `MODEL=4b QUANT=q4all` | `Qwen35@4b.q4all-Qwen3@0.6b` | 2.7 GB | 6G | 8 GiB | 24 | 50-85 | KLD 0.061, top-1 89.8%, PPL +4.1% (smallest, lossiest) |
+| `MODEL=4b QUANT=q8` | `Qwen35@4b-Qwen3@0.6b` | 4.5 GB | 8G | 11 GiB | 14 | 65-85 | KLD 0.0013, top-1 98.4% (best quality) |
+| `MODEL=2b QUANT=q4` / `q4all` | `Qwen35@2b.q4...` | ~1.6 (est.) / 1.3 GB | 6G | 8 GiB | 52 (q4all) | ~200 | Q4 kernel test bench, not a product target |
+| 9B | - | (~6 GB Q4) | (~10G) | - | (est. 10-17) | - | not built: [feasibility study](docs/FEASIBILITY-q4-qwen35-9b.md) |
+
+Short version: a 16 GB machine runs any row; the 4B Q4 (`q4`) is the best quality per GB, the 4B Q8 the best
+quality, the 2B the fastest. `QUANT=q4` keeps the attention and DeltaNet projections in Q8_0 because quantizing them
+to Q4 doubles the error (`q4all`); embeddings / lm_head are Q8_0 and norms, conv and DeltaNet gates f32 in all options.
+
+```sh
+make model MODEL=4b QUANT=q4      # Qwen/Qwen3.5-4B (~9.3 GB download) -> models/qwen35-4b-q4_0mlp-v4.asmbin (+ embedder)
+make iso MODEL=4b QUANT=q4        # -> build/ringzero.iso (the banner shows the edition)
+make run-remote MODEL=4b QUANT=q4 # guest RAM from the table (GUEST_MEM=8G overrides)
+make model MODEL=4b QUANT=q8 && make iso MODEL=4b QUANT=q8 && make run-remote MODEL=4b QUANT=q8   # 4B Q8, 8G guest
+make model MODEL=4b QUANT=q4all && make iso MODEL=4b QUANT=q4all                                   # 4B, every projection Q4
+make model && make iso && make run-remote                          # the default 2B Q8
+```
 
 ## Build and run
 
@@ -212,13 +246,14 @@ mdir -i build/disk.img ::/notes          # read the disk on the host with mtools
                          # fsck.vfat -a build/disk.img clears the dirty flag after a guest that was killed
 tail -f build/remote-serial.log                                       # watch the remote shell
 python3 tools/screenshot.py build/remote-monitor.sock build/screen.png   # framebuffer screenshot
-make iso MODEL=/path/to/qwen3-0.6b-q8_0.asmbin   # other model file (EMBED= for the embedder)
+make iso MODEL=/path/to/qwen3-0.6b-q8_0.asmbin   # any other .asmbin (EMBED= for the embedder)
 DISK=build/disk.img python3 tools/boottest.py build/ringzero.iso uefi build/t 8 /bench /stats   # headless: timed serial log,
                          # types each command at the ringzero[main]> prompt, saves screen.png
 ```
 
-`MODEL` defaults to `models/qwen35-2b-q8_0-v3.asmbin`, `EMBED` to `models/qwen3-embed-0.6b-q8_0-v3.asmbin`
-(gitignored; a symlink to an existing file works).
+`MODEL=2b QUANT=q8` (the default) uses `models/qwen35-2b-q8_0-v3.asmbin`, `EMBED` defaults to
+`models/qwen3-embed-0.6b-q8_0-v3.asmbin` (gitignored; a symlink to an existing file works). Other models: see
+[Which model for which machine](#which-model-for-which-machine).
 
 Memory index, from the shell:
 
@@ -286,6 +321,7 @@ so GPL-2.0-only Linux driver code stays borrowable.
 | ripgrep (same, from crates.io) | 15.2.0 | Unlicense OR MIT | `/bin/rg.wasm` |
 | QuickJS-ng (`qjs-wasi.wasm` from its GitHub release, not vendored, on the disk only) | v0.18.0 | MIT | `/bin/qjs.wasm` |
 | `huggingface_hub` (`hf` CLI via uvx, not vendored), `numpy` (exporter, via uv) | latest | Apache-2.0, BSD-3-Clause | `make model` |
-| Qwen3.5-2B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3.5-2B | Apache-2.0 | system agent |
+| Qwen3.5-2B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3.5-2B | Apache-2.0 | system agent (default) |
+| Qwen3.5-4B weights (Qwen, downloaded by `make model MODEL=4b`, not vendored) | Qwen/Qwen3.5-4B | Apache-2.0 | system agent (`MODEL=4b`) |
 | Qwen3-Embedding-0.6B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3-Embedding-0.6B | Apache-2.0 | embedder, memory index |
-| `torch`, `transformers` (`tools/embed_ref.py` only, via uv, not vendored) | latest | BSD-3-Clause, Apache-2.0 | embedding reference check |
+| `torch`, `transformers` (`tools/embed_ref.py`, `q4_kld.py`, `hf_agree.py`; host only, not vendored) | latest | BSD-3-Clause, Apache-2.0 | reference checks |

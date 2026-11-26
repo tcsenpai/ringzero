@@ -7,6 +7,8 @@
 ;     hlt. The dispatcher sends one broadcast IPI (x2APIC, vector WAKE_VECTOR) when tp_n_parked != 0.
 ;   - tp_shutdown removed (nothing calls it in the Rust kernel).
 ;   - M4.8: tp_matmul_q8_0_batch (job kind tp_K = 2): one weight pass for a block of prompt tokens.
+;   - M7: the batch job gets the worker tid (its Q4_0 row buffer); Q4_0 weights need nothing else here
+;     (matmul_q8_0_range dispatches on the weight pointer's tag bit).
 ; The partitioning and the job protocol (tp_gen / tp_done_arr) are unchanged, so results stay
 ; bit-identical across core counts.
 
@@ -202,6 +204,7 @@ ap_limine_entry:
 .run_bmm:                               ; K == 2: batched prefill matmul (params in bmm_*)
     mov     rdi, r14
     mov     rsi, r15
+    mov     rdx, r12                    ; tid (M7: Q4_0 row buffer)
     call    matmul_q8_0_batch_range
 %endif
 
@@ -334,6 +337,7 @@ tp_matmul_q8_0:
 .bsp_bmm:
     xor     edi, edi                    ; r0 = 0
     mov     rsi, rax                    ; r1
+    xor     edx, edx                    ; tid 0
     call    matmul_q8_0_batch_range
 %endif
 
@@ -430,6 +434,7 @@ tp_matmul_q8_0_batch:
 .bmm_single:
     xor     edi, edi
     mov     rsi, rcx
+    xor     edx, edx
     jmp     matmul_q8_0_batch_range
 %ifdef QWEN35
 

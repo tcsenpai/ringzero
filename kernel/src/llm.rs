@@ -334,6 +334,11 @@ pub fn selftest() -> bool {
     let p = unsafe { core::slice::from_raw_parts(ctx(CTX_BUF_PROMPT) as *const u32, s.n_prompt as usize) };
     let g = unsafe { core::slice::from_raw_parts(ctx(CTX_BUF_GEN) as *const u32, s.n_gen as usize) };
     let ok = p == GOLDEN_PROMPT_IDS && g == GOLDEN_GEN_IDS;
+    // M7: golden_2b.json is the 2B Q8_0 (.asmbin v3, dim 2048) reference; other models print their ids only
+    if unsafe { *((ctx(0) + 4) as *const u32) } != 3 || ctx(88) != 2048 {
+        crate::klog!(b'I', "SELFTEST n/a (golden is the 2B Q8_0 reference, not this model; ids above)");
+        return true;
+    }
     crate::klog!(b'I',
         "SELFTEST {} (prompt ids {}, generated ids {} vs golden 9419,1017,0 + <|im_end|>)",
         if ok { "PASS" } else { "FAIL" },

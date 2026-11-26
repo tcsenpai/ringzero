@@ -22,6 +22,7 @@ mod log;
 mod mem;
 mod memidx;
 mod mstore;
+mod q4test;
 mod shell;
 mod smp;
 mod snap;
@@ -79,6 +80,11 @@ static _START: RequestsStartMarker = RequestsStartMarker::new();
 static _END: RequestsEndMarker = RequestsEndMarker::new();
 
 const MIB: u64 = 1024 * 1024;
+/// M7: `make MODEL=9b` builds the 9B edition (Makefile sets RINGZERO_EDITION)
+const EDITION: &str = match option_env!("RINGZERO_EDITION") {
+    Some(e) => e,
+    None => "ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)",
+};
 
 fn xgetbv0() -> u64 {
     let (lo, hi): (u32, u32);
@@ -103,7 +109,7 @@ extern "C" fn kmain() -> ! {
     idt::init();
 
     klog!(b'I', "==============================================");
-    klog!(b'I', " ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)  (Rust no_std kernel + NASM LLM engine in ring 0)");
+    klog!(b'I', " {}  (Rust no_std kernel + NASM LLM engine in ring 0)", EDITION);
     klog!(b'I', "==============================================");
     if let Some(b) = BOOTLOADER.get_response() {
         klog!(b'I', "boot: {} {}, base revision {:?}", b.name(), b.version(), BASE_REVISION.loaded_revision());
@@ -250,6 +256,9 @@ extern "C" fn kmain() -> ! {
         mp, mem::page_size(mp) / 1024, mem::page_size(m.addr() as u64) / 1024);
     sys::MODEL_BYTES.store(m.size() + emb.map_or(0, |e| e.size()), core::sync::atomic::Ordering::Relaxed);
     if llm::init(mp as *const u8, m.size()) {
+        if let Some(q4) = q4test::selftest() {
+            klog!(b'I', "q4: Q4_0 kernel self-test {}", if q4 { "PASS" } else { "FAIL" });
+        }
         // the embedder gets its own g_ctx (embed.rs) before the snapshot pool takes the rest of the arena
         match (emb, emb_phys) {
             (Some(e), Some(ep)) => {

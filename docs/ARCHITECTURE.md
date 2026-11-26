@@ -1,4 +1,4 @@
-# ringzero architecture (as of M4.7 constrained tool calls + hibernation, with M5 MicroPython and M5b WASI, edition ringzero Qwen35@2b-Qwen3@0.6b)
+# ringzero architecture (as of M4.7 constrained tool calls + hibernation, with M5 MicroPython, M5b WASI and M7 Q4 + Qwen3.5-4B, editions ringzero Qwen35@2b-Qwen3@0.6b (default), Qwen35@4b.q4-Qwen3@0.6b, ...)
 
 ## Diagram
 
@@ -33,13 +33,14 @@ flowchart TB
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
         IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/sys/mem/index.bin)"]
         ENG["engine.rs<br/>FFI, output capture"]
+        Q4T["q4test.rs (M7)<br/>boot check: Q4_0 kernel vs Q8_0 kernel<br/>on the unpacked rows, bit-identical"]
     end
 
     subgraph A["NASM engine (ring 0, AVX2/FMA/F16C)"]
-        TR["transformer.asm<br/>Qwen3.5-2B: 6 full-attn + 18 DeltaNet layers<br/>Qwen3-Embedding-0.6B: 28 full-attn layers<br/>(one g_ctx loaded at a time)"]
+        TR["transformer.asm<br/>Qwen3.5-2B: 6 full-attn + 18 DeltaNet layers<br/>or Qwen3.5-4B: 8 + 24 (DeltaNet 16 K / 32 V heads)<br/>Qwen3-Embedding-0.6B: 28 full-attn layers<br/>(one g_ctx loaded at a time)<br/>.asmbin v3 / v4: desc_tag_q4 marks Q4_0 slots"]
         KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(RINGZERO_KV=f32: FP32, 768 MiB)"]
         EKV["embedder arena<br/>KV 28 layers x 1024 tokens FP16, 113 MiB"]
-        MM["matmul.asm Q8_0<br/>+ batch kernels (AVX2, AVX-VNNI)"]
+        MM["matmul.asm Q8_0 + Q4_0 (M7, W4A8)<br/>tagged weight pointer -> matmul_q4_0_range<br/>batch kernels (AVX2, AVX-VNNI): Q4 row<br/>unpacked once into q4_rowbuf[tid]"]
         PF["prefill.asm (M4.8)<br/>transformer_prefill: B prompt tokens<br/>per weight pass, bit-exact"]
         MA["math.asm"]
         TOK["tokenizer.asm BPE"]
@@ -130,6 +131,8 @@ flowchart TB
     PF -- "per token: rope_heads, tp_gqa_attn,<br/>tp_deltanet, g_dn_job" --> TR
     PF -- "vcvtps2ph K/V rows" --> KV
     TR --> MM & MA & WK
+    KMAIN -- "after model_init (v4 models)" --> Q4T
+    Q4T -- "tp_matmul_q8_0 (W | 1) and (unpacked W)" --> WK
     TR -- "vcvtps2ph / vcvtph2ps" --> KV
     LLM --> TOK
     TOK -- "sys_write_all" --> ENG --> CON
