@@ -25,12 +25,14 @@ struct Console {
     ulen: usize,
     // last char had no glyph: a run of unknown glyphs prints one placeholder
     missing: bool,
+    // M8: inside an ANSI escape sequence (colors from jq, sqlite3, ...): 1 after ESC, 2 inside ESC [ ...
+    esc: u8,
 }
 
 unsafe impl Send for Console {}
 
 static CONSOLE: Mutex<Console> =
-    Mutex::new(Console { serial: None, fb: None, x: 0, y: 0, ubuf: [0; 4], ulen: 0, missing: false });
+    Mutex::new(Console { serial: None, fb: None, x: 0, y: 0, ubuf: [0; 4], ulen: 0, missing: false, esc: 0 });
 
 pub fn init(fb: Option<Fb>) {
     let mut c = CONSOLE.lock();
@@ -63,6 +65,14 @@ impl Console {
         let Some(fb) = &self.fb else { return };
         if fb.bpp != 32 {
             return;
+        }
+        // the serial terminal gets escape sequences as they are; the framebuffer skips them (no ANSI support)
+        match (self.esc, ch) {
+            (0, '\x1b') => return self.esc = 1,
+            (1, '[') => return self.esc = 2,
+            (1, _) | (2, '\x40'..='\x7e') => return self.esc = 0,
+            (2, _) => return,
+            _ => {}
         }
         if ch == '\n' {
             return self.newline();

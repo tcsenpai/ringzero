@@ -37,7 +37,7 @@ const TOOLS: [&str; 18] = [
     r#"{"type": "function", "function": {"name": "mkdir", "description": "Create a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "rm", "description": "Delete a file or an empty directory (asks the user).", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "run_code", "description": "Run Python code (MicroPython) and return what it prints.", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}}"#,
-    r#"{"type": "function", "function": {"name": "run_wasm", "description": "Run a WASI program from the disk (in /bin, e.g. coreutils) and return what it prints.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "args": {"type": "string", "description": "command-line arguments, space separated"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "run_wasm", "description": "Run a program from /bin and return what it prints: coreutils (ls, wc, sort, head, ...), rg, jq, sqlite3, lua, python3 (CPython), qjs. Commands look like: wc -l /a.txt, jq .name /a.json, sqlite3 /a.db \"select 1;\", lua /a.lua, python3 /a.py", "parameters": {"type": "object", "properties": {"path": {"type": "string", "description": "the program"}, "args": {"type": "string", "description": "the rest of the command line"}}, "required": ["path"]}}}"#,
 ];
 
 pub(crate) enum Ty {

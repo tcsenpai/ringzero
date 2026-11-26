@@ -229,19 +229,9 @@ pub fn rm(path: &str, recursive: bool) -> Result<(), &'static str> {
 
 /// Read from `off` until buf is full or the file ends; returns (bytes read, file size). No heap.
 pub fn read_into(path: &str, off: u64, buf: &mut [u8]) -> Result<(usize, u64), &'static str> {
-    let rel = check(path)?;
-    let mut f = fs()?.root_dir().open_file(rel).map_err(err)?;
-    let size = f.seek(SeekFrom::End(0)).map_err(err)?;
-    f.seek(SeekFrom::Start(off.min(size))).map_err(err)?;
-    let mut n = 0;
-    while n < buf.len() {
-        let k = f.read(&mut buf[n..]).map_err(err)?;
-        if k == 0 {
-            break;
-        }
-        n += k;
-    }
-    Ok((n, size))
+    let mut f = open(path)?;
+    let size = len(&mut f)?;
+    Ok((read_at(&mut f, off, buf)?, size))
 }
 
 /// Create or replace a file from several pieces (no size limit: agentd's index and the boot snapshot).
@@ -349,10 +339,51 @@ pub fn touch(path: &str, trunc: bool) -> Result<(), &'static str> {
     f.flush().map_err(err)
 }
 
-/// Write at `off` in an existing file (a gap past the end is zero-filled); returns the size after.
-pub fn write_at(path: &str, off: u64, data: &[u8]) -> Result<u64, &'static str> {
-    let mut f = fs()?.root_dir().open_file(check(path)?).map_err(err)?;
-    let size = f.seek(SeekFrom::End(0)).map_err(err)?;
+// M8: an open file, kept by the WASI runtime while the program has the fd open (sqlite's random IO would
+// otherwise walk the path and the cluster chain on every call). The caller drops it before anything else changes
+// the same file (rename, unlink, a write through another handle); a run never spans a !sync.
+pub type File = fatfs::File<'static, Disk, RtcTime, fatfs::LossyOemCpConverter>;
+
+pub fn open(path: &str) -> Result<File, &'static str> {
+    let rel = check(path)?;
+    if rel.is_empty() {
+        return Err("/ is a directory");
+    }
+    fs()?.root_dir().open_file(rel).map_err(err)
+}
+
+pub fn len(f: &mut File) -> Result<u64, &'static str> {
+    f.seek(SeekFrom::End(0)).map_err(err)
+}
+
+/// Read from `off` until buf is full or the file ends.
+pub fn read_at(f: &mut File, off: u64, buf: &mut [u8]) -> Result<usize, &'static str> {
+    let size = len(f)?;
+    f.seek(SeekFrom::Start(off.min(size))).map_err(err)?;
+    let mut n = 0;
+    while n < buf.len() {
+        let k = f.read(&mut buf[n..]).map_err(err)?;
+        if k == 0 {
+            break;
+        }
+        n += k;
+    }
+    Ok(n)
+}
+
+/// Cut or extend (zero-filled) to `n` bytes.
+pub fn set_len(f: &mut File, n: u64) -> Result<(), &'static str> {
+    if n >= len(f)? {
+        return write_file_at(f, n, &[]).map(|_| ());
+    }
+    f.seek(SeekFrom::Start(n)).map_err(err)?;
+    f.truncate().map_err(err)?;
+    f.flush().map_err(err)
+}
+
+/// Write at `off` (a gap past the end is zero-filled), directory entry flushed; returns the size after.
+pub fn write_file_at(f: &mut File, off: u64, data: &[u8]) -> Result<u64, &'static str> {
+    let size = len(f)?;
     let mut gap = off.saturating_sub(size);
     if gap == 0 {
         f.seek(SeekFrom::Start(off)).map_err(err)?;
@@ -377,7 +408,8 @@ pub fn rename(from: &str, to: &str) -> Result<(), &'static str> {
     root.rename(a, &root, b).map_err(err)
 }
 
-/// Every file on the volume outside /sys (agentd's own files), as (path, size, mtime).
+/// Every file on the volume outside /sys (agentd's own files) and /lib (M8: CPython's stdlib, not the user's
+/// documents), as (path, size, mtime).
 pub fn walk(f: &mut dyn FnMut(&str, u64, u32)) -> Result<(), &'static str> {
     fn rec(d: &Dir, path: &mut String, f: &mut dyn FnMut(&str, u64, u32)) -> Result<(), &'static str> {
         let ents: Vec<(String, bool, u64, u32)> = d.iter().filter_map(|e| e.ok())
@@ -389,7 +421,7 @@ pub fn walk(f: &mut dyn FnMut(&str, u64, u32)) -> Result<(), &'static str> {
             path.push_str(&name);
             if !dir {
                 f(path, size, mt);
-            } else if path != "/sys" {
+            } else if path != "/sys" && path != "/lib" {
                 rec(&d.open_dir(&name).map_err(err)?, path, f)?;
             }
             path.truncate(k);

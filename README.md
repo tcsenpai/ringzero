@@ -88,6 +88,17 @@ or fetches the test programs (rztest, uutils coreutils, ripgrep, QuickJS-ng) and
 disk with mtools. Speed: about 10x slower than native on a CPU bench. Results:
 [docs/M5B_WASI_RESULT.md](docs/M5B_WASI_RESULT.md).
 
+Common software (M8): `make wasm-apps` puts the usual tools in `/bin`: uutils coreutils, ripgrep, jq (jaq),
+sqlite3, Lua, CPython 3.15 (`python3`, its standard library in `/lib/python3.15`), QuickJS-ng and the kibi editor,
+plus the demo inputs in `/demo`. From the shell a program has the console as its terminal: REPLs (`!run python3`,
+`!run lua`, `!run sqlite3 FILE`, `!run qjs`) read typed lines (Ctrl-D ends the input, Ctrl-C stops), `isatty()` is
+true, and `/dev/tty` is raw input for editors (`!run kibi FILE`, serial console only: the framebuffer skips ANSI
+escapes). Waiting for input does not count against the 60 s budget. The agent sees the same programs in its
+`run_wasm` tool (no terminal, empty stdin), with the output cut at about 1500 tokens and only the exit status in
+the result. Open files keep their FAT handle for the run (sqlite's random I/O), the kernel heap is 192 MiB
+(`RINGZERO_HEAP_MIB`) and a run that drives it low is stopped instead of the kernel. Copy-paste demos:
+[docs/DEMOS.md](docs/DEMOS.md); results: [docs/M8_RESULT.md](docs/M8_RESULT.md).
+
 Constrained tool calls (M4.7a): once the model emits `<tool_call>`, the kernel holds every next token to a
 grammar built from the tool schemas, in the native format `<function=NAME><parameter=KEY>VALUE</parameter>...
 </function></tool_call>`: a known tool name, its own parameter names (each once), enum values (`set_setting`
@@ -130,7 +141,8 @@ remote instance: [docs/M47_RESULT.md](docs/M47_RESULT.md) (earlier: [M5b WASI](d
 On a Linux box with `cargo` (rustup, toolchain pinned in `kernel/rust-toolchain.toml`),
 `nasm`, `xorriso`, `git`, `cc` (gcc), `python3` (MicroPython's header generator), `qemu-system-x86_64` with KVM, OVMF for UEFI, and
 [uv](https://docs.astral.sh/uv/) for the model export. `make wasm-apps` also needs `rustup target add wasm32-wasip1`,
-`curl` and mtools.
+`curl` and mtools (M8: also `unzip`, `tar` and `sha256sum`; it downloads wasi-sdk, Binaryen and CPython, about
+330 MB, into `build/wasm/dl`).
 
 Quickstart:
 
@@ -155,6 +167,10 @@ hibernation image (`/snap` shows the same state hash before the poweroff and aft
 `make wasm-apps`): `!wasm rztest check A "B C"` (the runtime's checks), `!run ls -l /bin`, `!run wc -l < /notes/todo.txt`,
 `!wasm rg -n latte /notes`, `!write /a.js console.log(6*7)` then `!wasm qjs /a.js`, or ask "usa run_wasm per
 contare le righe di /notes/todo.txt con wc".
+M8 (common software, one block per tool in [docs/DEMOS.md](docs/DEMOS.md)): `!run python3 /demo/stats.py`,
+`!run sqlite3 /demo/shop.db "select 1+1;"`, `!run jq .version /demo/data.json`, `!run lua /demo/hello.lua`, the REPLs
+`!run python3` / `!run lua` / `!run sqlite3 FILE` (Ctrl-D ends them), `!run kibi /notes/todo.txt` on the serial
+console, or ask "quali tabelle ci sono nel database sqlite /demo/shop.db?" (after the sqlite3 demo created it).
 
 Remote instance on the Fedora box (Tailscale HOST-ADDRESS):
 
@@ -240,6 +256,7 @@ Memory index, from the shell:
 | `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
 | `kernel/src/wasm.rs` | WASI runtime (M5b): `!wasm`/`!run`, `run_wasm`, wasmi engine per run, fuel slices (budget, Ctrl-C), WASI preview1 host functions over fs.rs; the wasm memory slot is in `mem.rs` |
 | `tools/wasm_apps.sh`, `tools/wasm/rztest/` | `make wasm-apps`: builds rztest (our WASI checks, also `bench`, `loop`, `mem`, `escape`), uutils coreutils and ripgrep for wasm32-wasip1, fetches QuickJS-ng's `qjs-wasi.wasm` |
+| `tools/wasm/c/`, `tools/demo/`, `tools/m8test.py` | M8: setjmp/longjmp over Binaryen's Asyncify (`setjmp.h`, `rzsjlj.c`) and libc stubs (`nosys.c`) for the C programs; the `/demo` inputs of docs/DEMOS.md; a boot test that types steps when a regex matches (REPLs, the editor) |
 | `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
 | `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
@@ -285,6 +302,14 @@ so GPL-2.0-only Linux driver code stays borrowable.
 | uutils coreutils (`make wasm-apps`: built from crates.io for wasm32-wasip1, feature `feat_wasm`; not vendored, on the disk only) | 0.13.0 | MIT | `/bin/coreutils.wasm` |
 | ripgrep (same, from crates.io) | 15.2.0 | Unlicense OR MIT | `/bin/rg.wasm` |
 | QuickJS-ng (`qjs-wasi.wasm` from its GitHub release, not vendored, on the disk only) | v0.18.0 | MIT | `/bin/qjs.wasm` |
+| M8, all below fetched or built by `make wasm-apps` (pinned version + SHA-256 in `tools/wasm_apps.sh`), not vendored, on the disk only | | | |
+| jaq (crates.io, `--no-default-features`: no mimalloc) | 3.2.0 | MIT | `/bin/jq.wasm` |
+| kibi (crates.io) | 0.3.2 | MIT OR Apache-2.0 | `/bin/kibi.wasm` |
+| SQLite amalgamation (sqlite.org), shell + library | 3.54.1 | Public domain | `/bin/sqlite3.wasm` |
+| Lua (lua.org) | 5.4.8 | MIT | `/bin/lua.wasm` |
+| CPython wasm32-wasip1 build (brettcannon/cpython-wasi-build release, python.wasm + `lib/python3.15`) | 3.15.2 (wasi-sdk 33) | PSF-2.0 (bundled expat MIT, libmpdec BSD-2-Clause, HACL* MIT) | `/bin/python3.wasm`, `/lib/python3.15` |
+| wasi-sdk (clang + wasi-libc, build tool; wasi-libc is linked into sqlite3 and lua) | 34 | Apache-2.0 WITH LLVM-exception; wasi-libc MIT + Apache-2.0 (musl parts MIT) | C programs for WASI |
+| Binaryen `wasm-opt` (build tool only) | version_133 | Apache-2.0 | Asyncify pass for lua's setjmp/longjmp |
 | `huggingface_hub` (`hf` CLI via uvx, not vendored), `numpy` (exporter, via uv) | latest | Apache-2.0, BSD-3-Clause | `make model` |
 | Qwen3.5-2B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3.5-2B | Apache-2.0 | system agent |
 | Qwen3-Embedding-0.6B weights (Qwen, downloaded by `make model`, not vendored) | Qwen/Qwen3-Embedding-0.6B | Apache-2.0 | embedder, memory index |

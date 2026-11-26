@@ -84,12 +84,20 @@ $(BUILD)/%.img:
 # M5b: WASI programs for /bin, built or fetched by tools/wasm_apps.sh into WASM_DIR, then copied onto the disk
 # with mtools. Nothing is formatted: other files stay, same-name files in /bin are replaced. Refuses while a
 # guest has the image open (stop it first: !poweroff).
+# M8: the common set (sqlite3, jq, lua, python3, kibi next to coreutils, rg, qjs) and CPython's stdlib in
+# /lib/python3.15 (files are replaced, the __pycache__ that python3 writes on the disk stays), and the inputs of
+# docs/DEMOS.md in /demo (tools/demo). J = build threads.
 WASM_DIR ?= $(BUILD)/wasm
+J ?= 12
 wasm-apps: $(DISK)
 	@if pgrep -f "file=$(DISK),[i]f=none" >/dev/null; then echo "refusing: a guest has $(DISK) open"; exit 1; fi
-	tools/wasm_apps.sh $(WASM_DIR)
+	J=$(J) tools/wasm_apps.sh $(WASM_DIR)
 	mmd -i $(DISK) ::/bin 2>/dev/null || true
 	mcopy -o -i $(DISK) $(WASM_DIR)/*.wasm ::/bin/
+	mmd -i $(DISK) ::/lib 2>/dev/null || true
+	mcopy -o -s -i $(DISK) $(WASM_DIR)/lib/python3.15 ::/lib/
+	mmd -i $(DISK) ::/demo 2>/dev/null || true
+	mcopy -o -i $(DISK) tools/demo/* ::/demo/
 	mdir -i $(DISK) ::/bin
 
 run-bios: iso $(DISK)

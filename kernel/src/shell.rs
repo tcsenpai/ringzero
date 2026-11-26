@@ -72,7 +72,8 @@ fn take_intr() -> bool {
     }
 }
 
-fn getb() -> Option<u8> {
+/// One typed byte, if any (M8: also the console stdin of a WASI program, wasm.rs).
+pub fn getb() -> Option<u8> {
     poll_input();
     unsafe {
         if TA_TAIL == TA_HEAD {

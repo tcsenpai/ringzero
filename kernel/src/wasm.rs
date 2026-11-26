@@ -6,6 +6,9 @@
 // the interpreter state is simply dropped). The host functions map WASI onto fs.rs: one preopened dir "/" as
 // fd 3, paths resolved under it ('..' above / is refused), /sys (agentd's files) read-only. stdout/stderr go
 // to the console, or into a buffer for the agent. WASI calls we do not implement return ENOSYS, logged once.
+// M8: a shell run has the console as its terminal: stdin is typed lines (REPLs), /dev/tty is raw input (editors),
+// isatty() is true. Open files keep their fatfs handle. The agent's output is cut to TOK_CAP tokens. A kernel
+// heap running low stops the run instead of the kernel.
 use crate::log::SBuf;
 use crate::{console, fs, klog, println, shell, smp};
 use alloc::{format, string::String, vec, vec::Vec};
@@ -19,8 +22,10 @@ const TOOL_MS: u64 = 10_000;
 const SLICE: u64 = 10_000_000;
 /// Captured output for the agent (the tool result cap is 8 KiB, the status line needs some room).
 const OUT_CAP: usize = 6144;
-/// Largest .wasm file: the bytes and wasmi's module live in the 64 MiB kernel heap.
-const MOD_MAX: u64 = 24 << 20;
+/// M8: ... and at most this many tokens of it (6 KiB of digits is 6000 tokens: 36 s of prefill on the 2B).
+const TOK_CAP: usize = 1500;
+/// Largest .wasm file (CPython is 31 MB): the bytes and wasmi's module live in the kernel heap (mem.rs).
+const MOD_MAX: u64 = 48 << 20;
 const READ_MAX: usize = 1 << 20; // per fd_read call
 
 // errno (WASI preview1)
@@ -40,6 +45,8 @@ const SPIPE: i32 = 70;
 const NOTCAPABLE: i32 = 76;
 const RIGHTS: u64 = 0x1fff_ffff; // all 29 rights
 const FD_WRITE: u64 = 1 << 6;
+const SEEK: u64 = 1 << 2;
+const TELL: u64 = 1 << 5;
 
 static mut CAP: usize = 0;
 static mut RDRAND: bool = false;
@@ -55,6 +62,7 @@ enum Why {
     None,
     Intr,
     Budget,
+    Mem, // M8: the kernel heap ran low (mem.rs), the run is stopped instead of the kernel
 }
 
 /// Boot: the wasm slot (the memory cap) from the arena, before the snapshot pool takes the rest.
@@ -97,6 +105,9 @@ fn stop() -> bool {
         if WHY == Why::None && now >= DEADLINE {
             WHY = Why::Budget;
         }
+        if WHY == Why::None && crate::mem::heap_low().0 {
+            WHY = Why::Mem;
+        }
         WHY != Why::None
     }
 }
@@ -108,11 +119,25 @@ struct OpenFile {
     pos: u64,
     append: bool,
     write: bool,
+    h: Option<fs::File>, // M8: the open fatfs file, opened on first use (see drop_handles)
+}
+
+impl OpenFile {
+    fn new(path: String, append: bool, write: bool) -> Fd {
+        Fd::File(OpenFile { path, pos: 0, append, write, h: None })
+    }
+    fn handle(&mut self) -> R<&mut fs::File> {
+        if self.h.is_none() {
+            self.h = Some(fs::open(&self.path).map_err(errno)?);
+        }
+        Ok(self.h.as_mut().unwrap())
+    }
 }
 
 enum Fd {
-    Null,           // stdin without `<`: always at EOF
+    Null,           // stdin of the agent's runs (no `<`): always at EOF
     Con,            // stdout, stderr
+    Tty(bool),      // M8: console input, from the shell only: fd 0 (line mode) or /dev/tty (raw = true)
     Dir(String, bool), // path, preopened
     File(OpenFile),
 }
@@ -127,6 +152,9 @@ struct Host {
     epoch_ns: u64,
     rng: u64,
     nosys: Vec<String>,
+    tty: bool,       // M8: a shell run: the console is a terminal (isatty), stdin is typed lines
+    line: Vec<u8>,   // typed input not read yet
+    last_cr: bool,   // the last typed byte was \r (a following \n is the same Enter)
 }
 
 type C<'a> = Caller<'a, Host>;
@@ -271,6 +299,86 @@ impl Host {
             _ => Err(INVAL),
         }
     }
+    /// Close the fatfs handles on `path` (all fds but `keep`): before the file changes by path or through another
+    /// fd, so no handle keeps a stale size or cluster chain. They reopen on the next use.
+    fn drop_handles(&mut self, path: &str, keep: Option<i32>) {
+        for (i, f) in self.fds.iter_mut().enumerate() {
+            if let Some(Fd::File(f)) = f {
+                if keep != Some(i as i32) && f.path.eq_ignore_ascii_case(path) {
+                    f.h = None;
+                }
+            }
+        }
+    }
+}
+
+/// M8: typed input for a program run from the shell. Line mode (fd 0): echo, backspace, Enter ends the line,
+/// Ctrl-D ends the input (a read of 0 bytes; an unfinished line is returned without its newline first). Raw mode
+/// (/dev/tty, editors): one byte as typed, no echo. Ctrl-C stops the run (shell.rs takes it out of
+/// the input). The time spent waiting is added to the deadline: a REPL may wait for the user as long as it likes.
+fn tty_read(h: &mut Host, raw: bool, want: usize) -> Result<Vec<u8>, Error> {
+    let t0 = smp::rdtsc();
+    let r = tty_wait(h, raw, want);
+    unsafe { DEADLINE += smp::rdtsc() - t0 };
+    r.ok_or_else(|| {
+        unsafe { WHY = Why::Intr };
+        Error::new("interrupted while reading the console")
+    })
+}
+
+fn tty_wait(h: &mut Host, raw: bool, want: usize) -> Option<Vec<u8>> {
+    let next = || loop {
+        if let Some(b) = shell::getb() {
+            return Some(b);
+        }
+        if shell::poll_intr() {
+            return None;
+        }
+        smp::idle_wait();
+    };
+    if raw {
+        // one byte per read: kibi wraps /dev/tty in a new BufReader for each read, so more would be lost
+        if want == 0 {
+            return Some(Vec::new());
+        }
+        return next().map(|b| vec![b]);
+    }
+    if h.line.is_empty() {
+        let mut cur: Vec<u8> = Vec::new();
+        let mut esc = 0u8; // 1: after ESC, 2: inside ESC [ ... (ended by a byte in 0x40..=0x7e)
+        loop {
+            let b = next()?;
+            let cr = core::mem::replace(&mut h.last_cr, b == b'\r');
+            match (esc, b) {
+                (0, 0x1b) => esc = 1,
+                (1, b'[' | b'O') => esc = 2,
+                (1, _) => esc = 0,
+                (2, 0x40..=0x7e) => esc = 0, // arrows and other keys: ignored
+                (2, _) => {}
+                (_, b'\n') if cr => {}
+                (_, b'\r' | b'\n') => {
+                    console::write_bytes(b"\n");
+                    cur.push(b'\n');
+                    break;
+                }
+                (_, 4) => break, // Ctrl-D: what was typed so far, or 0 bytes = end of input
+                (_, 8 | 127) => {
+                    if !cur.is_empty() {
+                        while cur.pop().is_some_and(|c| c & 0xC0 == 0x80) {} // a whole UTF-8 character
+                        console::write_bytes(b"\x08 \x08");
+                    }
+                }
+                (_, b) if b >= 0x20 || b == b'\t' => {
+                    cur.push(b);
+                    console::write_bytes(&[b]);
+                }
+                _ => {}
+            }
+        }
+        h.line = cur;
+    }
+    let k = want.min(h.line.len());
+    Some(h.line.drain(..k).collect())
 }
 
 /// /sys holds agentd's stores and the boot snapshot: a wasm program may read it, never change it.
@@ -301,7 +409,12 @@ fn filestat(m: &mut [u8], p: u32, ft: u8, size: u64, mt: u32) -> R {
 
 fn stat_path(m: &mut [u8], p: u32, path: &str) -> R {
     let (dir, size, mt) = fs::entry(path).map_err(errno)?;
-    filestat(m, p, if dir { 3 } else { 4 }, size, mt)
+    filestat(m, p, if dir { 3 } else { 4 }, size, mt)?;
+    // M8: dev 1, inode = FNV-1a of the lowercased path (FAT has no inodes, its names are case-insensitive). With
+    // 0 for every file, `cp /a /b` said "'/a' and '/b' are the same file"
+    let ino = path.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, c| (h ^ c.to_ascii_lowercase() as u64).wrapping_mul(0x100_0000_01b3));
+    put(m, p, &1u64.to_le_bytes())?;
+    put(m, p + 8, &ino.to_le_bytes())
 }
 
 // ---- WASI preview1 ----
@@ -309,42 +422,64 @@ fn stat_path(m: &mut [u8], p: u32, path: &str) -> R {
 fn fd_write(c: &mut C, fd: i32, iov: u32, n: u32, nw: u32, off: Option<u64>) -> R {
     let (m, h) = mh(c)?;
     let data = gather(m, iov, n)?;
-    match h.fd(fd)? {
-        Fd::Con => out(&data),
+    let path = match h.fd(fd)? {
+        Fd::Con | Fd::Tty(_) => {
+            out(&data);
+            None
+        }
         Fd::File(f) if f.write => {
-            let o = match (off, f.append) {
+            let (append, pos) = (f.append, f.pos);
+            let fh = f.handle()?;
+            let o = match (off, append) {
                 (Some(o), _) => o,
-                (None, true) => fs::entry(&f.path).map_err(errno)?.1,
-                (None, false) => f.pos,
+                (None, true) => fs::len(fh).map_err(errno)?,
+                (None, false) => pos,
             };
-            fs::write_at(&f.path, o, &data).map_err(errno)?;
+            fs::write_file_at(fh, o, &data).map_err(errno)?;
             if off.is_none() {
                 f.pos = o + data.len() as u64;
             }
+            Some(f.path.clone())
         }
         _ => return Err(BADF),
+    };
+    if let Some(p) = path {
+        h.drop_handles(&p, Some(fd));
     }
     w32(m, nw, data.len() as u32)
 }
 
-fn fd_read(c: &mut C, fd: i32, iov: u32, n: u32, nr: u32, off: Option<u64>) -> R {
-    let (m, h) = mh(c)?;
-    let want = iovs(m, iov, n)?.iter().map(|x| x.1).sum::<usize>().min(READ_MAX);
-    let k = match h.fd(fd)? {
-        Fd::Null => 0,
-        Fd::File(f) => {
+fn fd_read(c: &mut C, fd: i32, iov: u32, n: u32, nr: u32, off: Option<u64>) -> Result<R, Error> {
+    let (m, h) = match mh(c) {
+        Ok(x) => x,
+        Err(e) => return Ok(Err(e)),
+    };
+    let want = match iovs(m, iov, n) {
+        Ok(v) => v.iter().map(|x| x.1).sum::<usize>().min(READ_MAX),
+        Err(e) => return Ok(Err(e)),
+    };
+    let r: R<usize> = match h.fd(fd) {
+        Err(e) => Err(e),
+        Ok(Fd::Null) => Ok(0),
+        Ok(Fd::Tty(raw)) => {
+            let raw = *raw;
+            let data = tty_read(h, raw, want)?; // Ctrl-C: a trap that ends the run
+            scatter(m, iov, n, &data).map(|_| data.len())
+        }
+        Ok(Fd::File(f)) => (|| {
             let mut buf = vec![0u8; want];
-            let (k, _) = fs::read_into(&f.path, off.unwrap_or(f.pos), &mut buf).map_err(errno)?;
+            let at = off.unwrap_or(f.pos);
+            let k = fs::read_at(f.handle()?, at, &mut buf).map_err(errno)?;
             scatter(m, iov, n, &buf[..k])?;
             if off.is_none() {
                 f.pos += k as u64;
             }
-            k
-        }
-        Fd::Dir(..) => return Err(ISDIR),
-        Fd::Con => return Err(BADF),
+            Ok(k)
+        })(),
+        Ok(Fd::Dir(..)) => Err(ISDIR),
+        Ok(Fd::Con) => Err(BADF),
     };
-    w32(m, nr, k as u32)
+    Ok(r.and_then(|k| w32(m, nr, k as u32)))
 }
 
 fn fd_seek(c: &mut C, fd: i32, off: i64, whence: i32, p: u32) -> R {
@@ -353,7 +488,7 @@ fn fd_seek(c: &mut C, fd: i32, off: i64, whence: i32, p: u32) -> R {
     let base = match whence {
         0 => 0,
         1 => f.pos as i64,
-        2 => fs::entry(&f.path).map_err(errno)?.1 as i64,
+        2 => fs::len(f.handle()?).map_err(errno)? as i64,
         _ => return Err(INVAL),
     };
     let to = base.checked_add(off).filter(|&x| x >= 0).ok_or(INVAL)?;
@@ -363,15 +498,18 @@ fn fd_seek(c: &mut C, fd: i32, off: i64, whence: i32, p: u32) -> R {
 
 fn fd_fdstat_get(c: &mut C, fd: i32, p: u32) -> R {
     let (m, h) = mh(c)?;
-    let (ft, fl) = match h.fd(fd)? {
-        Fd::Null | Fd::Con => (2u8, 0u8), // character device
-        Fd::Dir(..) => (3, 0),
-        Fd::File(f) => (4, f.append as u8),
+    let tty = h.tty;
+    let (ft, fl, rights) = match h.fd(fd)? {
+        // character device; wasi-libc's isatty() is "no seek/tell right": a terminal only for shell runs
+        Fd::Null | Fd::Con | Fd::Tty(_) if tty => (2u8, 0u8, RIGHTS & !(SEEK | TELL)),
+        Fd::Null | Fd::Con | Fd::Tty(_) => (2, 0, RIGHTS),
+        Fd::Dir(..) => (3, 0, RIGHTS),
+        Fd::File(f) => (4, f.append as u8, RIGHTS),
     };
     let mut b = [0u8; 24];
     b[0] = ft;
     b[2] = fl;
-    b[8..16].copy_from_slice(&RIGHTS.to_le_bytes());
+    b[8..16].copy_from_slice(&rights.to_le_bytes());
     b[16..24].copy_from_slice(&RIGHTS.to_le_bytes());
     put(m, p, &b)
 }
@@ -379,7 +517,7 @@ fn fd_fdstat_get(c: &mut C, fd: i32, p: u32) -> R {
 fn fd_filestat_get(c: &mut C, fd: i32, p: u32) -> R {
     let (m, h) = mh(c)?;
     match h.fd(fd)? {
-        Fd::Null | Fd::Con => filestat(m, p, 2, 0, 0),
+        Fd::Null | Fd::Con | Fd::Tty(_) => filestat(m, p, 2, 0, 0),
         Fd::Dir(path, _) | Fd::File(OpenFile { path, .. }) => {
             let path = path.clone();
             stat_path(m, p, &path)
@@ -388,12 +526,15 @@ fn fd_filestat_get(c: &mut C, fd: i32, p: u32) -> R {
 }
 
 fn fd_filestat_set_size(c: &mut C, fd: i32, size: u64) -> R {
-    let f = c.data_mut().file(fd)?;
+    let h = c.data_mut();
+    let f = h.file(fd)?;
     if !f.write {
         return Err(BADF);
     }
-    let cur = fs::entry(&f.path).map_err(errno)?.1;
-    if size < cur { fs::truncate(&f.path, size) } else { fs::write_at(&f.path, size, &[]).map(|_| ()) }.map_err(errno)
+    fs::set_len(f.handle()?, size).map_err(errno)?;
+    let p = f.path.clone();
+    h.drop_handles(&p, Some(fd));
+    Ok(())
 }
 
 fn fd_prestat_get(c: &mut C, fd: i32, p: u32) -> R {
@@ -441,6 +582,17 @@ fn path_open(c: &mut C, dirfd: i32, pp: u32, pl: u32, oflags: i32, rights: u64, 
     let (creat, dir_only, excl, trunc) = (oflags & 1 != 0, oflags & 2 != 0, oflags & 4 != 0, oflags & 8 != 0);
     let append = fdflags & 1 != 0;
     let write = rights & FD_WRITE != 0 || trunc || append;
+    if path.eq_ignore_ascii_case("/dev/tty") {
+        // M8: the terminal, raw (editors open it: kibi); only a shell run has one
+        if !h.tty {
+            return Err(NOENT);
+        }
+        let n = h.new_fd(Fd::Tty(true));
+        return w32(m, fdp, n);
+    }
+    if trunc {
+        h.drop_handles(&path, None);
+    }
     let f = match fs::entry(&path) {
         Ok(_) if creat && excl => return Err(EXIST),
         Ok((true, ..)) if write => return Err(ISDIR),
@@ -453,12 +605,12 @@ fn path_open(c: &mut C, dirfd: i32, pp: u32, pl: u32, oflags: i32, rights: u64, 
             if trunc {
                 fs::truncate(&path, 0).map_err(errno)?;
             }
-            Fd::File(OpenFile { path, pos: 0, append, write })
+            OpenFile::new(path, append, write)
         }
         Err("not found") if creat && !dir_only => {
             sys_ro(&path)?;
             fs::touch(&path, false).map_err(errno)?;
-            Fd::File(OpenFile { path, pos: 0, append, write: true })
+            OpenFile::new(path, append, true)
         }
         Err(e) => return Err(errno(e)),
     };
@@ -470,6 +622,7 @@ fn path_op(c: &mut C, fd: i32, pp: u32, pl: u32, what: u8) -> R {
     let (m, h) = mh(c)?;
     let path = h.resolve(fd, guest_str(m, pp, pl)?)?;
     sys_ro(&path)?;
+    h.drop_handles(&path, None);
     match (what, fs::entry(&path)) {
         (b'm', Ok(_)) => Err(EXIST),
         (b'm', Err("not found")) => {
@@ -494,6 +647,8 @@ fn path_rename(c: &mut C, fd: i32, op: u32, ol: u32, fd2: i32, np: u32, nl: u32)
     let to = h.resolve(fd2, guest_str(m, np, nl)?)?;
     sys_ro(&from)?;
     sys_ro(&to)?;
+    h.drop_handles(&from, None);
+    h.drop_handles(&to, None);
     let src_dir = fs::entry(&from).map_err(errno)?.0;
     match fs::entry(&to) {
         Ok(_) if from.eq_ignore_ascii_case(&to) => return Ok(()),
@@ -591,8 +746,8 @@ fn link(l: &mut Linker<Host>, module: &Module) -> Result<(), Error> {
     })?;
     l.func_wrap(W, "fd_write", |mut c: C, fd: i32, iov: u32, n: u32, nw: u32| ret(fd_write(&mut c, fd, iov, n, nw, None)))?;
     l.func_wrap(W, "fd_pwrite", |mut c: C, fd: i32, iov: u32, n: u32, off: u64, nw: u32| ret(fd_write(&mut c, fd, iov, n, nw, Some(off))))?;
-    l.func_wrap(W, "fd_read", |mut c: C, fd: i32, iov: u32, n: u32, nr: u32| ret(fd_read(&mut c, fd, iov, n, nr, None)))?;
-    l.func_wrap(W, "fd_pread", |mut c: C, fd: i32, iov: u32, n: u32, off: u64, nr: u32| ret(fd_read(&mut c, fd, iov, n, nr, Some(off))))?;
+    l.func_wrap(W, "fd_read", |mut c: C, fd: i32, iov: u32, n: u32, nr: u32| fd_read(&mut c, fd, iov, n, nr, None).map(ret))?;
+    l.func_wrap(W, "fd_pread", |mut c: C, fd: i32, iov: u32, n: u32, off: u64, nr: u32| fd_read(&mut c, fd, iov, n, nr, Some(off)).map(ret))?;
     l.func_wrap(W, "fd_seek", |mut c: C, fd: i32, off: i64, wh: i32, p: u32| ret(fd_seek(&mut c, fd, off, wh, p)))?;
     l.func_wrap(W, "fd_tell", |mut c: C, fd: i32, p: u32| ret(fd_seek(&mut c, fd, 0, 1, p)))?;
     l.func_wrap(W, "fd_close", |mut c: C, fd: i32| {
@@ -680,6 +835,7 @@ pub struct Run {
     pub us: u64,
     pub fuel: u64,
     pub mem: u64,
+    heap: u64, // M8: peak kernel heap use during the run
     why: Why,
 }
 
@@ -688,11 +844,12 @@ impl Run {
         let _ = match (self.why, self.code) {
             (Why::Intr, _) => write!(o, "interrupted (Ctrl-C)"),
             (Why::Budget, _) => write!(o, "stopped: time budget exceeded"),
+            (Why::Mem, _) => write!(o, "stopped: the kernel heap ran low ({} MiB in all)", crate::mem::HEAP_BYTES >> 20),
             (_, Some(c)) => write!(o, "exit {}", c),
             _ => write!(o, "trap: {}", self.msg),
         };
-        let _ = write!(o, " in {} ms (budget {} ms), {} M fuel, memory {} KiB (cap {} MiB)", self.us / 1000, budget_ms,
-            self.fuel / 1_000_000, self.mem >> 10, unsafe { CAP } >> 20);
+        let _ = write!(o, " in {} ms (budget {} ms), {} M fuel, memory {} KiB (cap {} MiB), kernel heap peak {} MiB",
+            self.us / 1000, budget_ms, self.fuel / 1_000_000, self.mem >> 10, unsafe { CAP } >> 20, self.heap >> 20);
     }
 }
 
@@ -711,16 +868,25 @@ fn program(name: &str) -> (String, String) {
 }
 
 /// Words of a command line: spaces split, "..." keeps spaces, `< FILE` (or `<FILE`) is stdin.
+/// M8: '...' too (the model writes `jq '.a' /x.json`), each kind keeps the other quote as it is; \" and \\ escape.
 pub fn split(s: &str) -> Result<(Vec<String>, Option<String>), &'static str> {
-    let (mut words, mut stdin, mut cur, mut quoted, mut redir) = (Vec::new(), None, String::new(), false, false);
+    let (mut words, mut stdin, mut cur, mut redir) = (Vec::new(), None, String::new(), false);
+    let mut quote: Option<char> = None;
     let mut word_done = |w: String, redir: &mut bool| {
         if core::mem::take(redir) { stdin = Some(w) } else { words.push(w) }
     };
     let mut any = false;
-    for ch in s.chars() {
+    let mut chars = s.chars().peekable();
+    while let Some(ch) = chars.next() {
+        let quoted = quote.is_some();
         match ch {
-            '"' => {
-                quoted = !quoted;
+            // \" and \\ outside single quotes, as in a shell (`\d` stays as it is, for regexes)
+            '\\' if quote != Some('\'') && matches!(chars.peek(), Some('"' | '\\')) => {
+                cur.extend(chars.next());
+                any = true;
+            }
+            '"' | '\'' if quote.is_none() || quote == Some(ch) => {
+                quote = if quoted { None } else { Some(ch) };
                 any = true;
             }
             ' ' | '\t' if !quoted => {
@@ -736,7 +902,7 @@ pub fn split(s: &str) -> Result<(Vec<String>, Option<String>), &'static str> {
             }
         }
     }
-    if quoted {
+    if quote.is_some() {
         return Err("unterminated quote");
     }
     if any {
@@ -758,22 +924,34 @@ fn run(words: &[String], stdin: Option<&str>, budget_ms: u64, capture: bool) -> 
     if dir {
         return Err(format!("{}: is a directory", path));
     }
-    let max = MOD_MAX.min(crate::mem::heap_free() as u64 / 3);
-    if size > max {
-        return Err(format!("{}: {} KiB, larger than the {} KiB the kernel heap can take now", path, size >> 10, max >> 10));
+    if size > MOD_MAX {
+        return Err(format!("{}: {} KiB, larger than the {} KiB limit for a module", path, size >> 10, MOD_MAX >> 10));
+    }
+    // M8: loading takes the file bytes, wasmi's copy and Vec growth steps (both buffers at once) in single big
+    // allocations, which the low-heap flag cannot stop: they must fit. CPython (31 MB) panicked the kernel in a
+    // 100 MiB heap with 96 MiB free, so 4x the file plus the low mark is asked for.
+    let (need, free) = (4 * size + crate::mem::HEAP_LOW as u64, crate::mem::heap_free() as u64);
+    if need > free {
+        return Err(format!("{}: loading it needs about {} MiB of kernel heap, {} MiB is free ({} MiB in all, RINGZERO_HEAP_MIB)",
+            path, need >> 20, free >> 20, crate::mem::HEAP_BYTES >> 20));
     }
     let stdin_fd = match stdin {
-        None => Fd::Null,
+        None if capture => Fd::Null,
+        None => Fd::Tty(false),
         Some(p) => {
             let p = fs::canon(p).map_err(String::from)?;
             match fs::entry(&p) {
-                Ok((false, ..)) => Fd::File(OpenFile { path: p, pos: 0, append: false, write: false }),
+                Ok((false, ..)) => OpenFile::new(p, false, false),
                 Ok(_) => return Err(format!("{}: is a directory", p)),
                 Err(e) => return Err(format!("{}: {}", p, e)),
             }
         }
     };
     let bytes = fs::read(&path, 0, size as usize).map_err(|e| format!("{}: {}", path, e))?.0;
+    if !bytes.starts_with(b"\0asm") {
+        // M8: wasmi's own message dumps both magic numbers, long and useless for the agent
+        return Err(format!("{}: not a wasm program (the programs are in /bin: coreutils tools, rg, jq, sqlite3, lua, python3, qjs)", path));
+    }
     let t0 = smp::rdtsc();
     unsafe {
         CAPTURE = capture;
@@ -789,19 +967,27 @@ fn run(words: &[String], stdin: Option<&str>, budget_ms: u64, capture: bool) -> 
     // executed code pays; bytes_copied_per_fuel keeps wasmi's default
     cfg.fuel_cost(CustomFuelCosts { bytes_copied_per_fuel: 64, fuel_per_bytes_translated: 0, fuel_per_bytes_validated: 0 });
     let engine = Engine::new(&cfg);
+    crate::mem::heap_watch();
     let module = Module::new(&engine, &bytes[..]).map_err(|e| format!("{}: not a valid wasm module: {}", path, e))?;
     drop(bytes);
+    if crate::mem::heap_low().0 {
+        return Err(format!("{}: loading it left the kernel heap almost full ({} MiB in all), not run", path, crate::mem::HEAP_BYTES >> 20));
+    }
     let z = |s: &str| [s.as_bytes(), b"\0"].concat();
     let host = Host {
         mem: None,
         limits: StoreLimitsBuilder::new().memory_size(unsafe { CAP }).build(),
         args: core::iter::once(z(&argv0)).chain(words[1..].iter().map(|a| z(a))).collect(),
-        env: ["HOME=/", "PWD=/", "PATH=/bin", "TERM=dumb"].iter().map(|e| z(e)).collect(),
+        // PYTHON_BASIC_REPL: CPython's new REPL needs termios; trying it first costs 9 s of imports
+        env: ["HOME=/", "PWD=/", "PATH=/bin", "TERM=dumb", "PYTHON_BASIC_REPL=1"].iter().map(|e| z(e)).collect(),
         fds: vec![Some(stdin_fd), Some(Fd::Con), Some(Fd::Con), Some(Fd::Dir(String::from("/"), true))],
         t0,
         epoch_ns: crate::sys::unix_time() * 1_000_000_000,
         rng: t0 | 1,
         nosys: Vec::new(),
+        tty: !capture,
+        line: Vec::new(),
+        last_cr: false,
     };
     let mut store = Store::new(&engine, host);
     store.limiter(|h| &mut h.limits);
@@ -837,7 +1023,9 @@ fn run(words: &[String], stdin: Option<&str>, budget_ms: u64, capture: bool) -> 
         }
     };
     let mem = inst.get_memory(&store, "memory").map_or(0, |m| m.data_size(&store) as u64);
-    Ok(Run { code, msg, us: smp::tsc_to_us(smp::rdtsc() - t0), fuel: given - store.get_fuel().unwrap_or(0), mem, why: unsafe { WHY } })
+    let heap = (crate::mem::HEAP_BYTES as u64).saturating_sub(crate::mem::heap_low().1);
+    let fuel = given - store.get_fuel().unwrap_or(0);
+    Ok(Run { code, msg, us: smp::tsc_to_us(smp::rdtsc() - t0), fuel, mem, heap, why: unsafe { WHY } })
 }
 
 /// run() on the private stack (upy::on_stack), with the log line; capture is reset after.
@@ -845,7 +1033,7 @@ fn go(words: &[String], stdin: Option<&str>, budget_ms: u64, capture: bool) -> R
     let mut r = Err(String::new());
     crate::upy::on_stack(&mut || r = run(words, stdin, budget_ms, capture));
     unsafe { CAPTURE = false };
-    let mut l = SBuf::<200>::new();
+    let mut l = SBuf::<300>::new();
     let _ = write!(l, "wasm {}: ", words[0]);
     match &r {
         Ok(x) => x.status(&mut l, budget_ms),
@@ -876,25 +1064,70 @@ pub fn shell_cmd(arg: &str) {
 
 /// The agent's run_wasm tool: captured stdout + stderr and one status line.
 pub fn tool<const N: usize>(path: &str, args: &str, o: &mut SBuf<N>) {
-    let r = split(args).map_err(String::from).and_then(|(mut w, stdin)| {
-        w.insert(0, String::from(path.trim()));
+    // M8: the 2B often puts the whole command in path (path=seq 1 3000): the words after the first are arguments
+    let (path, args) = match path.trim().split_once(' ') {
+        Some((p, rest)) => (p, format!("{} {}", rest, args)),
+        None => (path.trim(), String::from(args)),
+    };
+    let r = split(&args).map_err(String::from).and_then(|(mut w, stdin)| {
+        // ... or repeats the program in args (path=sqlite3, args=sqlite3 /a.db ...): that word is dropped.
+        // shortcut: `echo echo` loses its argument too, revisit if a program needs its own name as argv[1]
+        let stem = |s: &str| String::from(s.rsplit('/').next().unwrap_or(s).trim_end_matches(".wasm"));
+        if w.first().is_some_and(|a| stem(a).eq_ignore_ascii_case(&stem(path))) {
+            w.remove(0);
+        }
+        w.insert(0, String::from(path));
         go(&w, stdin.as_deref(), TOOL_MS, true)
     });
     match r {
         Ok(r) => {
             let out = unsafe { &*core::ptr::addr_of!(OUT) };
-            o.push(out.as_str().trim_end().as_bytes());
-            let dropped = unsafe { DROPPED };
+            let all = out.as_str().trim_end().as_bytes();
+            let keep = tok_cut(all);
+            o.push(&all[..keep]);
+            let dropped = unsafe { DROPPED } + all.len() - keep;
             if dropped > 0 {
-                let _ = write!(o, "\n[... {} more bytes of output dropped]", dropped);
+                let _ = write!(o, "\n[... {} more bytes of output dropped (the tool keeps about {} tokens): narrow the command, e.g. head, wc -l, rg -c]",
+                    dropped, TOK_CAP);
             }
-            let _ = write!(o, "{}[wasm: ", if out.n > 0 { "\n" } else { "" });
-            r.status(o, TOOL_MS);
+            // the full status (time, fuel, memory) is in the log: the model gets the outcome only
+            let _ = write!(o, "{}[", if keep > 0 { "\n" } else { "" });
+            let _ = match (r.why, r.code) {
+                (Why::None, Some(c)) => write!(o, "exit {}", c),
+                (Why::None, None) => write!(o, "trap: {}", r.msg),
+                _ => {
+                    let mut s = SBuf::<320>::new();
+                    r.status(&mut s, TOOL_MS);
+                    write!(o, "{}", s.as_str().split(" in ").next().unwrap_or(""))
+                }
+            };
             o.push(b"]");
         }
         Err(e) => {
             let _ = write!(o, "error: {}", e);
         }
+    }
+}
+
+/// M8: how many bytes of `b` fit in TOK_CAP tokens of the loaded model's tokenizer (all of it when they fit),
+/// cut at a line end when one is in the second half, never inside a UTF-8 character.
+fn tok_cut(b: &[u8]) -> usize {
+    static mut TOKS: [u32; OUT_CAP] = [0; OUT_CAP]; // a BPE token is at least one byte: OUT_CAP bytes fit
+    let toks = |n: usize| crate::llm::encode_plain(&b[..n], unsafe { &mut *core::ptr::addr_of_mut!(TOKS) });
+    if b.len() > OUT_CAP || toks(b.len()) <= TOK_CAP {
+        return b.len().min(OUT_CAP);
+    }
+    let (mut lo, mut hi) = (0, b.len()); // toks(lo) <= TOK_CAP < toks(hi)
+    while hi - lo > 16 {
+        let mid = (lo + hi) / 2;
+        if toks(mid) <= TOK_CAP { lo = mid } else { hi = mid }
+    }
+    while lo > 0 && b[lo] & 0xC0 == 0x80 {
+        lo -= 1;
+    }
+    match b[..lo].iter().rposition(|&c| c == b'\n') {
+        Some(i) if i > lo / 2 => i,
+        _ => lo,
     }
 }
 
@@ -905,6 +1138,9 @@ pub fn selftest() -> bool {
         && ok("wc -l < /a.txt", &["wc", "-l"], Some("/a.txt"))
         && ok("cat <in x", &["cat", "x"], Some("in"))
         && ok("echo \"\"", &["echo", ""], None)
+        && ok("jq '.a b' \"it's\" '\"x\"'", &["jq", ".a b", "it's", "\"x\""], None)
+        && ok("python3 -c \"print(\\\"hi\\\")\" '\\\"' rg \"\\d+\"", &["python3", "-c", "print(\"hi\")", "\\\"", "rg", "\\d+"], None)
+        && split("a 'b").is_err()
         && split("a \"b").is_err()
         && split("a <").is_err()
 }
