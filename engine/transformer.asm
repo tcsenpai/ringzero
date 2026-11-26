@@ -1,7 +1,8 @@
 ; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/transformer.asm).
 ; Do not edit here: change upstream and re-vendor. AIOS changes (M2.5), all marked "AIOS": optional
 ; FP16 KV cache (-DKV_F16): vcvtps2ph on store, dot_f16_avx2 / saxpy_f16_avx2 in gqa_attn_range; and
-; model_init lets max_seq_override exceed the header's max_seq_len.
+; model_init lets max_seq_override exceed the header's max_seq_len; rope_heads and g_dn_job are global for the
+; batched prefill (M4.8, engine/prefill.asm).
 ; ============================================================================
 %ifdef QWEN35
 ; transformer.asm — Qwen3 / Qwen3.5 Transformer Forward Pass & Model Loader
@@ -95,6 +96,8 @@ global model_free
 global transformer_forward
 %ifdef QWEN35
 global deltanet_heads_range
+global rope_heads                       ; AIOS (M4.8)
+global g_dn_job                         ; AIOS (M4.8)
 %endif
 %if FAST_Q8
 global gqa_attn_range

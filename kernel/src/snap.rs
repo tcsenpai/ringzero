@@ -7,7 +7,7 @@
 // sits behind it after an undo. `parent` is the storage chain, `back` the history (a compaction node is
 // stored under the root but its history continues from the uncompacted point). Only the model goes back:
 // tool side effects stay, and /undo prints them. Copies run on the BSP between turns (workers idle).
-use crate::engine::{ctx, kv_elt_bytes, transformer_forward};
+use crate::engine::{ctx, kv_elt_bytes};
 use crate::log::SBuf;
 use crate::{llm, print, println, smp};
 use core::fmt::Write;
@@ -465,16 +465,20 @@ fn restore(t: u16) -> bool {
     s.live = t;
     if a != t {
         let (from, to) = (nd(a).pos, nd(t).pos);
-        println!("[snap] #{} was thinned: replaying {} tokens from #{} (about {} s, Ctrl-C stops)", nd(t).id, to - from, nd(a).id, (to - from) / 45 + 1);
+        println!("[snap] #{} was thinned: replaying {} tokens from #{} (about {} s, Ctrl-C stops)", nd(t).id, to - from, nd(a).id, (to - from) / 200 + 1);
         smp::park_phase(true);
         let rec = llm::rec();
         let mut ok = true;
-        for p in from..to {
-            if (p - from) % 4 == 0 && crate::shell::poll_intr() {
+        let step = llm::prefill_block().max(4);
+        let mut p = from;
+        while p < to {
+            if crate::shell::poll_intr() {
                 ok = false;
                 break;
             }
-            unsafe { transformer_forward(rec[p as usize], p, 0) };
+            let e = (p + step).min(to);
+            llm::forward(&rec[p as usize..e as usize], p, false); // batched, same state as per token
+            p = e;
         }
         smp::park_phase(false);
         if !ok {

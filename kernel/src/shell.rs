@@ -149,6 +149,7 @@ const CMDS: &[Cmd] = &[
     c("bench", SLASH, &[], "64-token decode bench (the conversation is restored after)"),
     c("fill", SLASH, &[], "<tokens>  prefill + decode speed at that context fill"),
     c("gen", SLASH, &[], "<n> <text>  debug: greedy ids + logit margins"),
+    c("prefill", SLASH, &["avx2", "vnni"], "[B] [avx2|vnni]  prompt block (1 = per token, 64 max) and matmul kernel: time the boot prefix + state hash"),
 ];
 
 fn pre_of(b: u8) -> u8 {
@@ -732,6 +733,11 @@ pub fn run() -> ! {
             "fill" => {
                 snap::invalidate();
                 llm::bench_fill(arg.parse::<u64>().unwrap_or(1024));
+                agent::resume();
+            }
+            "prefill" => {
+                snap::invalidate(); // the bench prefills from position 0
+                llm::prefill_bench(arg, agent::prefix_tokens());
                 agent::resume();
             }
             "gen" => {

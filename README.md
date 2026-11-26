@@ -16,6 +16,12 @@ arguments, a bare `/` or `!` lists them, up/down recall history. The context is 
 KV cache; past 75% fill the agent summarizes the conversation and rebuilds the context from the boot
 snapshot.
 
+Batched prefill (M4.8): prompt tokens go through the engine in blocks of 32 (`transformer_prefill`, AVX-VNNI
+batch matmul), so each weight matrix is read once per block: about 200-226 tok/s instead of 32-46, bit-identical
+state (`/prefill [B] [avx2|vnni]` times the boot prefix and prints the state hash; block 1 is the old path). Boot
+prefix, agent turns, memory slot, tool results, compaction, consolidation and snapshot replay all use it; decode is
+unchanged. Results: [docs/BATCHED_PREFILL_RESULT.md](docs/BATCHED_PREFILL_RESULT.md).
+
 Embedder: Qwen3-Embedding-0.6B runs on the same asm engine by swapping the engine context (`g_ctx`) between
 whole forward calls, so the 2B's state is never touched. `/embed [-q] TEXT` prints a vector (dim 1024, about
 6 ms per token, 0.61 s per 100 tokens; cosine >= 0.9986 against the HF fp32 model), `/index add TEXT` stores a
@@ -43,8 +49,9 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   version, the size and mtime of each indexed file) and loaded at boot in about a millisecond; only files that
   changed on the disk (also from the host) and new records are embedded again.
 - Boot snapshot cache: the prefilled system prompt + tools state (33 MiB) is saved to `/sys/bootsnap.bin` and
-  loaded at the next boot in about 0.2 s instead of a 26 s prefill (BIOS boot to the prompt 40.6 s cold, 11.9 s
-  cached). The key covers the model, the prefix tokens and the engine build; any change means a prefill.
+  loaded at the next boot in about 0.2 s instead of a prefill (BIOS boot to the prompt 40.6 s cold, 11.9 s
+  cached, before M4.8). Since the batched prefill (M4.8) a miss prefills the 1315-token prefix in 5.8 s instead of
+  36-40 s, and a cold boot reaches the prompt in about 28 s instead of 71 s (QEMU start to prompt, shared box). The key covers the model, the prefix tokens and the engine build; any change means a prefill.
 - Context compiler: the first message of every conversation, and the first turn after a compaction, gets a
   memory slot of at most 200 tokens: saved facts, then notes recalled for that message (earlier statements of the
   user, episodes, file chunks). This fixes the M2.5 compaction recall failure.
@@ -157,6 +164,7 @@ Tool-call grammar and hibernation:
 ```
 !set constrain off       # A/B: the grammar only checks tool calls (default on: it constrains them)
 /hibernate               # save the conversation + snapshot tree now (!poweroff does it too)
+/prefill 32              # time the boot prefix prefill (block 32; /prefill 1 = per token), print the state hash
 /hibernate status        # is there an image; /hibernate discard deletes it and !poweroff skips it (fresh next boot)
 /snap                    # point, pool, timings and the state hash of the live state
 ```
@@ -212,7 +220,7 @@ Memory index, from the shell:
 | `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
 | `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
-| `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
+| `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot) |
 | `tools/tooleval.py` | tool-call A/B (M4.7a): the spike prompts + in-OS prompts with `!set constrain on|off`, scored (calls, malformed, schema errors, grammar lines, decode speed) |

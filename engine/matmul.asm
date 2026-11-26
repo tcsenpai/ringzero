@@ -1,5 +1,6 @@
 ; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/matmul.asm).
-; Do not edit here: change upstream and re-vendor. Unmodified below this header.
+; Do not edit here: change upstream and re-vendor. AIOS changes (M4.8 batched prefill), all marked "AIOS":
+; quantize_x_q8_0_to (caller buffers), matmul_q8_0_batch_range, quantize_batch_q8_0 and the bmm_* job.
 ; ============================================================================
 ; matmul.asm — High-throughput AVX2 + FMA + F16C Q8_0 matmul kernels (zero libc)
 ;
@@ -50,6 +51,18 @@ section .text
 global matmul_set_fp16
 %if FAST_Q8
 global quantize_x_q8_0
+global quantize_x_q8_0_to                ; AIOS
+global matmul_q8_0_batch_range           ; AIOS
+global quantize_batch_q8_0               ; AIOS
+global bmm_w
+global bmm_out
+global bmm_k
+global bmm_b
+global bmm_xq
+global bmm_xs
+global bmm_xstride
+global bmm_ostride
+global bmm_vnni
 %endif
 global dequant_row_q8_0
 global matmul_q8_0_range
@@ -127,10 +140,15 @@ dequant_row_q8_0:
 ;   q8_xs[0..K/32] : float32 scale = max_abs / 127.0f
 ; ----------------------------------------------------------------------------
 quantize_x_q8_0:
+    lea     rdx, [rel q8_xq]
+    lea     rcx, [rel q8_xs]
+; AIOS (batched prefill): void quantize_x_q8_0_to(const float *x, uint64 K, int8 *xq /*32B aligned*/, float *xs)
+; the same quantizer with caller buffers (one call per prompt token, identical bytes)
+quantize_x_q8_0_to:
+    mov     r9, rdx
+    mov     r10, rcx
     mov     rcx, rsi
     shr     rcx, 5                      ; nb = K / 32
-    lea     r9, [rel q8_xq]
-    lea     r10, [rel q8_xs]
 
     vpbroadcastd ymm12, [rel q8_abs_mask]
     vmovss  xmm13, [rel q8_inv_127]
@@ -438,6 +456,314 @@ align 16
     pop     r13
     pop     r12
     pop     rbp
+    pop     rbx
+    ret
+
+; ----------------------------------------------------------------------------
+; AIOS (batched prefill): void matmul_q8_0_batch_range(uint64 r0, uint64 r1)
+; Rows [r0, r1) of W against bmm_b quantized activation rows (bmm_xq: stride K bytes, bmm_xs: stride
+; K/8 bytes), out[b * bmm_ostride + r * 4]. FP16 scales only (prefill_init refuses v1 files).
+; Each weight row is read from DRAM once and stays in L1 for the B tokens; per (row, token) the
+; instruction sequence is exactly .row_f16 above, so every output is bit-identical to the
+; per-token matmul_q8_0_range result.
+; ----------------------------------------------------------------------------
+matmul_q8_0_batch_range:
+    cmp     dword [rel bmm_vnni], 0
+    jne     matmul_q8_0_batch_vnni
+    push    rbx
+    push    rbp
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+    mov     r8, rdi                     ; r0
+    sub     rsi, rdi                    ; rows_left
+    jle     .exit
+    vpbroadcastw ymm15, [rel q8_one16]
+    mov     r15, [rel bmm_k]            ; K
+    mov     r13, r15
+    and     r13, -128                   ; K_128
+    mov     r14, r15
+    shr     r14, 4
+    add     r14, r15                    ; row_stride (fp16 scales)
+    mov     rax, r8
+    imul    rax, r14
+    add     rax, [rel bmm_w]            ; w_cur = W + r0 * row_stride
+    mov     rdi, [rel bmm_out]
+    lea     rdi, [rdi + r8*4]           ; &out[token 0][r0]
+
+align 16
+.row:
+    lea     r12, [rax + r14]            ; w_next
+    lea     r8,  [rax + r15]            ; s_cur (fp16)
+    mov     rdx, rdi
+    mov     r11, [rel bmm_xq]
+    mov     rbp, [rel bmm_xs]
+    mov     r10, [rel bmm_b]
+.tok:
+    vxorps  ymm0, ymm0, ymm0
+    vxorps  ymm1, ymm1, ymm1
+    vxorps  ymm2, ymm2, ymm2
+    vxorps  ymm3, ymm3, ymm3
+    xor     ebx, ebx
+    xor     r9d, r9d
+    test    r13, r13
+    jz      .tail
+
+align 16
+.blk4:
+    vmovq      xmm12, qword [r8 + r9]
+    vcvtph2ps  xmm12, xmm12
+    vmulps     xmm12, xmm12, [rbp + r9*2]
+    vinsertf128 ymm12, ymm12, xmm12, 1
+
+    INT8_1ROW_4BLK
+
+    add     rbx, 128
+    add     r9, 8
+    cmp     rbx, r13
+    jb      .blk4
+
+.tail:
+    cmp     rbx, r15
+    jae     .red
+    vmovdqa    ymm4, [r11 + rbx]
+    vpabsb     ymm5, ymm4
+    vmovdqu    ymm6, [rax + rbx]
+    vpsignb    ymm6, ymm6, ymm4
+    vpmaddubsw ymm6, ymm5, ymm6
+    vpmaddwd   ymm6, ymm6, ymm15
+    vcvtdq2ps  ymm6, ymm6
+    movzx      ecx, word [r8 + r9]
+    vmovd      xmm8, ecx
+    vcvtph2ps  xmm8, xmm8
+    vmulss     xmm8, xmm8, [rbp + r9*2]
+    vbroadcastss ymm8, xmm8
+    vfmadd231ps ymm0, ymm6, ymm8
+    add     rbx, 32
+    add     r9, 2
+    jmp     .tail
+
+.red:
+    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm2, ymm2, ymm3
+    vaddps  ymm0, ymm0, ymm2
+    vhaddps ymm0, ymm0, ymm0
+    vhaddps ymm0, ymm0, ymm0
+    vextractf128 xmm1, ymm0, 1
+    vaddss  xmm0, xmm0, xmm1
+    vmovss  [rdx], xmm0
+    add     rdx, [rel bmm_ostride]
+    add     r11, r15                    ; next token's int8 row
+    mov     rcx, r15
+    shr     rcx, 3
+    add     rbp, rcx                    ; next token's scales (K/32 * 4 B)
+    dec     r10
+    jnz     .tok
+
+    add     rdi, 4
+    mov     rax, r12
+    dec     rsi
+    jnz     .row
+.exit:
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     rbp
+    pop     rbx
+    ret
+
+; ----------------------------------------------------------------------------
+; AIOS (batched prefill): AVX-VNNI variant of matmul_q8_0_batch_range (bmm_vnni != 0, set by prefill_init
+; from CPUID). Activations are stored as x + 128 (u8, quantize_batch_q8_0 flips the sign bit), and per
+; weight row C = -128 * sum(w) over each 4-byte group is computed once into a stack buffer; then
+; vpdpbusd(C, x + 128, w) = sum(x * w) per int32 lane, the exact integer the AVX2 path gets from
+; vpabsb/vpsignb/vpmaddubsw/vpmaddwd (no int16 saturation is possible there: |pair| <= 2*127*127).
+; The float part (scales, 4 accumulators, reduction) is the same instruction sequence, so the outputs
+; stay bit-identical. 4 vector ALU ops per 32 MACs per token instead of 7.
+; ----------------------------------------------------------------------------
+matmul_q8_0_batch_vnni:
+    push    rbx
+    push    rbp
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+    mov     r8, rdi                     ; r0
+    sub     rsi, rdi                    ; rows_left
+    jle     .exit_nf
+    mov     r15, [rel bmm_k]            ; K
+    mov     rcx, rsp
+    sub     rsp, r15
+    sub     rsp, 64
+    and     rsp, -32
+    mov     [rsp], rcx                  ; caller rsp; C buffer at rsp + 32 (K bytes)
+    lea     r12, [rsp + 32]
+    vpbroadcastb ymm14, [rel q8_b80]    ; 32 x 0x80 (u8 128)
+    vpxor   ymm13, ymm13, ymm13
+    mov     r13, r15
+    and     r13, -128                   ; K_128
+    mov     r14, r15
+    shr     r14, 4
+    add     r14, r15                    ; row_stride (fp16 scales)
+    mov     rax, r8
+    imul    rax, r14
+    add     rax, [rel bmm_w]
+    mov     rdi, [rel bmm_out]
+    lea     rdi, [rdi + r8*4]
+
+align 16
+.row:
+    lea     r8, [rax + r15]             ; s_cur (fp16)
+    xor     ebx, ebx
+.corr:                                  ; C[j] = -(128 * sum of each 4 weights), streams the row from DRAM once
+    Q8_PREFETCH [r8 + rbx]
+    vpxor   ymm6, ymm6, ymm6
+    {vex} vpdpbusd ymm6, ymm14, [rax + rbx]
+    vpsubd  ymm6, ymm13, ymm6
+    vmovdqa [r12 + rbx], ymm6
+    add     rbx, 32
+    cmp     rbx, r15
+    jb      .corr
+    mov     rdx, rdi
+    mov     r11, [rel bmm_xq]
+    mov     rbp, [rel bmm_xs]
+    mov     r10, [rel bmm_b]
+.tok:
+    vxorps  ymm0, ymm0, ymm0
+    vxorps  ymm1, ymm1, ymm1
+    vxorps  ymm2, ymm2, ymm2
+    vxorps  ymm3, ymm3, ymm3
+    xor     ebx, ebx
+    xor     r9d, r9d
+    test    r13, r13
+    jz      .tail
+
+align 16
+.blk4:
+    vmovq      xmm12, qword [r8 + r9]
+    vcvtph2ps  xmm12, xmm12
+    vmulps     xmm12, xmm12, [rbp + r9*2]
+    vinsertf128 ymm12, ymm12, xmm12, 1
+    vmovdqa    ymm4, [r11 + rbx + 0]
+    vmovdqa    ymm6, [r12 + rbx + 0]
+    {vex} vpdpbusd ymm6, ymm4, [rax + rbx + 0]
+    vcvtdq2ps  ymm6, ymm6
+    vpermilps  ymm8, ymm12, 0x00
+    vfmadd231ps ymm0, ymm6, ymm8
+    vmovdqa    ymm4, [r11 + rbx + 32]
+    vmovdqa    ymm6, [r12 + rbx + 32]
+    {vex} vpdpbusd ymm6, ymm4, [rax + rbx + 32]
+    vcvtdq2ps  ymm6, ymm6
+    vpermilps  ymm8, ymm12, 0x55
+    vfmadd231ps ymm1, ymm6, ymm8
+    vmovdqa    ymm4, [r11 + rbx + 64]
+    vmovdqa    ymm6, [r12 + rbx + 64]
+    {vex} vpdpbusd ymm6, ymm4, [rax + rbx + 64]
+    vcvtdq2ps  ymm6, ymm6
+    vpermilps  ymm8, ymm12, 0xAA
+    vfmadd231ps ymm2, ymm6, ymm8
+    vmovdqa    ymm4, [r11 + rbx + 96]
+    vmovdqa    ymm6, [r12 + rbx + 96]
+    {vex} vpdpbusd ymm6, ymm4, [rax + rbx + 96]
+    vcvtdq2ps  ymm6, ymm6
+    vpermilps  ymm8, ymm12, 0xFF
+    vfmadd231ps ymm3, ymm6, ymm8
+    add     rbx, 128
+    add     r9, 8
+    cmp     rbx, r13
+    jb      .blk4
+
+.tail:
+    cmp     rbx, r15
+    jae     .red
+    vmovdqa    ymm4, [r11 + rbx]
+    vmovdqa    ymm6, [r12 + rbx]
+    {vex} vpdpbusd ymm6, ymm4, [rax + rbx]
+    vcvtdq2ps  ymm6, ymm6
+    movzx      ecx, word [r8 + r9]
+    vmovd      xmm8, ecx
+    vcvtph2ps  xmm8, xmm8
+    vmulss     xmm8, xmm8, [rbp + r9*2]
+    vbroadcastss ymm8, xmm8
+    vfmadd231ps ymm0, ymm6, ymm8
+    add     rbx, 32
+    add     r9, 2
+    jmp     .tail
+
+.red:
+    vaddps  ymm0, ymm0, ymm1
+    vaddps  ymm2, ymm2, ymm3
+    vaddps  ymm0, ymm0, ymm2
+    vhaddps ymm0, ymm0, ymm0
+    vhaddps ymm0, ymm0, ymm0
+    vextractf128 xmm1, ymm0, 1
+    vaddss  xmm0, xmm0, xmm1
+    vmovss  [rdx], xmm0
+    add     rdx, [rel bmm_ostride]
+    add     r11, r15
+    mov     rcx, r15
+    shr     rcx, 3
+    add     rbp, rcx
+    dec     r10
+    jnz     .tok
+
+    add     rdi, 4
+    add     rax, r14
+    dec     rsi
+    jnz     .row
+    mov     rsp, [rsp]
+.exit_nf:
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     rbp
+    pop     rbx
+    ret
+
+; AIOS (batched prefill): void quantize_batch_q8_0(const float *x /*rdi*/)
+; quantize bmm_b rows of K floats (row b at x + b * bmm_xstride) into bmm_xq / bmm_xs
+quantize_batch_q8_0:
+    push    rbx
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+    mov     rbx, rdi
+    mov     r12, [rel bmm_xq]
+    mov     r13, [rel bmm_xs]
+    mov     r14, [rel bmm_b]
+    mov     r15, [rel bmm_k]
+.lp:
+    mov     rdi, rbx
+    mov     rsi, r15
+    mov     rdx, r12
+    mov     rcx, r13
+    call    quantize_x_q8_0_to
+    cmp     dword [rel bmm_vnni], 0
+    je      .no_flip
+    vpbroadcastb ymm0, [rel q8_b80]     ; VNNI kernel: store x + 128 (u8)
+    xor     eax, eax
+.flip:
+    vpxor   ymm1, ymm0, [r12 + rax]
+    vmovdqa [r12 + rax], ymm1
+    add     rax, 32
+    cmp     rax, r15
+    jb      .flip
+.no_flip:
+    add     rbx, [rel bmm_xstride]
+    add     r12, r15
+    mov     rax, r15
+    shr     rax, 3
+    add     r13, rax
+    dec     r14
+    jnz     .lp
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
     pop     rbx
     ret
 
@@ -782,6 +1108,7 @@ q8_f127:      dd 127.0
 q8_inv_127:   dd 0.007874015748031496       ; 1.0f / 127.0f
 q8_one16:     dw 1
 q8_min_i8:    db -127
+q8_b80:       db 0x80                   ; AIOS
 %endif
 
 section .bss
@@ -792,4 +1119,15 @@ alignb 64
 q8_xq:        resb Q8_MAX_K
 alignb 64
 q8_xs:        resb (Q8_MAX_K / 32) * 4
+; AIOS: batched matmul job (written by the BSP before dispatch, read by every worker)
+alignb 64
+bmm_w:        resq 1
+bmm_out:      resq 1
+bmm_k:        resq 1
+bmm_b:        resq 1
+bmm_xq:       resq 1                    ; B x K int8 (prefill_init buffer, 64B aligned)
+bmm_xs:       resq 1                    ; B x K/32 f32
+bmm_xstride:  resq 1                    ; input row stride (bytes) for quantize_batch_q8_0
+bmm_ostride:  resq 1                    ; output row stride (bytes)
+bmm_vnni:     resd 1                    ; 1: AVX-VNNI batch kernel (prefill_init, CPUID 7.1:EAX[4])
 %endif

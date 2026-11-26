@@ -6,6 +6,7 @@
 ;   - parking: an idle worker spins for tp_park_tsc TSC cycles, then (if tp_park_enable) sleeps in
 ;     hlt. The dispatcher sends one broadcast IPI (x2APIC, vector WAKE_VECTOR) when tp_n_parked != 0.
 ;   - tp_shutdown removed (nothing calls it in the Rust kernel).
+;   - M4.8: tp_matmul_q8_0_batch (job kind tp_K = 2): one weight pass for a block of prompt tokens.
 ; The partitioning and the job protocol (tp_gen / tp_done_arr) are unchanged, so results stay
 ; bit-identical across core counts.
 
@@ -29,6 +30,12 @@ extern ap_init                          ; Rust: void ap_init(u64 tid) (lidt + LA
 extern matmul_q8_0_range
 %if FAST_Q8
 extern quantize_x_q8_0
+extern matmul_q8_0_batch_range
+extern quantize_batch_q8_0
+extern bmm_w
+extern bmm_out
+extern bmm_k
+extern bmm_b
 extern gqa_attn_range
 %ifdef QWEN35
 extern deltanet_heads_range
@@ -41,6 +48,7 @@ global ap_limine_entry
 global tp_matmul_q8_0
 %if FAST_Q8
 global tp_gqa_attn
+global tp_matmul_q8_0_batch
 %ifdef QWEN35
 global tp_deltanet
 %endif
@@ -171,6 +179,8 @@ ap_limine_entry:
     cmp     rcx, 1
     je      .run_dn
 %endif
+    cmp     rcx, 2
+    je      .run_bmm
 %endif
     mov     r8,  r14                    ; r0
     mov     r9,  r15                    ; r1
@@ -188,6 +198,11 @@ ap_limine_entry:
     mov     rsi, r15                    ; h1
     call    deltanet_heads_range
 %endif
+    jmp     .job_done
+.run_bmm:                               ; K == 2: batched prefill matmul (params in bmm_*)
+    mov     rdi, r14
+    mov     rsi, r15
+    call    matmul_q8_0_batch_range
 %endif
 
 .job_done:
@@ -296,6 +311,8 @@ tp_matmul_q8_0:
     cmp     rcx, 1
     je      .bsp_dn
 %endif
+    cmp     rcx, 2
+    je      .bsp_bmm
 %endif
     xor     r8d, r8d                    ; r0 = 0
     mov     r9,  rax                    ; r1
@@ -313,6 +330,11 @@ tp_matmul_q8_0:
     mov     rsi, rax                    ; h1
     call    deltanet_heads_range
 %endif
+    jmp     .wait_workers
+.bsp_bmm:
+    xor     edi, edi                    ; r0 = 0
+    mov     rsi, rax                    ; r1
+    call    matmul_q8_0_batch_range
 %endif
 
 .wait_workers:
@@ -377,6 +399,38 @@ tp_gqa_attn:
     mov     r8, rcx                     ; h1 = n_heads
     xor     ecx, ecx                    ; h0 = 0
     jmp     gqa_attn_range
+
+; ----------------------------------------------------------------------------
+; AIOS (M4.8): void tp_matmul_q8_0_batch(const void *W, const float *x, float *out, uint64 M, uint64 K, uint64 B)
+; B rows of x (stride bmm_xstride bytes, set by the caller) -> B rows of out (stride bmm_ostride).
+; Quantizes every row once (same bytes as tp_matmul_q8_0), then one SMP job over the M weight rows.
+; ----------------------------------------------------------------------------
+tp_matmul_q8_0_batch:
+    mov     [rel bmm_w], rdi
+    mov     [rel bmm_out], rdx
+    mov     [rel bmm_k], r8
+    mov     [rel bmm_b], r9
+    push    rcx
+    mov     rdi, rsi
+    call    quantize_batch_q8_0         ; 1 push + ret = 16 -> aligned
+    pop     rcx
+    mov     rax, [rel tp_n_threads]
+    cmp     rax, 1
+    jle     .bmm_single
+    push    rbx
+    push    r12
+    sub     rsp, 8
+    mov     rbx, rax
+    mov     [rel tp_M], rcx
+    mov     qword [rel tp_K], 2
+    mov     r12d, 1
+    lock xadd dword [rel tp_gen], r12d
+    inc     r12d
+    jmp     tp_matmul_q8_0.run_bsp_slice
+.bmm_single:
+    xor     edi, edi
+    mov     rsi, rcx
+    jmp     matmul_q8_0_batch_range
 %ifdef QWEN35
 
 ; ----------------------------------------------------------------------------

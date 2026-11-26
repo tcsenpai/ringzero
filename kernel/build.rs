@@ -1,7 +1,7 @@
 // Assembles the vendored NASM engine and links the objects straight into the kernel.
 use std::{env, path::PathBuf, process::Command};
 
-const ASM: &[&str] = &["math", "matmul", "tokenizer", "transformer", "cpu", "smp"];
+const ASM: &[&str] = &["math", "matmul", "tokenizer", "transformer", "prefill", "cpu", "smp"];
 
 fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());

@@ -841,9 +841,10 @@ fn cons_run(stop: &mut dyn FnMut() -> bool) {
             break;
         }
         if c.i < c.toks.len() {
-            c.i += 1;
-            llm::fwd(c.toks[c.i - 1], c.pos, (c.i == c.toks.len()) as i32);
-            c.pos += 1;
+            let e = (c.i + llm::prefill_block().max(1) as usize).min(c.toks.len()); // one prefill block per step
+            llm::fwd_block(&c.toks[c.i..e], c.pos, e == c.toks.len());
+            c.pos += (e - c.i) as u64;
+            c.i = e;
             if c.i == c.toks.len() {
                 c.next = llm::pick_next();
             }
