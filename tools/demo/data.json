@@ -1,0 +1,9 @@
+{
+  "os": "ringzero",
+  "version": "0.8",
+  "models": [
+    { "name": "Qwen3.5-2B", "quant": "q8_0", "size_mb": 2210 },
+    { "name": "Qwen3-Embedding-0.6B", "quant": "q8_0", "size_mb": 640 }
+  ],
+  "apps": ["coreutils", "ripgrep", "jq", "sqlite3", "lua", "python3", "qjs", "kibi"]
+}

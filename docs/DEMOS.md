@@ -1,0 +1,170 @@
+# ringzero demos: common software in /bin
+
+Every program below is a `wasm32-wasip1` build that runs on ringzero's WASI runtime (wasmi in ring 0, see
+[M5B_WASI_RESULT.md](M5B_WASI_RESULT.md) and [M8_RESULT.md](M8_RESULT.md)). `make wasm-apps` builds or fetches them
+(pinned versions and SHA-256, see the dependency table in the README) and copies them to `/bin` on the data disk,
+with CPython's standard library in `/lib/python3.15` and the demo inputs below in `/demo` (`tools/demo/`).
+
+How to type them: each block is one or more lines for the ringzero prompt (serial console: `nc HOST 4555`, or the
+QEMU window). `!run NAME ARGS` runs `/bin/NAME.wasm` (a coreutils tool when there is no such file); `"..."` keeps
+spaces in one argument, `< FILE` is stdin. Programs started from the shell have the console as their terminal:
+REPLs read typed lines (Enter sends a line, Ctrl-D ends the input, Ctrl-C stops the program). The agent runs the
+same programs with its `run_wasm` tool, without a terminal (stdin is empty) and with a 10 s budget.
+
+Some blocks use a note file and a JSON file; create them first:
+
+```
+!write /notes/casa.txt comprare il latte\npagare la bolletta della luce\nchiamare l idraulico per il bagno\nportare fuori il cane\nlavare la macchina\naggiustare la porta della cucina\ninnaffiare le piante\n
+!run cp /demo/data.json /data.json
+```
+
+## coreutils (uutils 0.13.0)
+
+```
+!run ls -l /bin
+!run wc -l /notes/casa.txt
+!run sort -r /notes/casa.txt
+!run head -n 3 /demo/people.csv
+!run cut -d , -f 1,2 /demo/people.csv
+!run sha256sum /demo/people.csv
+!run ls /lib/python3.15/json
+```
+
+There are no pipes in the shell: one program per command, `< FILE` for stdin (`!run sort < /notes/casa.txt`).
+`/bin/coreutils.wasm` is the uutils `feat_wasm` set: `du`, `df`, `chown` and the other tools that need missing
+WASI calls are not in it (`coreutils: unknown program 'du'`).
+
+## ripgrep (15.2.0)
+
+```
+!run rg -n latte /notes
+!run rg -i -c roma /demo
+!run rg -l "def |import " /demo
+```
+
+## jq (jaq 3.2.0, a jq clone)
+
+```
+!run jq .version /demo/data.json
+!run jq ".models[] | .name" /demo/data.json
+!run jq "[.models[].size_mb] | add" /demo/data.json
+!run jq -r ".apps[]" /demo/data.json
+```
+
+`/bin/jq.wasm` is jaq: the jq language with a few differences (see jaq's README), colors on a terminal.
+
+## sqlite3 (3.54.1)
+
+A database file on the disk, one command per run:
+
+```
+!run sqlite3 /demo/shop.db "create table if not exists items(name text, price real); insert into items values('pane', 2.5), ('latte', 1.2), ('caffe', 4.8);"
+!run sqlite3 /demo/shop.db "select name, price from items order by price desc;"
+!run sqlite3 -json /demo/shop.db "select count(*) as n, round(avg(price), 2) as avg from items;"
+```
+
+Interactive (the prompt is `SQLite-3.54 shop.db->`):
+
+```
+!run sqlite3 /demo/shop.db
+select * from items where price > 2;
+.tables
+.quit
+```
+
+## Lua (5.4.8)
+
+```
+!run lua /demo/hello.lua
+!run lua -e "print(_VERSION, math.maxinteger, ('%.3f'):format(math.pi))"
+```
+
+REPL:
+
+```
+!run lua
+t = {} for i = 1, 5 do t[i] = i * i end
+print(table.concat(t, " "))
+print(pcall(error, "caught"))
+```
+
+then Ctrl-D.
+
+## Python (CPython 3.15.2)
+
+```
+!run python3 -c "import sys; print(sys.version)"
+!run python3 /demo/stats.py
+!run python3 -c "import json, re; print(json.dumps(re.findall(r'\d+', 'a1b22c333')))"
+```
+
+`stats.py` reads `/demo/people.csv` with `csv`, uses `re`, `statistics`, `collections` and `json`, and writes
+`/demo/report.json`. REPL (the basic one: the new REPL needs termios):
+
+```
+!run python3
+import datetime, textwrap
+print(datetime.date(2026, 11, 26).strftime("%A"))
+[x * x for x in range(10) if x % 2]
+```
+
+then Ctrl-D. The first run of a module compiles it and writes `__pycache__` next to it on the disk; later runs
+load the `.pyc`.
+
+MicroPython (in the kernel, M5) runs small pure-Python scripts too, with fewer modules: `!py -f /demo/stats.py` does
+not run there (no `csv`, `statistics`), `!py print(sum(x * x for x in range(10)))` does.
+
+## QuickJS-ng (0.18.0)
+
+```
+!run qjs /demo/hello.js
+!run qjs -e "console.log([3, 1, 2].sort().map((x) => x * 2))"
+```
+
+`!run qjs` alone is its REPL (`.quit` or Ctrl-C leaves it). It has its own line editor, so each typed character
+shows twice (ours and its echo); Ctrl-D does not end it.
+
+## kibi (0.3.2, a small terminal editor)
+
+```
+!run kibi /notes/todo.txt
+```
+
+Ctrl-S saves, Ctrl-Q quits, Ctrl-F finds. kibi needs an ANSI terminal: use it from the serial console (`nc`, a
+terminal emulator), not from the QEMU window (the framebuffer console does not interpret escape sequences).
+
+## The agent
+
+The agent picks the program with `run_wasm`. Requests that worked on the 2B model (Qwen3.5-2B Q8, greedy, one per
+conversation: `/clear` between them; the answers are in [M8_RESULT.md](M8_RESULT.md)):
+
+```
+crea un db sqlite /spesa.db con una tabella prodotti (nome, prezzo) con pane 2.5, latte 1.2, caffe 4.8 e dimmi qual e il prodotto piu caro
+```
+
+```
+quali tabelle ci sono nel database sqlite /demo/shop.db?
+```
+
+```
+conta le righe di /notes/casa.txt con wc
+```
+
+```
+usa run_wasm per eseguire seq 1 3000
+```
+
+The last one shows the output cap: about 1500 tokens (and 6 KiB) are kept, with a note on what was dropped.
+`quante righe ha /notes/casa.txt?` and `estrai il campo version da /data.json` get the right answer through the
+`cat` tool. Asking for python3 or lua by name sends the 2B to MicroPython's `run_code` instead.
+
+The 4B q4 (the working model, `make iso MODEL=4b QUANT=q4`) also gets these right through `run_wasm`:
+```
+esegui lo script /demo/stats.py con python3
+```
+```
+esegui /demo/hello.lua con lua
+```
+```
+estrai il campo version da /data.json con jq
+```

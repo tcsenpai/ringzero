@@ -74,8 +74,48 @@ pub fn init(hhdm: u64, phys: u64, len: u64) {
 }
 
 // Kernel heap (alloc, for the FAT driver, the file indexer and wasmi): a fixed slice of the arena, taken at boot.
+// M8: 192 MiB by default (RINGZERO_HEAP_MIB at build time): CPython's 31 MB module and wasmi's copy of it live here.
 static HEAP: linked_list_allocator::LockedHeap = linked_list_allocator::LockedHeap::empty();
-pub const HEAP_BYTES: usize = 64 << 20;
+pub const HEAP_BYTES: usize = mib(option_env!("RINGZERO_HEAP_MIB"), 192) << 20;
+
+const fn mib(s: Option<&str>, default: usize) -> usize {
+    let Some(s) = s else { return default };
+    let (b, mut i, mut v) = (s.as_bytes(), 0, 0);
+    while i < b.len() {
+        assert!(b[i].is_ascii_digit(), "RINGZERO_HEAP_MIB: digits only");
+        v = v * 10 + (b[i] - b'0') as usize;
+        i += 1;
+    }
+    v
+}
+
+// M8: wasmi allocates with infallible alloc, so a heap OOM would panic the kernel. Below HEAP_LOW free bytes the
+// allocator raises a flag instead; wasm.rs stops the run at its next check and drops the store (everything is
+// freed). HEAP_MIN_FREE is the low-water mark since the last heap_watch(): the peak use of a run, measured after
+// each call (the moment a realloc holds both buffers is not seen). A single allocation bigger than the free heap
+// still panics: wasm.rs only loads a module when 4x its size is free.
+pub const HEAP_LOW: usize = 12 << 20;
+static HEAP_IS_LOW: AtomicBool = AtomicBool::new(false);
+static HEAP_MIN_FREE: AtomicU64 = AtomicU64::new(u64::MAX);
+
+fn heap_check() {
+    let free = HEAP.lock().free();
+    HEAP_MIN_FREE.fetch_min(free as u64, Relaxed);
+    if free < HEAP_LOW {
+        HEAP_IS_LOW.store(true, Relaxed);
+    }
+}
+
+/// Start watching (clears the flag and the low-water mark).
+pub fn heap_watch() {
+    HEAP_IS_LOW.store(false, Relaxed);
+    HEAP_MIN_FREE.store(heap_free() as u64, Relaxed);
+}
+
+/// (heap below HEAP_LOW since heap_watch, lowest free bytes since heap_watch)
+pub fn heap_low() -> (bool, u64) {
+    (HEAP_IS_LOW.load(Relaxed), HEAP_MIN_FREE.load(Relaxed))
+}
 
 // M5b: the wasm slot, one region of the memory cap (wasm.rs) for one wasm linear memory. wasmi keeps a linear
 // memory in a Vec<u8> and grows it by doubling (realloc); in the heap a 128 -> 256 MiB step needs 384 MiB at
@@ -117,7 +157,11 @@ unsafe impl GlobalAlloc for Alloc {
     unsafe fn alloc(&self, l: core::alloc::Layout) -> *mut u8 {
         match slot_take(l.size(), l.align()) {
             Some(p) => p,
-            None => unsafe { HEAP.alloc(l) },
+            None => {
+                let p = unsafe { HEAP.alloc(l) };
+                heap_check();
+                p
+            }
         }
     }
     unsafe fn alloc_zeroed(&self, l: core::alloc::Layout) -> *mut u8 {
@@ -126,7 +170,11 @@ unsafe impl GlobalAlloc for Alloc {
                 core::ptr::write_bytes(p, 0, l.size()); // the slot is reused across runs
                 p
             },
-            None => unsafe { HEAP.alloc_zeroed(l) },
+            None => {
+                let p = unsafe { HEAP.alloc_zeroed(l) };
+                heap_check();
+                p
+            }
         }
     }
     unsafe fn dealloc(&self, p: *mut u8, l: core::alloc::Layout) {
@@ -139,7 +187,12 @@ unsafe impl GlobalAlloc for Alloc {
     unsafe fn realloc(&self, p: *mut u8, l: core::alloc::Layout, new: usize) -> *mut u8 {
         // shortcut: a doubling step may ask for more than the slot (1088 KiB x 2^8 = 272 MiB > 256); the Vec only
         // writes up to its length, and StoreLimits keeps the memory within the slot. Only the linear memory is here.
-        if in_slot(p) { p } else { unsafe { HEAP.realloc(p, l, new) } }
+        if in_slot(p) {
+            return p;
+        }
+        let q = unsafe { HEAP.realloc(p, l, new) };
+        heap_check();
+        q
     }
 }
 
