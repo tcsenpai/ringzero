@@ -14,10 +14,11 @@ pub fn meminfo<const N: usize>(o: &mut SBuf<N>) {
     let (usable, total) = (USABLE.load(Relaxed) / MIB, TOTAL.load(Relaxed) / MIB);
     let used = mem::used() / MIB;
     let model = MODEL_BYTES.load(Relaxed) / MIB;
+    let pool = crate::snap::pool_bytes() / MIB;
     let _ = write!(
         o,
-        "RAM total {} MiB, free {} MiB, used {} MiB (model weights {} MiB, LLM engine arena {} MiB, kernel and firmware {} MiB)",
-        total, usable.saturating_sub(used), total - usable.saturating_sub(used), model, used,
+        "RAM total {} MiB, free {} MiB, used {} MiB (model weights {} MiB, LLM engine arena {} MiB, state snapshot pool {} MiB, kernel and firmware {} MiB)",
+        total, usable.saturating_sub(used), total - usable.saturating_sub(used), model, used - pool, pool,
         total.saturating_sub(usable + model)
     );
 }

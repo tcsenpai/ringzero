@@ -4,7 +4,7 @@
 // commands, up/down walk the history. Input is polled into a type-ahead ring; Ctrl-C (0x03) sets a
 // flag the generation loop checks between tokens.
 use crate::log::SBuf;
-use crate::{agent, console, kbd, llm, smp, sys};
+use crate::{agent, console, kbd, llm, smp, snap, sys};
 use crate::{print, println};
 use core::fmt::Write;
 use core::sync::atomic::Ordering::Relaxed;
@@ -93,7 +93,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -102,7 +102,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("poweroff", BANG, &[], "power off now"),
@@ -113,9 +113,19 @@ const CMDS: &[Cmd] = &[
     c("history", SLASH, &[], "[N]  raw transcript, kept across compactions (40)"),
     c("think", SLASH, &["on", "off"], "on|off  model thinking"),
     c("temp", SLASH, &[], "<0..2>  sampling temperature, 0 = greedy"),
-    c("bench", SLASH, &[], "64-token decode bench (resets the conversation)"),
-    c("fill", SLASH, &[], "<tokens>  prefill + decode speed at that context fill (resets)"),
-    c("gen", SLASH, &[], "<n> <text>  debug: greedy ids + logit margins (resets)"),
+    c("undo", SLASH, &[], "[N]  back N turns (the model's state only, not the machine)"),
+    c("redo", SLASH, &[], "[N]  forward again after an undo"),
+    c("retry", SLASH, &[], "ask the last question again (temp 0: the same answer)"),
+    c("tree", SLASH, &["all"], "[all]  points, branches and saves"),
+    c("branch", SLASH, &[], "NAME  start a branch here and switch to it"),
+    c("switch", SLASH, &[], "NAME|#ID  go to a branch, a save or a point"),
+    c("save", SLASH, &[], "NAME  keep this point (never evicted)"),
+    c("load", SLASH, &[], "NAME  go to a saved point"),
+    c("drop", SLASH, &[], "NAME|#ID  delete a branch, a save or a point"),
+    c("snap", SLASH, &[], "snapshot status: point, pool, timings"),
+    c("bench", SLASH, &[], "64-token decode bench (the conversation is restored after)"),
+    c("fill", SLASH, &[], "<tokens>  prefill + decode speed at that context fill"),
+    c("gen", SLASH, &[], "<n> <text>  debug: greedy ids + logit margins"),
 ];
 
 fn pre_of(b: u8) -> u8 {
@@ -140,6 +150,10 @@ fn help() {
         }
     }
     println!("Tab completes commands and arguments, a bare / or ! (pause or Enter) lists them, up/down recall history.");
+    println!("Every finished turn is saved as a point (#7). The prompt shows the branch, [main], and [main~1] after");
+    println!("/undo; /redo steps forward again. Typing after an undo starts a side line, the old one stays in /tree.");
+    println!("/save NAME keeps a point, /branch NAME starts a line. Only the model's memory goes back in time:");
+    println!("changes to the machine (settings) stay.");
 }
 
 // ---- line editor ----
@@ -385,6 +399,16 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             let _ = write!(o, "think = {}", if on { "on" } else { "off" });
             true
         }
+        "snappool" => match val.parse::<usize>() {
+            Ok(m) if snap::set_cap(m) => {
+                let _ = write!(o, "snappool = {} MiB of {} usable for snapshots", snap::cap_mib(), snap::max_mib());
+                true
+            }
+            _ => {
+                let _ = write!(o, "error: snappool must be 64..{} MiB", snap::max_mib());
+                false
+            }
+        },
         "compact" => match val.parse::<u64>() {
             Ok(p) if (1..=95).contains(&p) => {
                 unsafe { agent::COMPACT_PCT = p };
@@ -397,7 +421,7 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             }
         },
         _ => {
-            let _ = write!(o, "error: unknown setting '{}' (temperature, cores, keyboard, think, compact)", key);
+            let _ = write!(o, "error: unknown setting '{}' (temperature, cores, keyboard, think, compact, snappool)", key);
             false
         }
     };
@@ -413,15 +437,15 @@ fn show(f: fn(&mut SBuf<1024>)) {
     println!("{}", o.as_str());
 }
 
-const PROMPT: &str = "ringzero> ";
-
 pub fn run() -> ! {
     println!("ringzero shell. Type a message for the system agent, !cmd for the machine, /cmd for the session. /help lists them.");
     static mut LINE: [u8; 16384] = [0; 16384];
     loop {
-        print!("\n{}", PROMPT);
+        let mut prompt = SBuf::<64>::new();
+        snap::prompt(&mut prompt);
+        print!("\n{}", prompt.as_str());
         let line = unsafe { &mut *core::ptr::addr_of_mut!(LINE) };
-        let n = readline(line, Some(PROMPT));
+        let n = readline(line, Some(prompt.as_str()));
         let s = core::str::from_utf8(&line[..n]).unwrap_or("").trim();
         if s.is_empty() {
             continue;
@@ -462,7 +486,7 @@ pub fn run() -> ! {
             "clear" => {
                 console::clear_screen();
                 agent::reset();
-                println!("[agent] new conversation (the system prompt is restored from the boot snapshot on the next turn)");
+                println!("[agent] new conversation from the boot prefix (the old one stays in /tree)");
             }
             "mem" => show(sys::meminfo),
             "cpu" => show(sys::cpuinfo),
@@ -485,19 +509,22 @@ pub fn run() -> ! {
             }
             "history" => agent::history(arg.parse::<usize>().unwrap_or(40)),
             "bench" => {
+                snap::invalidate(); // the bench runs from position 0
                 llm::bench();
-                agent::reset(); // the bench ran from position 0
+                agent::resume();
             }
             "fill" => {
+                snap::invalidate();
                 llm::bench_fill(arg.parse::<u64>().unwrap_or(1024));
-                agent::reset();
+                agent::resume();
             }
             "gen" => {
                 let (k, text) = arg.split_once(' ').unwrap_or(("", ""));
                 match k.parse::<u64>() {
                     Ok(k) if !text.trim().is_empty() => {
+                        snap::invalidate();
                         llm::gen_debug(k, text.trim());
-                        agent::reset();
+                        agent::resume();
                     }
                     _ => println!("usage: /gen <max tokens> <prompt text>"),
                 }
@@ -536,6 +563,16 @@ pub fn run() -> ! {
                 };
                 println!("[park] {}", desc);
             }
+            "undo" => snap::undo(arg.parse::<usize>().unwrap_or(1)),
+            "redo" => snap::redo(arg.parse::<usize>().unwrap_or(1)),
+            "retry" => agent::retry(),
+            "tree" => snap::tree(arg == "all"),
+            "snap" => snap::status(),
+            "branch" | "save" | "switch" | "load" | "drop" if arg.is_empty() => println!("usage: /{} NAME", c.name),
+            "branch" => snap::branch(arg),
+            "save" => snap::save_cmd(arg),
+            "switch" | "load" => snap::switch(arg, c.name),
+            "drop" => snap::drop_cmd(arg),
             "poweroff" => sys::poweroff(),
             "reboot" => sys::reboot(),
             _ => {}

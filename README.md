@@ -5,7 +5,7 @@ ringzero is an experimental AI OS: a small Rust `no_std` x86-64 kernel, booted b
 assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
-Status: **M2.5** (edition "ringzero Qwen35@2b"). Boots under BIOS and UEFI, runs the APs in the engine's
+Status: **Snapshots v1** (edition "ringzero Qwen35@2b"). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
 uptime, settings, poweroff/reboot with confirmation) in its native tool format. `!cmd` runs a machine
@@ -13,9 +13,20 @@ command (`!mem`, `!cores 4`, `!log 10`, `!kbd it`, `!set temperature 0.7`, `!pow
 command (`/help`, `/clear`, `/ctx`, `/compact`, `/history`, `/bench`). Tab completes commands and their
 arguments, a bare `/` or `!` lists them, up/down recall history. The context is 32768 tokens with an FP16
 KV cache; past 75% fill the agent summarizes the conversation and rebuilds the context from the boot
-snapshot. Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect
-to the remote instance: [docs/M25_RESULT.md](docs/M25_RESULT.md) (earlier: [M2+M3](docs/M2M3_RESULT.md),
-[M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
+snapshot.
+
+Engine state snapshots: every finished turn is saved as a point (`#7`) in a 1 GiB pool (KV rows of the
+turn + the 19.3 MiB DeltaNet state, about 21 MiB per short turn; going back costs about 0.6 ms). The
+prompt shows the branch, `ringzero[main]> `, and `ringzero[main~1]> ` after an undo. Commands: `/undo [N]`,
+`/redo [N]`, `/retry`, `/tree [all]`, `/branch NAME`, `/switch NAME|#ID`, `/save NAME`, `/load NAME`,
+`/drop NAME|#ID`, `/snap`. Ctrl-C, an interrupted compaction and `/bench` `/fill` `/gen` restore the
+conversation instead of resetting it, and `/undo` after a compaction returns to the uncompacted context.
+Only the model goes back: tool side effects stay, and `/undo` says so. Design:
+[docs/design/SNAPSHOTS.md](docs/design/SNAPSHOTS.md).
+
+Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to the
+remote instance: [docs/SNAPSHOTS_V1_RESULT.md](docs/SNAPSHOTS_V1_RESULT.md) (earlier: [M2.5](docs/M25_RESULT.md),
+[M2+M3](docs/M2M3_RESULT.md), [M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
 
 ## Build and run
 
@@ -28,7 +39,7 @@ Quickstart:
 ```sh
 make model               # Qwen/Qwen3.5-2B from Hugging Face (~4.5 GB) -> models/qwen35-2b-q8_0-v3.asmbin (2 GB)
 make iso                 # kernel + Limine + model -> build/ringzero.iso
-make run-remote          # then: nc HOST 4555 (serial shell), VNC HOST:5901 (password aios)
+make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[main]>), VNC HOST:5901 (password aios)
 ```
 
 More:
@@ -47,7 +58,7 @@ tail -f build/remote-serial.log                                       # watch th
 python3 tools/screenshot.py build/remote-monitor.sock build/screen.png   # framebuffer screenshot
 make iso MODEL=/path/to/qwen3-0.6b-q8_0.asmbin   # other model file
 python3 tools/boottest.py build/ringzero.iso uefi build/t 8 /bench /stats   # headless: timed serial log,
-                         # types each command at the ringzero> prompt, saves screen.png
+                         # types each command at the ringzero[main]> prompt, saves screen.png
 ```
 
 `MODEL` defaults to `models/qwen35-2b-q8_0-v3.asmbin` (gitignored; a symlink to an existing file works).

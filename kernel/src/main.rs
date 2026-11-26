@@ -13,6 +13,7 @@ mod log;
 mod mem;
 mod shell;
 mod smp;
+mod snap;
 mod sys;
 
 use core::arch::asm;

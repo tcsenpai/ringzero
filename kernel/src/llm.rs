@@ -1,6 +1,6 @@
 // Generation (mirror of kernel.asm run_inference / pick_next_token), the golden boot self-test, the
 // bench, and the agent's building blocks: tokenizer with special tokens, prefill, streamed decode with
-// stop tokens and Ctrl-C, and the prefix snapshot (KV cache rows + DeltaNet state).
+// stop tokens and Ctrl-C, and the live token array the snapshots store (snap.rs).
 use crate::engine::*;
 use crate::smp;
 use crate::{print, println};
@@ -33,7 +33,7 @@ const BENCH_PROMPT: &[u8] = b"Explain how a CPU cache works in 3 concise sentenc
 
 pub static mut THINK: u64 = 0;
 pub static mut TEMP_BITS: u32 = 0; // 0.0f = greedy argmax
-static mut RNG: u64 = 42;
+pub static mut RNG: u64 = 42;
 const TOPP_BITS: u32 = 0x3F73_3333; // 0.95f
 
 struct Opts {
@@ -223,7 +223,7 @@ pub fn selftest() -> bool {
     ok
 }
 
-/// 64-token decode bench (single turn from pos 0: overwrites the agent prefix, restore it afterwards).
+/// 64-token decode bench (single turn from pos 0: overwrites the agent context, snap.rs restores it).
 pub fn bench() -> Stats {
     run(BENCH_PROMPT, &Opts { max_tok: 64, print_toks: false, margins: false })
 }
@@ -414,13 +414,33 @@ pub fn encode(text: &[u8], out: &mut [u32]) -> usize {
 
 // ---- prefill and streamed decode for agent turns ----
 
+/// Token id at every live position of the agent context (snapshots store and restore it with the KV
+/// rows, a thinned snapshot is rebuilt by replaying it).
+static mut REC: [u32; CTX_LEN as usize] = [0; CTX_LEN as usize];
+
+pub fn rec() -> &'static mut [u32; CTX_LEN as usize] {
+    unsafe { &mut *core::ptr::addr_of_mut!(REC) }
+}
+
+pub fn set_rng(r: u64) {
+    unsafe { RNG = r };
+}
+
+/// One forward pass of the agent context, recorded in REC.
+pub fn fwd(t: u32, pos: u64, logits: i32) {
+    if let Some(r) = rec().get_mut(pos as usize) {
+        *r = t;
+    }
+    unsafe { transformer_forward(t, pos, logits) };
+}
+
 /// Feed tokens at *pos. Logits only for the last one. false = interrupted by Ctrl-C (state is partial).
 pub fn feed(toks: &[u32], pos: &mut u64) -> bool {
     for (i, &t) in toks.iter().enumerate() {
         if i % 4 == 0 && crate::shell::poll_intr() {
             return false;
         }
-        unsafe { transformer_forward(t, *pos, (i + 1 == toks.len()) as i32) };
+        fwd(t, *pos, (i + 1 == toks.len()) as i32);
         *pos += 1;
     }
     true
@@ -464,85 +484,19 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         if *pos + 3 >= max_seq {
             break Stop::Ctx;
         }
-        unsafe { transformer_forward(next as u32, *pos, 1) };
+        fwd(next as u32, *pos, 1);
         *pos += 1;
         next = pick_next();
     };
-    unsafe {
-        ECHO = true;
-        if matches!(stop, Stop::ToolEnd | Stop::MaxTok | Stop::Ctx) {
-            transformer_forward(next as u32, *pos, 0); // emitted but not fed yet
-            *pos += 1;
-        }
-        if *pos + 2 <= max_seq {
-            transformer_forward(ctx(CTX_TOK_IM_END) as u32, *pos, 0);
-            transformer_forward(ctx(CTX_TOK_NL) as u32, *pos + 1, 0);
-            *pos += 2;
-        }
+    unsafe { ECHO = true };
+    if matches!(stop, Stop::ToolEnd | Stop::MaxTok | Stop::Ctx) {
+        fwd(next as u32, *pos, 0); // emitted but not fed yet
+        *pos += 1;
+    }
+    if *pos + 2 <= max_seq {
+        fwd(ctx(CTX_TOK_IM_END) as u32, *pos, 0);
+        fwd(ctx(CTX_TOK_NL) as u32, *pos + 1, 0);
+        *pos += 2;
     }
     (stop, n)
-}
-
-// ---- prefix snapshot: KV rows 0..pos of every full-attention layer + the DeltaNet S and conv state ----
-
-const CTX_N_KV_HEADS: usize = 120;
-const CTX_HEAD_DIM: usize = 128;
-const CTX_BUF_K_CACHE: usize = 328;
-const CTX_BUF_V_CACHE: usize = 336;
-const CTX_BUF_DN_STATE: usize = 384;
-const CTX_N_FULL: usize = 416;
-const CTX_DN_ZERO_BYTES: usize = 496;
-
-static mut SNAP_BUF: *mut u8 = core::ptr::null_mut();
-static mut SNAP_POS: u64 = 0;
-
-/// Calls f(cache_ptr, bytes) for every contiguous KV run of positions 0..pos (head-major layout
-/// cache[l][kv_h][pos][head_dim] of FP16 or FP32 elements, transformer.asm FAST_Q8), K then V, then
-/// the DeltaNet block.
-fn snap_regions(pos: u64, mut f: impl FnMut(*mut u8, usize)) {
-    let hb = ctx(CTX_HEAD_DIM) * unsafe { kv_elt_bytes };
-    let stride = ctx(CTX_MAX_SEQ) * hb;
-    let heads = ctx(CTX_N_FULL) * ctx(CTX_N_KV_HEADS);
-    for cache in [ctx(CTX_BUF_K_CACHE), ctx(CTX_BUF_V_CACHE)] {
-        for h in 0..heads {
-            f((cache + h * stride) as *mut u8, (pos * hb) as usize);
-        }
-    }
-    f(ctx(CTX_BUF_DN_STATE) as *mut u8, ctx(CTX_DN_ZERO_BYTES) as usize);
-}
-
-/// Save the engine state after a prefill of `pos` tokens. Returns the snapshot size in bytes.
-pub fn snapshot_save(pos: u64) -> u64 {
-    let mut size = 0;
-    snap_regions(pos, |_, n| size += n as u64);
-    unsafe {
-        if SNAP_BUF.is_null() {
-            SNAP_BUF = crate::mem::sys_mmap_anon(size);
-            assert!((SNAP_BUF as i64) > 0, "snapshot: arena full");
-        }
-        let mut o = 0;
-        snap_regions(pos, |p, n| {
-            core::ptr::copy_nonoverlapping(p, SNAP_BUF.add(o), n);
-            o += n;
-        });
-        SNAP_POS = pos;
-    }
-    size
-}
-
-pub fn snapshot_pos() -> u64 {
-    unsafe { SNAP_POS }
-}
-
-/// Restore the saved prefix state. Returns the position to continue from.
-pub fn snapshot_restore() -> u64 {
-    unsafe {
-        let pos = SNAP_POS;
-        let mut o = 0;
-        snap_regions(pos, |p, n| {
-            core::ptr::copy_nonoverlapping(SNAP_BUF.add(o), p, n);
-            o += n;
-        });
-        pos
-    }
 }

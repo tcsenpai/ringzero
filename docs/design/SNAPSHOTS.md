@@ -1,6 +1,7 @@
 # Design: engine state snapshots (undo, branches, warm boot)
 
-Status: proposal, 2026-11-26. Nothing here is implemented beyond the existing boot prefix snapshot.
+Status: v1 (section 3.6) implemented in `kernel/src/snap.rs`, 2026-11-26; measurements in
+[../SNAPSHOTS_V1_RESULT.md](../SNAPSHOTS_V1_RESULT.md). v2 is still a proposal.
 Targets the tree after M2.5 (32k context, FP16 KV, compaction). Start implementing only after M2.5 lands:
 `kernel/src/agent.rs` and `kernel/src/llm.rs` are being edited for it.
 

@@ -1,14 +1,16 @@
 // The system agent: Qwen3.5 native tool calling in ring 0. The system prompt + tool list is prefilled
-// once at boot and snapshotted (llm::snapshot_*); each `@` turn streams the answer, parses a tool
+// once at boot and saved as snapshot point #0 (snap.rs); each turn streams the answer, parses a tool
 // call if the model makes one, validates it against the tool schema, runs it, feeds the result back
 // as a <tool_response> turn and loops (at most MAX_ROUNDS tool rounds per user turn).
 // Context management (M2.5): when the fill crosses COMPACT_PCT (or on /compact) the model writes a short
 // summary, the boot snapshot is restored (it ends just before the system turn's <|im_end|>), the summary
 // is appended to the system prompt and the last exchanges are prefilled again (DeltaNet state cannot be
 // cropped, so the context is rebuilt). The raw transcript stays in HIST.
+// Snapshots (snap.rs): every finished turn is saved as a point; Ctrl-C or an interrupted compaction
+// restores the point the turn started from, and the exchanges for the re-prefill come from the points.
 use crate::engine::{CAP, CAPTURE};
 use crate::log::SBuf;
-use crate::{klog, llm, print, println, shell, smp, sys};
+use crate::{klog, llm, print, println, shell, smp, snap, sys};
 use core::fmt::Write;
 
 const SYSTEM: &str = "You are the system agent of ringzero, an experimental operating system with its own Rust \
@@ -64,14 +66,11 @@ including those in the earlier summary of the system prompt if there is one. The
 const SUMMARY_HEAD: &str = "\n\nSummary of the earlier part of this session (older turns were dropped to free \
 context; these are facts you noted yourself, trust them):\n";
 
-static mut POS: u64 = 0;
-static mut FRESH: bool = true;
 static mut TEXT: SBuf<32768> = SBuf::new();
 static mut TOKS: [u32; 16384] = [0; 16384];
 static mut RES: SBuf<{ RES_CAP + 512 }> = SBuf::new();
 pub static mut COMPACT_PCT: u64 = 75;
 static mut N_COMPACT: u64 = 0;
-static mut EX_AT_COMPACT: usize = 0; // EX_N at the last compaction (auto needs new exchanges past the kept ones)
 /// "<|im_end|>\n" closing the system turn: not in the snapshot, fed when a conversation starts fresh.
 static mut SYS_END: [u32; 2] = [0; 2];
 
@@ -83,19 +82,43 @@ fn toks() -> &'static mut [u32; 16384] {
 }
 
 pub fn pos() -> u64 {
-    unsafe { POS }
+    snap::pos()
 }
 
-/// Next turn starts a fresh conversation from the boot snapshot.
+/// A fresh conversation from the boot prefix on the current branch (the old line stays in /tree).
 pub fn reset() {
-    unsafe {
-        if !FRESH {
-            hist("kernel", "--- new conversation ---");
-        }
-        FRESH = true;
-        EX_N = 0;
-        EX_AT_COMPACT = 0;
+    if !snap::at_root() {
+        hist("kernel", "--- new conversation ---");
     }
+    snap::new_line();
+}
+
+/// A kernel line in the raw transcript (snapshot moves).
+pub fn note(s: &str) {
+    hist("kernel", s);
+}
+
+/// After /bench, /fill, /gen: put the conversation back (they ran from position 0).
+pub fn resume() {
+    let t0 = smp::rdtsc();
+    snap::invalidate();
+    let p = snap::ensure_live();
+    println!("[snap] conversation restored (ctx {}) in {} us", p, smp::tsc_to_us(smp::rdtsc() - t0));
+}
+
+/// /retry: undo the last turn and ask its question again (temp 0: the same answer; temp > 0: reseeded).
+pub fn retry() {
+    let mut q = SBuf::<4096>::new();
+    if !snap::last_question(&mut q) {
+        println!("[retry] nothing to retry here (no question at this point)");
+        return;
+    }
+    snap::undo(1);
+    if unsafe { llm::TEMP_BITS } != 0 {
+        llm::set_rng(unsafe { llm::RNG } ^ smp::rdtsc() | 1);
+    }
+    println!("[retry] {}", q.as_str());
+    ask(q.as_str());
 }
 
 
@@ -118,7 +141,7 @@ fn hist(role: &str, s: &str) {
     let _ = write!(h, "{}: {}\n", role, s);
 }
 
-fn floor_char(s: &str, max: usize) -> usize {
+pub fn floor_char(s: &str, max: usize) -> usize {
     let mut k = s.len().min(max);
     while !s.is_char_boundary(k) {
         k -= 1;
@@ -137,52 +160,31 @@ pub fn history(n: usize) {
 /// `/ctx`: context fill.
 pub fn ctx_info() {
     let (p, m) = (pos(), llm::ctx_max_seq());
-    let fresh = unsafe { FRESH };
+    let fresh = snap::at_root();
     println!("[ctx] {}/{} tokens ({}%){}, boot prefix {} tok, KV {}, compaction at {}%, {} compaction(s) so far, {} exchange(s) kept for re-prefill",
-        p, m, p * 100 / m, if fresh { " (fresh: next turn restores the prefix)" } else { "" },
-        llm::snapshot_pos(), llm::kv_type(), unsafe { COMPACT_PCT }, unsafe { N_COMPACT }, unsafe { EX_N.min(KEEP) });
+        p, m, p * 100 / m, if fresh { " (fresh: the next turn closes the system turn)" } else { "" },
+        snap::root_pos(), llm::kv_type(), unsafe { COMPACT_PCT }, unsafe { N_COMPACT }, snap::ex_count().0.min(KEEP));
 }
 
-// ---- last exchanges (question + final answer), re-prefilled after a compaction ----
+// ---- last exchanges (question + final answer, stored in the snapshot points), re-prefilled after a compaction ----
 
-struct Ex {
-    q: SBuf<4096>,
-    a: SBuf<4096>,
-}
-static mut EX: [Ex; KEEP] = [Ex { q: SBuf::new(), a: SBuf::new() }, Ex { q: SBuf::new(), a: SBuf::new() }];
-static mut EX_N: usize = 0; // exchanges recorded since the last reset
-
-fn push_ex(q: &str, a: &str) {
-    unsafe {
-        let e = &mut (*core::ptr::addr_of_mut!(EX))[EX_N % KEEP];
-        e.q.clear();
-        e.a.clear();
-        let _ = write!(e.q, "{}", q);
-        let _ = write!(e.a, "{}", a);
-        EX_N += 1;
-    }
-}
-
-/// Render the last k exchanges as chat turns (oldest first).
+/// Render the last k exchanges of the current history as chat turns (oldest first).
 fn render_ex(t: &mut SBuf<32768>, k: usize) {
-    unsafe {
-        for i in EX_N - k..EX_N {
-            let e = &(*core::ptr::addr_of!(EX))[i % KEEP];
-            let _ = write!(t, "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n{}<|im_end|>\n",
-                e.q.as_str(), e.a.as_str());
-        }
-    }
+    snap::exchanges(k, |q, a| {
+        let _ = write!(t, "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n{}<|im_end|>\n", q, a);
+    });
 }
 
-/// Summarize, restore the boot prefix, prefill the summary and the last exchanges. false = interrupted
-/// or no room (the conversation is reset).
+/// Summarize, restore the boot prefix, prefill the summary and the last exchanges, save it as point
+/// "[compact N]" (the uncompacted point stays as pre-compact-N, /undo goes back to it). false =
+/// interrupted (the conversation is restored) or no room (a fresh conversation).
 pub fn compact(why: &str) -> bool {
-    if unsafe { FRESH } {
+    if snap::at_root() {
         println!("[compact] nothing to compact (fresh conversation)");
         return false;
     }
     let max_seq = llm::ctx_max_seq();
-    let before = pos();
+    let before = snap::ensure_live();
     let t = text();
     t.clear();
     let _ = write!(t, "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n", COMPACT_ASK);
@@ -206,9 +208,9 @@ pub fn compact(why: &str) -> bool {
     println!("");
     let t1 = smp::rdtsc();
     if stop == llm::Stop::Intr {
-        println!("^C [compact] interrupted, conversation reset");
         smp::park_phase(false);
-        reset();
+        snap::rollback();
+        println!("^C [compact] interrupted, conversation restored (ctx {})", snap::pos());
         return false;
     }
     let mut sum = SBuf::<4096>::new();
@@ -217,8 +219,8 @@ pub fn compact(why: &str) -> bool {
     let cap = cap.split("<tool_call>").next().unwrap_or(cap).trim();
     let _ = write!(sum, "{}", cap);
 
-    unsafe { POS = llm::snapshot_restore() }; // system turn still open: the summary is appended to it
-    let ex_avail = unsafe { EX_N.min(KEEP) };
+    let root = snap::restore_root(); // system turn still open: the summary is appended to it
+    let ex_avail = snap::ex_count().0.min(KEEP);
     let mut n = 0;
     for k in (0..=ex_avail).rev() {
         t.clear();
@@ -232,20 +234,17 @@ pub fn compact(why: &str) -> bool {
             break;
         }
     }
-    pos = unsafe { POS };
+    pos = root;
     let ok = llm::feed(&toks()[..n], &mut pos);
     let t2 = smp::rdtsc();
     smp::park_phase(false);
     if !ok {
-        println!("^C [compact] interrupted during re-prefill, conversation reset");
-        reset();
+        snap::rollback();
+        println!("^C [compact] interrupted during re-prefill, conversation restored (ctx {})", snap::pos());
         return false;
     }
-    unsafe {
-        POS = pos;
-        N_COMPACT += 1;
-        EX_AT_COMPACT = EX_N;
-    }
+    unsafe { N_COMPACT += 1 };
+    snap::commit(pos, "", "", false, "", unsafe { N_COMPACT } as u32);
     let (us1, us2) = (smp::tsc_to_us(t1 - t0), smp::tsc_to_us(t2 - t1));
     // one log line (the ring keeps 128 bytes per line)
     klog!(b'A', "compact #{} {}: {}->{} tok ({}%->{}%), summary {} tok {} ms, re-prefill {} tok {} ms, total {} ms",
@@ -282,13 +281,13 @@ pub fn init() {
         pos = 0; // Ctrl-C at boot: no shell yet, prefill again
     }
     let t1 = smp::rdtsc();
-    let bytes = llm::snapshot_save(pos);
+    let bytes = snap::init_root(pos);
     let t2 = smp::rdtsc();
     smp::park_phase(false);
     let us = smp::tsc_to_us(t1 - t0);
-    klog!(b'I', "agent: prefix prefill {} tok in {}.{:03} s ({} tok/s), snapshot {} MiB saved in {} ms",
-        pos, us / 1_000_000, us / 1000 % 1000, n as u64 * 1_000_000 / us.max(1), bytes >> 20, smp::tsc_to_us(t2 - t1) / 1000);
-    unsafe { FRESH = true };
+    klog!(b'I', "agent: prefix prefill {} tok in {}.{:03} s ({} tok/s), snapshot #0 {} MiB in a {} MiB pool, saved in {} ms (pool touched)",
+        pos, us / 1_000_000, us / 1000 % 1000, n as u64 * 1_000_000 / us.max(1), bytes >> 20, snap::pool_bytes() >> 20,
+        smp::tsc_to_us(t2 - t1) / 1000);
 }
 
 /// Hidden `toks` builtin: print the prefix token ids (checked against the HF tokenizer offline).
@@ -298,7 +297,6 @@ pub fn dump_prefix_tokens() {
         print!("{}{}", if i > 0 { "," } else { "" }, t);
     }
     println!("");
-    unsafe { FRESH = true }; // nothing in the engine changed, but keep the contract simple
 }
 
 struct Call<'a> {
@@ -366,7 +364,11 @@ fn arg<'a>(c: &Call<'a>, k: &str) -> Option<&'a str> {
     c.args[..c.n].iter().find(|(a, _)| *a == k).map(|(_, v)| *v)
 }
 
+/// Tool calls of the current turn that changed the machine (printed by /undo, which cannot revert them).
+static mut FXT: SBuf<160> = SBuf::new();
+
 fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
+    let fx = unsafe { &mut *core::ptr::addr_of_mut!(FXT) };
     match c.name {
         "meminfo" => sys::meminfo(o),
         "cpuinfo" => sys::cpuinfo(o),
@@ -392,7 +394,10 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
             let _ = write!(o, "cancelled: the user answered no, the machine stays on");
         }
         "set_setting" => {
-            shell::set_setting(arg(c, "key").unwrap_or(""), arg(c, "value").unwrap_or(""), o);
+            let (k, v) = (arg(c, "key").unwrap_or(""), arg(c, "value").unwrap_or(""));
+            if shell::set_setting(k, v, o) {
+                let _ = write!(fx, "{}set_setting {}={}", if fx.n > 0 { ", " } else { "" }, k, v);
+            }
         }
         _ => {}
     }
@@ -404,25 +409,26 @@ pub fn ask(q: &str) {
     let mut l = SBuf::<160>::new();
     let _ = write!(l, "user: {}", q);
     crate::log::record(b'A', l.as_str());
-    unsafe {
-        if !FRESH && POS * 100 >= max_seq * COMPACT_PCT && EX_N - EX_AT_COMPACT > KEEP {
-            compact("auto");
-        }
-        if !FRESH && POS + q.len() as u64 + 300 >= max_seq {
-            println!("[agent] context full ({}/{}), starting a fresh conversation", pos(), max_seq);
-            reset();
-        }
-        if FRESH {
-            let t0 = smp::rdtsc();
-            POS = llm::snapshot_restore();
-            for t in SYS_END {
-                crate::engine::transformer_forward(t, POS, 0); // close the system turn
-                POS += 1;
-            }
-            FRESH = false;
-            klog!(b'A', "[agent] fresh conversation: prefix ({} tok) restored in {} us", pos(), smp::tsc_to_us(smp::rdtsc() - t0));
-        }
+    let p = snap::ensure_live();
+    if !snap::at_root() && p * 100 >= max_seq * unsafe { COMPACT_PCT } && snap::ex_count().1 > KEEP {
+        compact("auto");
     }
+    if !snap::at_root() && pos() + q.len() as u64 + 300 >= max_seq {
+        println!("[agent] context full ({}/{}), starting a fresh conversation", pos(), max_seq);
+        reset();
+    }
+    // the live state is the current point here; a fresh one still has the system turn open
+    let mut start = pos();
+    if snap::at_root() {
+        for t in unsafe { SYS_END } {
+            llm::fwd(t, start, 0); // close the system turn
+            start += 1;
+        }
+        crate::log::record(b'A', "[agent] fresh conversation from the boot prefix");
+    }
+    unsafe { (*core::ptr::addr_of_mut!(FXT)).clear() };
+    let mut pos_now = start;
+    let mut answer: Option<(usize, usize)> = None; // the final answer's span in CAP
     hist("user", q);
     let t = text();
     t.clear();
@@ -430,9 +436,10 @@ pub fn ask(q: &str) {
     let gen_prompt = if think { "<|im_start|>assistant\n<think>\n" } else { "<|im_start|>assistant\n<think>\n\n</think>\n\n" };
     let _ = write!(t, "<|im_start|>user\n{}<|im_end|>\n{}", q, gen_prompt);
     smp::park_phase(true);
+    let mut intr = false;
     for round in 0..=MAX_ROUNDS {
         let n = llm::encode(&t.b[..t.n], toks());
-        let mut pos = unsafe { POS };
+        let mut pos = pos_now;
         if pos + n as u64 + 64 >= max_seq {
             println!("[agent] context full, type 'clear' to start over");
             break;
@@ -447,20 +454,13 @@ pub fn ask(q: &str) {
         let t1 = smp::rdtsc();
         let (stop, n_gen) = if fed { llm::generate(&mut pos, MAX_ANSWER) } else { (llm::Stop::Intr, 0) };
         let t2 = smp::rdtsc();
-        unsafe {
-            CAPTURE = false;
-            POS = pos;
-        }
+        unsafe { CAPTURE = false };
+        let n_fed = if fed { n as u64 } else { pos - pos_now }; // Ctrl-C during the prefill: what was fed
+        pos_now = pos;
         println!("");
-        llm::print_speed(&llm::Stats { n_prompt: n as u64, n_gen, prefill_us: smp::tsc_to_us(t1 - t0), decode_us: smp::tsc_to_us(t2 - t1), pos });
-        if !fed {
-            println!("^C [agent] interrupted during prefill, conversation reset");
-            reset();
-            break;
-        }
-        if stop == llm::Stop::Intr {
-            println!("^C [agent] interrupted");
-            crate::log::record(b'A', "turn interrupted by Ctrl-C");
+        llm::print_speed(&llm::Stats { n_prompt: n_fed, n_gen, prefill_us: smp::tsc_to_us(t1 - t0), decode_us: smp::tsc_to_us(t2 - t1), pos });
+        if !fed || stop == llm::Stop::Intr {
+            intr = true;
             break;
         }
         let cap = unsafe { (*core::ptr::addr_of!(CAP)).as_str() };
@@ -473,7 +473,8 @@ pub fn ask(q: &str) {
                 crate::log::record(b'A', a.as_str());
                 let ans = cap.rsplit("</think>").next().unwrap_or(cap).trim();
                 hist("assistant", ans);
-                push_ex(q, ans);
+                let off = ans.as_ptr() as usize - cap.as_ptr() as usize;
+                answer = Some((off, off + ans.len()));
                 break;
             }
             Some(_) if round == MAX_ROUNDS => {
@@ -510,6 +511,24 @@ pub fn ask(q: &str) {
         let _ = write!(t, "<|im_start|>user\n<tool_response>\n{}\n</tool_response><|im_end|>\n{}", res.as_str(), gen_prompt);
     }
     smp::park_phase(false);
+    let fx = unsafe { (*core::ptr::addr_of!(FXT)).as_str() };
+    if intr {
+        // a turn is atomic: back to the point it started from, earlier turns stay
+        let p = snap::rollback();
+        println!("^C [agent] interrupted, turn rolled back (ctx {})", p);
+        if !fx.is_empty() {
+            println!("[agent] note: this turn ran {}; the machine keeps it.", fx);
+        }
+        crate::log::record(b'A', "turn interrupted by Ctrl-C, rolled back");
+        hist("kernel", "[turn interrupted by Ctrl-C, rolled back]");
+        return;
+    }
+    let cap = unsafe { (*core::ptr::addr_of!(CAP)).as_str() };
+    let (a, ex) = match answer {
+        Some((i, j)) => (&cap[i..j], true),
+        None => ("", false),
+    };
+    snap::commit(pos_now, q, a, ex, fx, 0);
 }
 
 /// Boot self-check of the lenient parser and the validator (no model involved).

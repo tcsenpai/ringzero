@@ -1,4 +1,4 @@
-# ringzero architecture (as of M2.5)
+# ringzero architecture (as of Snapshots v1)
 
 ## Diagram
 
@@ -21,7 +21,8 @@ flowchart TB
         SH["shell.rs<br/>text -> agent, !machine, /session commands,<br/>Tab completion, suggestions, history, Ctrl-C"]
         AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
-        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, tokenizer split,<br/>feed / generate, prefix snapshot"]
+        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, tokenizer split,<br/>feed / generate, live token array"]
+        SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay, eviction"]
         ENG["engine.rs<br/>FFI, output capture"]
     end
 
@@ -47,8 +48,13 @@ flowchart TB
     SH -- "!cmd" --> SYS
     SH -- "plain text" --> AG
     SH -- "/ctx /compact /history" --> CM
+    SH -- "/undo /redo /tree /branch /switch<br/>/save /load /drop /snap, prompt" --> SNAP
+    AG -- "commit after each turn,<br/>rollback on Ctrl-C" --> SNAP
     AG -- "fill >= 75%" --> CM
-    CM -- "summary turn, snapshot_restore,<br/>re-prefill" --> LLM
+    CM -- "summary turn, restore root #0,<br/>re-prefill" --> LLM
+    CM -- "pre-compact point,<br/>[compact N] point" --> SNAP
+    SNAP -- "memcpy KV rows + DeltaNet state,<br/>replay of token ids" --> KV
+    SNAP -- "pool" --> MEM
     AG -- "tool calls" --> SYS
     AG -- "read_log" --> LOG
     AG -- "set_setting" --> SH
@@ -78,7 +84,7 @@ sequenceDiagram
     U->>S: "how much free memory?" (Ctrl-C polled between tokens)
     S->>A: ask(q)
     A->>A: fill >= 75% of 32768? compact first (see below)
-    A->>L: fresh conversation? snapshot_restore (KV rows 0..743 + DeltaNet state, ~1.5 ms)
+    A->>L: live state = current point (restored after /bench, /fill, /gen); at the boot prefix: close the system turn
     A->>L: encode user turn, feed (prefill), generate (stream to console)
     L-->>A: stop at </tool_call>, captured text (markup hidden on screen)
     A->>A: lenient parse + validate against the schema
@@ -86,6 +92,7 @@ sequenceDiagram
     T-->>A: "RAM total 4095 MiB, free 2057 MiB, ..."
     A->>L: <tool_response> turn, feed, generate
     L-->>U: "La memoria libera è di 2057 MiB."
+    A->>A: snap commit: save point #N (rows of the turn + DeltaNet state, ~21 MiB, 1-8 ms); Ctrl-C instead restores the previous point (~0.6 ms)
     Note over A: up to 4 tool rounds per user turn, poweroff/reboot ask y/N at the shell first
 ```
 
@@ -97,8 +104,9 @@ sequenceDiagram
     participant L as llm.rs + engine
     A->>L: internal user turn "summarize facts, preferences, open tasks, tool results (<= 120 words)"
     L-->>A: summary (at most 300 tokens, streamed, captured)
-    A->>L: snapshot_restore (boot prefix: tools + system prompt, without the closing <|im_end|>)
+    A->>L: restore root #0 (boot prefix: tools + system prompt, without the closing <|im_end|>); the current point stays as pre-compact-N
     A->>L: feed "Summary of the earlier part of this session ... trust them: SUMMARY<|im_end|>" (inside the system turn) + last 2 exchanges verbatim (<= 3000 tok)
+    A->>A: save the rebuilt context as point [compact N] (stored under #0, /undo goes back to pre-compact-N); Ctrl-C restores the current point
     Note over A: DeltaNet state cannot be cropped, so the context is rebuilt from the snapshot.<br/>The raw transcript (64 KiB ring) is kept for /history. Every compaction is logged (fill before/after, summary tokens, ms).
 ```
 
@@ -110,17 +118,28 @@ Legend:
   engine state. Then `shell::run`.
 - **Shell**: plain text goes to the agent; `!cmd` runs a machine command (mem, cpu, cores, log, uptime,
   kbd, set, park, stats, poweroff, reboot), `/cmd` a session command (help, clear, ctx, compact, history,
-  think, temp, bench, fill, gen; help and stats answer to both). Tab completes command names and first
+  think, temp, undo, redo, retry, tree, branch, switch, save, load, drop, snap, bench, fill, gen; help and
+  stats answer to both). Tab completes command names and first
   arguments, a bare `/` or `!` (pause or Enter) lists the commands, up/down recall the last 16 lines. Input from COM1 and PS/2 is polled into
   a type-ahead ring; 0x03 / Ctrl+C sets a flag that `llm::feed` and `llm::generate` check between tokens.
 - **Agent**: Qwen3.5 native tool format (JSON tool lines in the system turn, `<tool_call><function=..>`
   calls, `<tool_response>` results in a user turn). The tokenizer splits special tokens and applies the
   Qwen pre-tokenizer regex before the engine BPE, so the prefix ids equal the HF tokenizer's
   (`tools/hf_prefix.py`, FNV hash printed at boot).
-- **Prefix snapshot**: KV cache rows `0..P` of the 6 full-attention layers (head-major layout, FP16 or
-  FP32 elements as the engine reports in `kv_elt_bytes`) plus the DeltaNet recurrent and conv state
-  (27 MiB with FP16 KV). `/clear` marks the conversation fresh; the next turn restores it instead of
-  prefilling again. Multi-turn keeps the live state.
+- **Snapshots** (snap.rs, design in [design/SNAPSHOTS.md](design/SNAPSHOTS.md)): the boot prefix is point
+  #0, and every finished turn is saved as a child point: the KV rows the turn added (all 24 planes of the
+  6 full-attention layers, head-major, FP16 or FP32 as `kv_elt_bytes` says, stored compactly, 85 rows per
+  1 MiB chunk with FP16) plus their token ids, and the whole DeltaNet recurrent + conv state R (19.3 MiB,
+  it cannot be diffed). The live rows `0..pos` always belong to the chain of one point, so `/undo` along
+  the chain copies R only (~0.6 ms) and `/switch` copies the rows above the common ancestor. Names:
+  branches (the prompt shows the current one, `main~N` after an undo), saves, and kernel names
+  (`main@N` for a line left by typing after an undo, `pre-compact-N`). Pool: 1 GiB of 1 MiB chunks with a
+  bitmap, touched at boot. Before a save the pool keeps 64 MiB free: first it thins unnamed points off the
+  current line and outside its last 16 (R freed, rows kept; restoring one replays its token ids from the
+  nearest stored R and checks the R hash), then drops kernel-named lines unvisited for 32 turns, never
+  user names. Ctrl-C, an interrupted compaction and `/bench` `/fill` `/gen` (which run from position 0)
+  restore the current point. Copies run on the BSP between turns, never inside `transformer_forward`, and
+  never at position 0 (the engine zeroes R there).
 - **KV cache**: 32768 tokens. FP16 (default build) stores K/V rows with `vcvtps2ph` and reads them with
   `vcvtph2ps` inside `gqa_attn_range` (12 KiB/token, 384 MiB); `RINGZERO_KV=f32 make iso` builds the FP32
   cache (24 KiB/token, 768 MiB). `model_init` takes the 32768 override although the .asmbin header says 4096.
@@ -164,7 +183,8 @@ Legend:
   addresses are negative. So the arena (largest usable region, bump allocator, kernel/src/mem.rs) and
   the model are **identity-mapped in the lower half with 2 MiB pages**, added to Limine's page tables
   before the APs start (they share CR3). `model_init` gets the model's physical (= identity) address.
-- No heap and no general frame allocator yet.
+- No heap and no general frame allocator yet. The snapshot pool (1 GiB taken from the arena at boot, 1 MiB
+  chunks, bitmap) is the only memory that is freed and reused.
 
 ## Where the engine sits
 
@@ -208,4 +228,4 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 | `sample_top_p_bits` float shim (engine/cpu.asm) | NASM |
 | SMP dispatch (`tp_*`), worker loop, AP entry, parking (engine/smp.asm, adapted from the asm OS) | NASM |
 | Console, IDT, CPU checks, TSC calibration, memory maps, AP release, generation loop | Rust |
-| Shell (! and / commands, completion, history), keyboard layouts, kernel log, agent (prompt, tools, parser, loop), context compaction, transcript, tokenizer pre-split, prefix snapshot | Rust |
+| Shell (! and / commands, completion, history), keyboard layouts, kernel log, agent (prompt, tools, parser, loop), context compaction, transcript, tokenizer pre-split, state snapshots (pool, point tree, undo, branches) | Rust |
