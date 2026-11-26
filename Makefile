@@ -1,11 +1,13 @@
 # ringzero build. Run on the Linux build box (needs cargo, nasm, xorriso, git, cc, qemu).
 LIMINE_TAG ?= v11.2.1-binary
 LIMINE_URL ?= https://codeberg.org/Limine/Limine.git
-# Model choice (README "Which model for which machine"): MODEL=2b|4b, QUANT=q8|q4.
-#   2b q8 (default)  Qwen3.5-2B Q8_0, .asmbin v3, 6G guest
-#   2b q4            Qwen3.5-2B Q4_0 mixed (the Q4 kernel test bench, not a product target)
-#   4b q4            Qwen3.5-4B Q4_0 mixed (embed/lm_head Q8_0, small tensors f32), .asmbin v4, 6G guest
-#   4b q8            Qwen3.5-4B Q8_0, a 4.1 GiB module, 8G guest
+# Model choice (README "Which model for which machine"): MODEL=2b|4b, QUANT=q8|q4|q4all.
+#   q8     every matrix Q8_0 (.asmbin v3)
+#   q4     MLP (gate/up/down) Q4_0, attention + DeltaNet projections, embed/lm_head Q8_0 (.asmbin v4)
+#   q4all  every projection Q4_0, embed/lm_head Q8_0 (smallest, lowest quality; docs/M7_Q4_RESULT.md)
+#   (norms, conv1d, A_log, dt_bias, in_proj_a/b stay f32 in all of them)
+#   2b q8 (default)  6G guest | 2b q4/q4all: the Q4 kernel test bench, not a product target
+#   4b q4            Qwen3.5-4B, 3.1 GiB module, 6G guest | 4b q4all 2.5 GiB, 6G | 4b q8 4.2 GiB module, 8G guest
 #   9b               not built: docs/FEASIBILITY-q4-qwen35-9b.md
 # MODEL=path/to/file.asmbin boots any exported file. `make model` fetches + exports only the selected one.
 MODEL      ?= 2b
@@ -14,14 +16,18 @@ EMBED      ?= models/qwen3-embed-0.6b-q8_0-v3.asmbin
 ifneq ($(filter 2b 4b,$(MODEL)),)
 MODEL_REPO := Qwen/Qwen3.5-$(shell echo $(MODEL) | tr b B)
 ifeq ($(QUANT),q4)
+MODEL_FILE := models/qwen35-$(MODEL)-q4_0mlp-v4.asmbin
+MODEL_EXPORT := --q4 mlp,mlp_down
+EDITION    := ringzero Qwen35@$(MODEL).q4-Qwen3@0.6b (QweQwe)
+else ifeq ($(QUANT),q4all)
 MODEL_FILE := models/qwen35-$(MODEL)-q4_0-v4.asmbin
 MODEL_EXPORT := --q4 all
-EDITION    := ringzero Qwen35@$(MODEL).q4-Qwen3@0.6b (QweQwe)
+EDITION    := ringzero Qwen35@$(MODEL).q4all-Qwen3@0.6b (QweQwe)
 else ifeq ($(QUANT),q8)
 MODEL_FILE := models/qwen35-$(MODEL)-q8_0-v3.asmbin
 EDITION    := ringzero Qwen35@$(MODEL)-Qwen3@0.6b (QweQwe)
 else
-$(error QUANT must be q8 or q4)
+$(error QUANT must be q8, q4 or q4all)
 endif
 ifeq ($(MODEL),4b)
 MODEL_HF_FILES := config.json model.safetensors.index.json tokenizer.json tokenizer_config.json \

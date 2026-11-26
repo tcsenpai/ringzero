@@ -9,7 +9,7 @@ mean / p99 KLD(ref || quant), top-1 agreement, and the perplexity of both. Activ
 simulated here: the asm-vs-mirror check covers it (docs/M7_Q4_RESULT.md).
 Corpus: N chunks of LEN tokens from two sources (English prose: repo docs; code: Python stdlib), plus --long chunks of
 LONG tokens of which only the last LEN positions are scored (DeltaNet state over a long context).
-Usage: q4_kld.py --model-dir HF --dtype bf16 --plans q8,q4 --work DIR [--chunks 16 --len 512 --long 2 --long-len 4096]
+Usage: q4_kld.py --model-dir HF --dtype bf16 --plans "q8;q4;q4=mlp+mlp_down" --work DIR [--chunks 16 --len 512 --long 2 --long-len 4096]
 """
 import argparse, glob, json, os, sys, time
 import numpy as np
@@ -17,7 +17,7 @@ import numpy as np
 ap = argparse.ArgumentParser()
 ap.add_argument("--model-dir", required=True)
 ap.add_argument("--dtype", choices=["fp32", "bf16"], default="fp32")
-ap.add_argument("--plans", default="q8,q4")
+ap.add_argument("--plans", default="q8;q4")
 ap.add_argument("--work", required=True)
 ap.add_argument("--chunks", type=int, default=16)
 ap.add_argument("--len", type=int, default=512)
@@ -93,9 +93,16 @@ def q4_deq(w):
     return (q.astype(np.float32) * d16.astype(np.float32)[:, :, None]).reshape(w.shape)
 
 
-MATS = ("q_proj", "k_proj", "v_proj", "o_proj", "in_proj_qkv", "in_proj_z", "out_proj", "gate_proj", "up_proj", "down_proj")
+# HF matrix name -> export_weights.py Q4_ROLES role
+ROLE = dict(q_proj="attn", k_proj="attn", v_proj="attn", o_proj="attn_out", in_proj_qkv="dn", in_proj_z="dn",
+            out_proj="dn_out", gate_proj="mlp", up_proj="mlp", down_proj="mlp_down")
+ALL_ROLES = set(ROLE.values())
 res = {}
-for pi, plan in enumerate(a.plans.split(",")):
+# plans are ';'-separated: "q8" (all Q8_0), "q4" (all Q4_0), "q4=mlp+mlp_down" (only those roles Q4_0, the rest Q8_0,
+# the exporter's --q4 mlp,mlp_down)
+for pi, plan in enumerate(a.plans.split(";")):
+    q4roles = ALL_ROLES if plan == "q4" else set(plan[3:].split("+")) if plan.startswith("q4=") else set()
+    assert q4roles <= ALL_ROLES, plan
     if pi:  # fresh weights for the next plan (one copy of the model in RAM)
         del model
         model = AutoModelForCausalLM.from_pretrained(a.model_dir, dtype=dt); model.eval()
@@ -105,8 +112,8 @@ for pi, plan in enumerate(a.plans.split(",")):
         if p.dim() != 2:
             continue
         w = p.detach().float().numpy()
-        if n.split(".")[-2] in MATS:
-            fq = q4_deq if plan == "q4" else q8_deq
+        if n.split(".")[-2] in ROLE:
+            fq = q4_deq if ROLE[n.split(".")[-2]] in q4roles else q8_deq
         elif "embed_tokens" in n or "lm_head" in n:
             fq = q8_deq
         else:

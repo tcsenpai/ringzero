@@ -131,8 +131,21 @@ class Mirror4(M.Mirror):
 
 m = Mirror4(a.model_dir, a.q8, a.cache, taps=bool(a.taps))
 prompt = [int(v) for v in a.prompt_ids.split(",")]
-gen, top5, taps, lt = M.run(m, prompt, a.max_new, set())
+taps, gen, margins = [], [], []
+for pos, t in enumerate(prompt):
+    lg, tap = m.forward(t, pos, pos == len(prompt) - 1)
+    if tap: taps.append(tap)
+top5 = None
+for step in range(a.max_new):  # greedy, no EOS stop; per-step top1 - top2 margin (compare with the engine's /gen MARGINS)
+    top = np.argsort(-lg[:m.c["argmax_lim"]], kind="stable")[:5]
+    top5 = top5 or [(int(i), float(lg[i])) for i in top]
+    gen.append(int(top[0])); margins.append(float(lg[top[0]] - lg[top[1]]))
+    print(f"step {step}: top1 {int(top[0])} {float(lg[top[0]]):.4f} top2 {int(top[1])} {float(lg[top[1]]):.4f} margin {margins[-1]:.4f}", flush=True)
+    if step == a.max_new - 1: break
+    lg, tap = m.forward(gen[-1], len(prompt) + step, True)
+    if tap: taps.append(tap)
+lt = margins
 print("PROMPT_TOKENS:" + ",".join(map(str, prompt))); print("GEN_TOKENS:" + ",".join(map(str, gen)))
 print("first_top5:", top5)
 if a.taps: json.dump(dict(prompt=prompt, gen=gen, taps=taps), open(a.taps, "w"))
-if a.out: json.dump(dict(prompt=prompt, gen=gen, first_top5=top5, top1_logits=lt), open(a.out, "w"), indent=1)
+if a.out: json.dump(dict(prompt=prompt, gen=gen, first_top5=top5, margins=lt), open(a.out, "w"), indent=1)
