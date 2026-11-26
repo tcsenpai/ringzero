@@ -26,7 +26,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-26.
 ✓ 🟢 Spike: 2B tool-calling reliability on Linux [E1]
 │   └── T4: M3 agent loop and system tools (circular)
 ○ 🔵 Console: VNC-friendly scrolling [E1]
-○ 🔵 Q4 weights [E1]
+✓ 🔵 Q4 weights [E1] (M7 branch m7-q4-9b: Q4_0 W4A8 + Qwen3.5-4B, docs/M7_Q4_RESULT.md; close the myc task on merge)
 
 ℹ️ 19 task(s) shown
 ```
