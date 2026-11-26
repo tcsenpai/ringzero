@@ -140,20 +140,22 @@ another guest ([docs/M7_Q4_RESULT.md](docs/M7_Q4_RESULT.md)); quality = KLD and 
 | Option | Edition | Weights | Guest RAM (default) | Host RAM free | Decode tok/s | Prefill tok/s | Quality vs HF |
 |---|---|---:|---:|---:|---:|---:|---|
 | `MODEL=2b` (default, `QUANT=q8`) | `Qwen35@2b-Qwen3@0.6b` | 2.0 GB | 6G | 8 GiB | 34 | 160-230 | golden self-test (= HF greedy) |
-| `MODEL=4b QUANT=q4` | `Qwen35@4b.q4-Qwen3@0.6b` | 3.4 GB | 6G (128 MiB snapshot pool; 8G for more) | 8 GiB | 19 | 65-90 | KLD 0.028, top-1 92.7%, PPL +1.5% |
-| `MODEL=4b QUANT=q4all` | `Qwen35@4b.q4all-Qwen3@0.6b` | 2.7 GB | 6G | 8 GiB | 24 | 50-85 | KLD 0.061, top-1 89.8%, PPL +4.1% (smallest, lossiest) |
+| `MODEL=4b QUANT=q4` | `Qwen35@4b.q4-Qwen3@0.6b` | 3.4 GB | 8G | 10 GiB | 19-21 | 65-90 | KLD 0.028, top-1 92.7%, PPL +1.5% |
+| `MODEL=4b QUANT=q4all` | `Qwen35@4b.q4all-Qwen3@0.6b` | 2.7 GB | 8G | 10 GiB | 24-25 | 50-85 | KLD 0.061, top-1 89.8%, PPL +4.1% (smallest, lossiest) |
 | `MODEL=4b QUANT=q8` | `Qwen35@4b-Qwen3@0.6b` | 4.5 GB | 8G | 11 GiB | 14 | 65-85 | KLD 0.0013, top-1 98.4% (best quality) |
 | `MODEL=2b QUANT=q4` / `q4all` | `Qwen35@2b.q4...` | ~1.6 (est.) / 1.3 GB | 6G | 8 GiB | 52 (q4all) | ~200 | Q4 kernel test bench, not a product target |
 | 9B | - | (~6 GB Q4) | (~10G) | - | (est. 10-17) | - | not built: [feasibility study](docs/FEASIBILITY-q4-qwen35-9b.md) |
 
 Short version: a 16 GB machine runs any row; the 4B Q4 (`q4`) is the best quality per GB, the 4B Q8 the best
-quality, the 2B the fastest. `QUANT=q4` keeps the attention and DeltaNet projections in Q8_0 because quantizing them
+quality, the 2B the fastest. The working model (the remote instance) is the **4B q4**: best tool selection of the
+three on the tool-call sets at about 21 tok/s ([docs/MODEL_CHOICE.md](docs/MODEL_CHOICE.md)); the build default
+stays the 2B. Every 4B option needs an 8G guest (6G no longer boots it since M5 / M5b). `QUANT=q4` keeps the attention and DeltaNet projections in Q8_0 because quantizing them
 to Q4 doubles the error (`q4all`); embeddings / lm_head are Q8_0 and norms, conv and DeltaNet gates f32 in all options.
 
 ```sh
 make model MODEL=4b QUANT=q4      # Qwen/Qwen3.5-4B (~9.3 GB download) -> models/qwen35-4b-q4_0mlp-v4.asmbin (+ embedder)
 make iso MODEL=4b QUANT=q4        # -> build/ringzero.iso (the banner shows the edition)
-make run-remote MODEL=4b QUANT=q4 # guest RAM from the table (GUEST_MEM=8G overrides)
+make run-remote MODEL=4b QUANT=q4 # 8G guest (GUEST_MEM overrides): what the remote instance runs
 make model MODEL=4b QUANT=q8 && make iso MODEL=4b QUANT=q8 && make run-remote MODEL=4b QUANT=q8   # 4B Q8, 8G guest
 make model MODEL=4b QUANT=q4all && make iso MODEL=4b QUANT=q4all                                   # 4B, every projection Q4
 make model && make iso && make run-remote                          # the default 2B Q8
@@ -190,7 +192,8 @@ hibernation image (`/snap` shows the same state hash before the poweroff and aft
 `!wasm rg -n latte /notes`, `!write /a.js console.log(6*7)` then `!wasm qjs /a.js`, or ask "usa run_wasm per
 contare le righe di /notes/todo.txt con wc".
 
-Remote instance on the Fedora box (Tailscale HOST-ADDRESS):
+Remote instance on the Fedora box (Tailscale HOST-ADDRESS), running the 4B q4 on an 8G guest
+(restart it with `make run-remote MODEL=4b QUANT=q4`, see [docs/MODEL_CHOICE.md](docs/MODEL_CHOICE.md)):
 
 ```sh
 nc HOST-ADDRESS 4555                 # serial shell: press Enter to get "ringzero[main]> "
