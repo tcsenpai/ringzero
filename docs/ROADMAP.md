@@ -11,7 +11,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-26.
 │           └── ✓ 🟠 M3 agent loop and system tools [E1]
 │               ├── ✓ 🟠 M4 storage and filesystem tools [E1]
 │               │   ├── ○ 🟢 M6 real PC [E1]
-│               │   └── ○ 🟠 M4.5 agentd: deterministic context and memory subsystem [E1]
+│               │   └── ✓ 🟠 M4.5 agentd: deterministic context and memory subsystem [E1]
 │               └── ○ 🟢 M5 code execution tool [E1]
 ○ 🟠 Compaction recall [E1]
 ✓ 🟠 State snapshots: design (killer feature) [E1]
