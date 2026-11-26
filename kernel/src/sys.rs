@@ -106,6 +106,7 @@ pub fn unix_time() -> u64 {
 /// ACPI S5 on QEMU q35 (ICH9 PM1a_CNT at 0x604, SLP_TYP 0 | SLP_EN).
 /// shortcut: fixed port, no FADT parsing; real hardware needs the ACPI tables. Halts if it fails.
 pub fn poweroff() -> ! {
+    crate::hib::on_poweroff(); // M4.7b: the conversation goes to /sys/hib first
     crate::agentd::shutdown();
     let _ = crate::fs::sync();
     crate::klog!(b'W', "power off");

@@ -39,13 +39,13 @@ const TOOLS: [&str; 17] = [
     r#"{"type": "function", "function": {"name": "run_code", "description": "Run Python code (MicroPython) and return what it prints.", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}}"#,
 ];
 
-enum Ty {
+pub(crate) enum Ty {
     Int,
     Str(&'static [&'static str]), // allowed values, empty = any
 }
 
 // (name, params (name, type, required)), same order and content as TOOLS
-const SPECS: [(&str, &[(&str, Ty, bool)]); 17] = [
+pub(crate) const SPECS: [(&str, &[(&str, Ty, bool)]); 17] = [
     ("meminfo", &[]),
     ("cpuinfo", &[]),
     ("list_cores", &[]),
@@ -88,7 +88,13 @@ static mut TEXT: SBuf<32768> = SBuf::new();
 static mut TOKS: [u32; 16384] = [0; 16384];
 static mut RES: SBuf<{ RES_CAP + 512 }> = SBuf::new();
 pub static mut COMPACT_PCT: u64 = 75;
-static mut N_COMPACT: u64 = 0;
+pub static mut N_COMPACT: u64 = 0;
+/// Key of the boot snapshot cache (model, prefix ids, engine build, KV geometry); hib.rs derives its own.
+static mut BOOT_KEY: u64 = 0;
+
+pub fn boot_key() -> u64 {
+    unsafe { BOOT_KEY }
+}
 /// "<|im_end|>\n" closing the system turn: not in the snapshot, fed when a conversation starts fresh.
 static mut SYS_END: [u32; 2] = [0; 2];
 
@@ -157,6 +163,16 @@ fn hist(role: &str, s: &str) {
         h.n -= cut;
     }
     let _ = write!(h, "{}: {}\n", role, s);
+}
+
+/// The raw transcript (hibernation image).
+pub fn hist_text() -> &'static str {
+    unsafe { (*core::ptr::addr_of!(HIST)).as_str() }
+}
+pub fn hist_restore(s: &str) {
+    let h = unsafe { &mut *core::ptr::addr_of_mut!(HIST) };
+    h.clear();
+    h.push(s[..floor_char(s, h.b.len())].as_bytes());
 }
 
 pub fn floor_char(s: &str, max: usize) -> usize {
@@ -300,7 +316,7 @@ pub fn init() {
     let geo = [unsafe { crate::engine::kv_elt_bytes }, llm::ctx_max_seq(), llm::CTX_LEN];
     let key = geo.iter().fold(fnv(fnv(fnv(crate::mstore::FNV0, ids), &unsafe { llm::MODEL_HASH }.to_le_bytes()),
         env!("RINGZERO_ENGINE_HASH").as_bytes()), |h, g| fnv(h, &g.to_le_bytes()));
-    unsafe { SYS_END = [toks()[n - 2], toks()[n - 1]] }; // <|im_end|> \n of the system turn
+    unsafe { (SYS_END, BOOT_KEY) = ([toks()[n - 2], toks()[n - 1]], key) }; // <|im_end|> \n of the system turn
     smp::park_phase(true);
     let t0 = smp::rdtsc();
     let cached = if crate::fs::mounted() { snap::load_prefix(BOOT_SNAP, key) } else { Err("no disk") };
@@ -645,8 +661,14 @@ pub fn ask(q: &str) {
                     print!("{}{}={}", if i > 0 { ", " } else { "" }, k, v);
                 }
                 println!(")");
+                // M4.7a: a value the grammar had to choose is a guess; tools that change the machine do not run it
+                const FX: [&str; 9] = ["set_setting", "remember", "forget", "write_file", "mkdir", "rm", "poweroff", "reboot", "run_code"];
                 if validate(&c, res).is_some() {
-                    exec(&c, res);
+                    if crate::gram::last_steered() && FX.contains(&c.name) {
+                        let _ = write!(res, "error: not run: a tool name, parameter or value was not in the schema and the kernel had to replace it. Call {} again with values from its schema, or answer without the tool", c.name);
+                    } else {
+                        exec(&c, res);
+                    }
                 }
                 if res.n > RES_CAP {
                     res.n = floor_char(res.as_str(), RES_CAP - 96);

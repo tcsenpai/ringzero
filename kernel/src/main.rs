@@ -27,6 +27,8 @@ mod smp;
 mod snap;
 mod sys;
 mod upy; // M5 MicroPython
+mod gram; // M4.7a constrained decoding
+mod hib; // M4.7b hibernation
 
 use core::arch::asm;
 use limine::firmware_type::FirmwareType;
@@ -264,8 +266,12 @@ extern "C" fn kmain() -> ! {
         klog!(b'I', "bench: 64-token decode, prompt \"Explain how a CPU cache works in 3 concise sentences.\"");
         llm::bench();
         klog!(b'I', "agent: tool-call parser self-test {}", if agent::selftest() { "PASS" } else { "FAIL" });
+        gram::init();
+        klog!(b'I', "gram: tool-call grammar self-test {}", if gram::selftest() { "PASS" } else { "FAIL" });
+        gram::bench();
         klog!(b'I', "kbd:  PS/2 layout {} (change with '!kbd us|it')", kbd::layout());
         agent::init();
+        hib::boot(); // M4.7b: resume the hibernated conversation, if any
         agentd::booted();
         shell::run();
     }

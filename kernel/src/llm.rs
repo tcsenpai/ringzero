@@ -490,6 +490,7 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         }
         if next == TOK_TOOL_CALL {
             unsafe { ECHO = false };
+            crate::gram::begin();
         }
         unsafe { tok_write_stdout(next) };
         n += 1;
@@ -505,8 +506,12 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         fwd(next as u32, *pos, 1);
         *pos += 1;
         next = pick_next();
+        if crate::gram::active() {
+            next = crate::gram::fix(next); // M4.7a: the grammar of the tool call
+        }
     };
     unsafe { ECHO = true };
+    crate::gram::finish(stop == Stop::ToolEnd);
     if matches!(stop, Stop::ToolEnd | Stop::MaxTok | Stop::Ctx) {
         fwd(next as u32, *pos, 0); // emitted but not fed yet
         *pos += 1;

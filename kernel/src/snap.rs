@@ -625,6 +625,294 @@ pub fn load_prefix(path: &str, key: u64) -> Result<u64, &'static str> {
     Ok(pos)
 }
 
+// ---- hibernation (M4.7b): the point tree and its pool data on the disk, so a boot resumes the conversation ----
+// Image: header (magic RZHB, version, key, state hash, meta bytes, data bytes, extra bytes, FNV of the rest),
+// meta (state, node table, name table, per node its texts and chunk counts), the chunks of every non-root
+// node's rows (whole 1 MiB chunks, token ids included), R of the current point only, then the caller's
+// extra blob. Other points come back thinned (a visit replays their tokens, checked against the R hash
+// taken here). The root is the prefix this boot made or loaded: the key (model, prefix, engine, KV
+// geometry) guarantees it is the same.
+
+const HB_MAGIC: &[u8; 4] = b"RZHB";
+const HB_VER: u32 = 1;
+const HB_HDR: usize = 64;
+
+/// FNV over the live state: token ids 0..pos, rows 0..pos of every K/V plane, R.
+pub fn state_hash() -> u64 {
+    let g = geo();
+    let pos = st().pos as usize;
+    let ids = unsafe { core::slice::from_raw_parts(llm::rec().as_ptr() as *const u8, pos * 4) };
+    let mut h = crate::mstore::fnv(crate::mstore::FNV0, ids);
+    for p in 0..2 * g.heads {
+        hash_words(&mut h, plane(&g, p), pos * g.hb);
+    }
+    hash_words(&mut h, ctx(CTX_BUF_DN_STATE) as *const u8, r_bytes());
+    h
+}
+
+fn chain_len(mut c: u16) -> usize {
+    let mut k = 0;
+    while c != NIL {
+        k += 1;
+        c = st().next[c as usize];
+    }
+    k
+}
+fn chunks_of(mut c: u16, f: &mut impl FnMut(u16)) {
+    while c != NIL {
+        f(c);
+        c = st().next[c as usize];
+    }
+}
+
+struct W(alloc::vec::Vec<u8>);
+impl W {
+    fn u(&mut self, x: u64) {
+        self.0.extend_from_slice(&x.to_le_bytes());
+    }
+    fn s(&mut self, b: &[u8]) {
+        self.u(b.len() as u64);
+        self.0.extend_from_slice(b);
+    }
+}
+struct R<'a>(&'a [u8], usize);
+impl<'a> R<'a> {
+    fn u(&mut self) -> Option<u64> {
+        let b = self.0.get(self.1..self.1 + 8)?;
+        self.1 += 8;
+        Some(u64::from_le_bytes(b.try_into().ok()?))
+    }
+    fn s(&mut self) -> Option<&'a [u8]> {
+        let n = self.u()? as usize;
+        let b = self.0.get(self.1..self.1 + n)?;
+        self.1 += n;
+        Some(b)
+    }
+}
+
+/// Write the image of the current point and the whole tree (the live state is made the current point
+/// first). Returns (bytes, state hash).
+pub fn hib_save(path: &str, key: u64, extra: &[u8]) -> Result<(u64, u64), &'static str> {
+    let s = st();
+    restore(s.cur); // the live state may be ahead of the point (mid-turn poweroff, pool full): the image holds the point
+    let hash = state_hash();
+    let mut m = W(alloc::vec::Vec::new());
+    for x in [s.head as u64, s.cur as u64, s.tick, s.next_id as u64, s.cap as u64, root_pos()] {
+        m.u(x);
+    }
+    let mut data: alloc::vec::Vec<&[u8]> = alloc::vec::Vec::new();
+    let mut part = |c: u16| data.push(unsafe { core::slice::from_raw_parts(chunk(c), CHUNK) });
+    for n in 1..MAX_NODES as u16 {
+        let x = *nd(n);
+        if !x.used {
+            continue;
+        }
+        let with_r = n == s.cur && x.r != NIL;
+        let fnv = if x.r != NIL { hash_r_pool(x.r) } else { x.fnv };
+        for v in [n as u64, x.id as u64, x.parent as u64, x.back as u64, x.base, x.pos, x.rng, x.visit, x.ex as u64,
+            x.compact as u64, fnv, chain_len(x.kv) as u64, with_r as u64] {
+            m.u(v);
+        }
+        m.s(q_of(n).as_str().as_bytes());
+        m.s(a_of(n).as_str().as_bytes());
+        m.s(fx_of(n).as_str().as_bytes());
+        chunks_of(x.kv, &mut part);
+        if with_r {
+            chunks_of(x.r, &mut part);
+        }
+    }
+    m.u(u64::MAX); // end of nodes
+    for (i, x) in s.names.iter().enumerate().filter(|(_, x)| x.used) {
+        for v in [i as u64, x.node as u64, x.save as u64, x.auto as u64, x.pinned as u64] {
+            m.u(v);
+        }
+        m.s(&x.s[..x.n as usize]);
+    }
+    m.u(u64::MAX);
+    let dbytes = data.len() as u64 * CHUNK as u64;
+    let sum = data.iter().fold(crate::mstore::fnv(crate::mstore::FNV0, &m.0), |h, b| {
+        let mut h = h;
+        hash_words(&mut h, b.as_ptr(), b.len());
+        h
+    });
+    let sum = crate::mstore::fnv(sum, extra);
+    let mut h = [0u8; HB_HDR];
+    h[..4].copy_from_slice(HB_MAGIC);
+    h[4..8].copy_from_slice(&HB_VER.to_le_bytes());
+    for (i, v) in [key, hash, m.0.len() as u64, dbytes, extra.len() as u64, sum, s.n_chunks as u64].iter().enumerate() {
+        h[8 + i * 8..16 + i * 8].copy_from_slice(&v.to_le_bytes());
+    }
+    let mut all: alloc::vec::Vec<&[u8]> = alloc::vec![&h[..], &m.0[..]];
+    all.extend(data.iter().copied());
+    all.push(extra);
+    let total = crate::fs::write_parts(path, &all)?;
+    Ok((total, hash))
+}
+
+fn hdr_u(h: &[u8], i: usize) -> u64 {
+    u64::from_le_bytes(h[8 + i * 8..16 + i * 8].try_into().unwrap())
+}
+
+/// Load an image written by hib_save (at boot, right after the root is made). Ok((stored hash, extra)):
+/// the tree, the pool and the live state are the image's current point. Err: nothing changed.
+pub fn hib_load(path: &str, key: u64) -> Result<(u64, alloc::vec::Vec<u8>), &'static str> {
+    use alloc::vec::Vec;
+    let mut h = [0u8; HB_HDR];
+    let (k, size) = crate::fs::read_into(path, 0, &mut h).map_err(|_| "no image")?;
+    if k < HB_HDR || &h[..4] != HB_MAGIC || h[4..8] != HB_VER.to_le_bytes() {
+        return Err("bad magic or version");
+    }
+    if hdr_u(&h, 0) != key {
+        return Err("key differs (model, prefix, engine or KV geometry changed)");
+    }
+    let (stored, mlen, dbytes, xlen, sum) = (hdr_u(&h, 1), hdr_u(&h, 2) as usize, hdr_u(&h, 3), hdr_u(&h, 4) as usize, hdr_u(&h, 5));
+    if hdr_u(&h, 6) != st().n_chunks as u64 {
+        return Err("snapshot pool size differs");
+    }
+    if size != HB_HDR as u64 + mlen as u64 + dbytes + xlen as u64 || mlen > 4 << 20 || xlen > 1 << 20 {
+        return Err("size does not match the header");
+    }
+    let mut meta = alloc::vec![0u8; mlen];
+    let mut extra = alloc::vec![0u8; xlen];
+    if crate::fs::read_into(path, HB_HDR as u64, &mut meta)?.0 != mlen
+        || crate::fs::read_into(path, HB_HDR as u64 + mlen as u64 + dbytes, &mut extra)?.0 != xlen
+    {
+        return Err("short read");
+    }
+    // parse everything before touching the state
+    let mut r = R(&meta, 0);
+    let bad = "corrupt metadata";
+    let top: Vec<u64> = (0..6).map(|_| r.u()).collect::<Option<_>>().ok_or(bad)?;
+    if top[5] != root_pos() {
+        return Err("boot prefix length differs");
+    }
+    struct L<'a> {
+        slot: usize,
+        node: Node,
+        q: &'a [u8],
+        a: &'a [u8],
+        fx: &'a [u8],
+        kc: usize,
+        with_r: bool,
+    }
+    let ok_ref = |x: u64| x == NIL as u64 || (x as usize) < MAX_NODES;
+    let mut nodes: Vec<L> = Vec::new();
+    loop {
+        let n = r.u().ok_or(bad)?;
+        if n == u64::MAX {
+            break;
+        }
+        // id parent back base pos rng visit ex compact fnv kv_chunks with_r
+        let v: Vec<u64> = (0..12).map(|_| r.u()).collect::<Option<_>>().ok_or(bad)?;
+        let (q, a, fx) = (r.s().ok_or(bad)?, r.s().ok_or(bad)?, r.s().ok_or(bad)?);
+        if n == 0 || n as usize >= MAX_NODES || !ok_ref(v[1]) || !ok_ref(v[2]) || v[3] > v[4] || v[4] >= ctx(CTX_MAX_SEQ)
+            || q.len() > TXT || a.len() > TXT || fx.len() > 160 || v[10] as usize != kv_chunks(v[4] - v[3])
+        {
+            return Err(bad);
+        }
+        let node = Node { used: true, id: v[0] as u32, parent: v[1] as u16, back: v[2] as u16, base: v[3], pos: v[4], kv: NIL,
+            r: NIL, rng: v[5], visit: v[6], ex: v[7] != 0, compact: v[8] as u32, fnv: v[9] };
+        nodes.push(L { slot: n as usize, node, q, a, fx, kc: v[10] as usize, with_r: v[11] != 0 });
+    }
+    let mut names: Vec<Name> = Vec::new();
+    let mut nidx: Vec<usize> = Vec::new();
+    loop {
+        let i = r.u().ok_or(bad)?;
+        if i == u64::MAX {
+            break;
+        }
+        let v: Vec<u64> = (0..4).map(|_| r.u()).collect::<Option<_>>().ok_or(bad)?;
+        let b = r.s().ok_or(bad)?;
+        if i as usize >= MAX_NAMES || b.is_empty() || b.len() > 24 || !ok_ref(v[0]) {
+            return Err(bad);
+        }
+        let mut x = NAME0;
+        x.s[..b.len()].copy_from_slice(b);
+        (x.used, x.n, x.node, x.save, x.auto, x.pinned) = (true, b.len() as u8, v[0] as u16, v[1] != 0, v[2] != 0, v[3] != 0);
+        names.push(x);
+        nidx.push(i as usize);
+    }
+    let (head, cur) = (top[0] as usize, top[1] as u16);
+    if !nidx.contains(&head) || !(cur == ROOT || nodes.iter().any(|l| l.slot == cur as usize)) {
+        return Err(bad);
+    }
+    // the chunks: allocated now, freed again if anything is wrong
+    let need: usize = nodes.iter().map(|l| l.kc + if l.with_r { r_chunks() } else { 0 }).sum();
+    if need as u64 * CHUNK as u64 != dbytes || need > free_chunks() {
+        return Err("chunk count does not match the header or the pool");
+    }
+    let mut lists: Vec<(u16, u16)> = Vec::new();
+    let mut h = crate::mstore::fnv(crate::mstore::FNV0, &meta);
+    let mut off = (HB_HDR + mlen) as u64;
+    let fill = |c: u16, h: &mut u64, off: &mut u64| -> Result<(), &'static str> {
+        let b = unsafe { core::slice::from_raw_parts_mut(chunk(c), CHUNK) };
+        if crate::fs::read_into(path, *off, b)?.0 != CHUNK {
+            return Err("short read");
+        }
+        hash_words(h, b.as_ptr(), CHUNK);
+        *off += CHUNK as u64;
+        Ok(())
+    };
+    let mut res = Ok(());
+    for l in &nodes {
+        let kv = alloc(l.kc).unwrap_or(NIL);
+        let rr = if l.with_r { alloc(r_chunks()).unwrap_or(NIL) } else { NIL };
+        lists.push((kv, rr));
+        let mut go = |c0: u16| {
+            let mut c = c0;
+            while c != NIL && res.is_ok() {
+                res = fill(c, &mut h, &mut off);
+                c = st().next[c as usize];
+            }
+        };
+        go(kv);
+        go(rr);
+        if res.is_err() {
+            break;
+        }
+    }
+    if res.is_ok() && crate::mstore::fnv(h, &extra) != sum {
+        res = Err("checksum mismatch");
+    }
+    if let Err(e) = res {
+        lists.iter().for_each(|&(a, b)| {
+            free_list(a);
+            free_list(b);
+        });
+        return Err(e);
+    }
+    // commit
+    let s = st();
+    for (l, &(kv, rr)) in nodes.iter().zip(&lists) {
+        s.nodes[l.slot] = Node { kv, r: rr, ..l.node };
+        fn txt(b: &[u8]) -> &str {
+            core::str::from_utf8(b).unwrap_or("")
+        }
+        q_of(l.slot as u16).clear();
+        a_of(l.slot as u16).clear();
+        fx_of(l.slot as u16).clear();
+        let _ = write!(q_of(l.slot as u16), "{}", txt(l.q));
+        let _ = write!(a_of(l.slot as u16), "{}", txt(l.a));
+        let _ = write!(fx_of(l.slot as u16), "{}", txt(l.fx));
+    }
+    s.names = [NAME0; MAX_NAMES];
+    for (x, &i) in names.iter().zip(&nidx) {
+        s.names[i] = *x;
+    }
+    (s.head, s.cur, s.tick, s.next_id) = (head, cur, top[2], top[3] as u32);
+    s.cap = (top[4] as usize).clamp(64, s.n_chunks).max(n_used());
+    s.live = ROOT;
+    restore(cur);
+    Ok((stored, extra))
+}
+
+/// "#12 on main (ctx 1532), 6 points" for the hibernation lines.
+pub fn summary<const N: usize>(o: &mut SBuf<N>) {
+    let s = st();
+    let pts = s.nodes.iter().filter(|x| x.used).count();
+    let _ = write!(o, "#{} on {} (ctx {}), {} points", nd(s.cur).id, s.names[s.head].as_str(), s.pos, pts);
+}
+
 /// The live state is ahead of the current point (its save was refused): nothing may overwrite it.
 pub fn unsaved() -> bool {
     st().unsaved
@@ -1075,6 +1363,9 @@ pub fn status() {
     status_line();
     println!("[snap] last save {} KiB in {} us, last restore {} KiB in {} us; R {} KiB per point, {} KV rows per MiB chunk ({} B/row)",
         s.save_bytes >> 10, s.save_us, s.restore_bytes >> 10, s.restore_us, r_bytes() >> 10, geo().rpc, 2 * geo().heads * geo().hb);
+    if s.live == s.cur && !s.unsaved {
+        println!("[snap] state hash {:#x} (token ids, KV rows and R of the live state)", state_hash());
+    }
 }
 
 /// `!set snappool MiB`: cap the usable pool (to test eviction). Never below what is in use.

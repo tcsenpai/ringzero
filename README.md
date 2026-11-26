@@ -6,7 +6,7 @@ to it on the same engine for a memory index. The inference engine is the NASM
 assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
-Status: **M4.5 agentd** (edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
+Status: **M4.7 constrained tool calls + hibernation** (with M5 MicroPython; edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
 uptime, settings, poweroff/reboot with confirmation) in its native tool format. `!cmd` runs a machine
@@ -66,6 +66,30 @@ status line (6 KiB cap). Included: builtins, f-strings, big ints, double floats,
 `array`, `collections`, `struct`, `errno`; no `import` from files, no `input()`, no I/O modules yet. Results:
 [docs/M5_MICROPYTHON_RESULT.md](docs/M5_MICROPYTHON_RESULT.md).
 
+Constrained tool calls (M4.7a): once the model emits `<tool_call>`, the kernel holds every next token to a
+grammar built from the tool schemas, in the native format `<function=NAME><parameter=KEY>VALUE</parameter>...
+</function></tool_call>`: a known tool name, its own parameter names (each once), enum values (`set_setting`
+keys), integers (`read_log n`), every required parameter before `</function>`, then `</tool_call>`; free
+values stay free but cannot contain `</function>` or `<parameter=`. The grammar is a byte automaton; the
+token the sampler picked is checked (1-2 us) and kept when it fits, otherwise every token the automaton
+rejects gets a -inf logit and the sampler picks again (one allowed token is forced). The tokenizer vocab is a
+trie (ids sorted by bytes + common-prefix lengths, 1.2 MiB, built at boot in 47 ms), so a mask walks only
+the prefixes the grammar allows (0.2-0.3 ms). A call whose tool name, parameter or enum/integer value had to be
+chosen by the mask is not run when the tool changes the machine. Outside a tool call it costs one test per token. `!set constrain off`
+keeps the grammar as a checker only (it reports where a call breaks), for A/B runs. Every call prints a
+`[grammar]` line. Results: [docs/M47_RESULT.md](docs/M47_RESULT.md).
+
+Hibernation (M4.7b): `/hibernate`, and every `!poweroff` (also the agent's poweroff tool), writes the current
+conversation and its whole snapshot tree to `/sys/hib/image.bin`: the point and name tables, the questions
+and answers, the KV rows of every point, the DeltaNet state of the current point (the others come back
+thinned: visiting one replays its tokens, checked against a hash taken at save time), the raw transcript and
+the agent settings (temperature, think, constrain, compaction). The key is the boot snapshot key (model,
+prefix ids, engine build, KV geometry). At boot a valid image is resumed after the boot prefix: same point,
+branch and tree, same state hash (token ids + KV rows + DeltaNet state), so the next answer at temperature 0
+is the one it would have been; one `hib:` line says so. A mismatched or damaged image is ignored with a
+notice and the boot starts fresh. `/hibernate status`; `/hibernate discard` deletes the image and skips it at
+the next `!poweroff`, so the next boot starts fresh.
+
 Engine state snapshots: every finished turn is saved as a point (`#7`) in a 1 GiB pool (KV rows of the
 turn + the 19.3 MiB DeltaNet state, about 21 MiB per short turn; going back costs about 0.6 ms). The
 prompt shows the branch, `ringzero[main]> `, and `ringzero[main~1]> ` after an undo. Commands: `/undo [N]`,
@@ -76,7 +100,7 @@ Only the model goes back: tool side effects stay, and `/undo` says so. Design:
 [docs/design/SNAPSHOTS.md](docs/design/SNAPSHOTS.md).
 
 Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to the
-remote instance: [docs/M45_RESULT.md](docs/M45_RESULT.md) (earlier: [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
+remote instance: [docs/M47_RESULT.md](docs/M47_RESULT.md) (earlier: [M5 MicroPython](docs/M5_MICROPYTHON_RESULT.md), [M4.5](docs/M45_RESULT.md), [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
 [M2+M3](docs/M2M3_RESULT.md), [M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
 
 ## Build and run
@@ -101,7 +125,8 @@ Try at the prompt: `!write /notes/todo.txt comprare il latte`, `!cat /notes/todo
 "crea un file /notes/idea.txt con scritto ciao" or "cosa devo comprare?" (after a few seconds of idle the file
 is in the memory index). Tell it "mi chiamo Cris e il mio numero preferito e 4711", run `/consolidate`, then
 `/facts`; `!poweroff`, boot again and ask "come mi chiamo?": the facts and the memory index are still there, and
-the second boot loads the prompt state from the disk cache. Python: `!py 17*23`,
+the second boot loads the prompt state from the disk cache, and resumes the conversation from the
+hibernation image (`/snap` shows the same state hash before the poweroff and after the boot). Python: `!py 17*23`,
 `!write /hello.py print("ciao", 2**64)` then `!py -f /hello.py`, or ask "quanto fa 17*23? usa python".
 
 Remote instance on the Fedora box (Tailscale HOST-ADDRESS):
@@ -125,6 +150,15 @@ agentd at the prompt:
 !set consolidate 30      # idle seconds before an automatic consolidation (0 = only /consolidate)
 !set slot 0              # turn the memory slot off (default 200 tokens)
 /index clear             # throw the index away and re-embed every file and memory record in idle time
+```
+
+Tool-call grammar and hibernation:
+
+```
+!set constrain off       # A/B: the grammar only checks tool calls (default on: it constrains them)
+/hibernate               # save the conversation + snapshot tree now (!poweroff does it too)
+/hibernate status        # is there an image; /hibernate discard deletes it and !poweroff skips it (fresh next boot)
+/snap                    # point, pool, timings and the state hash of the live state
 ```
 
 More:
@@ -174,11 +208,14 @@ Memory index, from the shell:
 |---|---|
 | `kernel/src/blk.rs`, `fs.rs`, `fidx.rs` | virtio-blk on PCI, FAT32 at /, file indexer (M4) |
 | `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log; record stores in /sys/mem (M4.5) |
+| `kernel/src/gram.rs` | tool-call grammar: byte automaton from the tool schemas, vocab trie, logit mask (M4.7a) |
+| `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
 | `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
 | `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot) |
+| `tools/tooleval.py` | tool-call A/B (M4.7a): the spike prompts + in-OS prompts with `!set constrain on|off`, scored (calls, malformed, schema errors, grammar lines, decode speed) |
 | `tools/accept.py` | drives the shell over TCP (answers y/N prompts, sends Ctrl-C, waits idle, powers off), saves a transcript |
 | `tools/uxtest.py` | types steps byte by byte over TCP (Tab completion, suggestions, long pasted lines), waits for a quiet prompt |
 | `tools/fetch_model.sh` | `make model`: Hugging Face download (uvx hf, curl fallback) + export, skipped when the .asmbin exists |

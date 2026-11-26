@@ -1,4 +1,4 @@
-# ringzero architecture (as of M4.5 agentd + M5 MicroPython, edition ringzero Qwen35@2b-Qwen3@0.6b)
+# ringzero architecture (as of M4.7 constrained tool calls + hibernation, with M5 MicroPython, edition ringzero Qwen35@2b-Qwen3@0.6b)
 
 ## Diagram
 
@@ -27,7 +27,9 @@ flowchart TB
         AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
         LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, tokenizer split,<br/>feed / generate, live token array"]
-        SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay, eviction,<br/>boot snapshot cache (/sys/bootsnap.bin, 33 MiB)"]
+        SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay, eviction,<br/>boot snapshot cache (/sys/bootsnap.bin, 33 MiB),<br/>hibernation image: tree + pool chunks, state hash"]
+        GRAM["gram.rs: tool-call grammar (M4.7a)<br/>byte automaton from the tool schemas (names, keys,<br/>enums, integers, required, closing tags),<br/>vocab trie: ids sorted by bytes + prefix lengths (1.2 MiB),<br/>check the pick; on a reject logits -> -inf, pick again"]
+        HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff -> /sys/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
         IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/sys/mem/index.bin)"]
         ENG["engine.rs<br/>FFI, output capture"]
@@ -77,7 +79,16 @@ flowchart TB
     AGD -- "consolidation: fwd + pick_next per step,<br/>output to CAP only" --> LLM
     AGD -- "rollback to the current point after<br/>consolidation or on input" --> SNAP
     AG -- "boot: load_prefix or prefill + save_prefix<br/>(key: model, prefix ids, engine build)" --> SNAP
-    SNAP -- "bootsnap.bin" --> FS
+    SNAP -- "bootsnap.bin, hib/image.bin" --> FS
+    LLM -- "after <tool_call>: fix(pick) per token" --> GRAM
+    AG -. "tool schemas (SPECS)" .-> GRAM
+    GRAM -- "-inf on rejected logits, vocab bytes" --> TR
+    SH -- "!set constrain on|off" --> GRAM
+    SH -- "/hibernate [discard|status]" --> HIB
+    SYS -- "poweroff: hibernate first" --> HIB
+    KMAIN -- "boot: trie, resume" --> GRAM & HIB
+    HIB -- "hib_save / hib_load, state_hash" --> SNAP
+    HIB -- "transcript, temperature, think, compaction" --> AG
     FIDX -- "read chunk, meta" --> FS
     FIDX -- "retain (drop old chunks)" --> IDX
     FS -- "file times" --> SYS
@@ -308,7 +319,8 @@ Legend:
    TSC calibration (PIT ch2), memory map log, arena + model + embedder identity maps, AP release, `model_init`
    (2B), `embed::init` (embedder context) + boot embedding, `agentd::init` (stores recovered, index loaded or
    rebuilt, files compared with the index table), golden self-test, bench, agent prefix from the boot snapshot
-   cache or a prefill (kernel/src/agent.rs), snapshot #0, then the shell
+   cache or a prefill (kernel/src/agent.rs), snapshot #0, the vocab trie of the tool-call grammar
+   (kernel/src/gram.rs), the hibernation image resumed when its key matches (kernel/src/hib.rs), then the shell
    (kernel/src/shell.rs).
 
 ## Memory
@@ -330,6 +342,11 @@ Legend:
   before the APs start (they share CR3). `model_init` gets the model's physical (= identity) address.
 - The memory index (rows 4.25 MiB, texts 1 MiB, BM25 scratch) is static data in the kernel image (`.bss`); its
   file is read straight into those arrays. agentd's facts, queue and session text live on the kernel heap.
+- The tool-call grammar's vocab trie (M4.7a: 248044 token ids sorted by bytes + a prefix-length byte each,
+  1.2 MiB) is `.bss` too; it points into the model's own token table (no copy of the bytes). The mask writes
+  -inf straight into the engine's logits buffer before argmax / top-p.
+- Hibernation (M4.7b) reads and writes pool chunks in place (1 MiB each, no staging copy); only the metadata
+  (point and name tables, texts, a few KiB) and the transcript go through the kernel heap.
 - MicroPython (M5) takes 8 MiB GC heap + 1 MiB stack from the arena right after the kernel heap, before the
   models and the snapshot pool (arena use 520 -> 529 MiB). Its C code (~286 KB of text) is linked into the
   kernel image with `-mcmodel=kernel -mno-red-zone`, uses SSE2 for doubles (the Rust side stays soft-float,

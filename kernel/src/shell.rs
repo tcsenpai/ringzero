@@ -99,7 +99,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -108,7 +108,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
@@ -137,6 +137,7 @@ const CMDS: &[Cmd] = &[
     c("load", SLASH, &[], "NAME  go to a saved point"),
     c("drop", SLASH, &[], "NAME|#ID  delete a branch, a save or a point"),
     c("snap", SLASH, &[], "snapshot status: point, pool, timings"),
+    c("hibernate", SLASH, &["discard", "status"], "[discard|status]  save the conversation and its points to the disk (!poweroff does it too); the next boot resumes it"),
     c("agentd", SLASH, &["log"], "[log [N]]  memory subsystem: stores, index, queue, consolidation, decisions"),
     c("facts", SLASH, &[], "saved facts (key = value, source, time)"),
     c("remember", SLASH, &[], "KEY VALUE  save a fact"),
@@ -422,6 +423,12 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
                 kbd::LAYOUTS.iter().for_each(|l| { let _ = write!(o, " {}", l.name); });
             }
             ok
+        }
+        "constrain" => {
+            let on = matches!(val, "on" | "1" | "true");
+            unsafe { crate::gram::ON = on };
+            let _ = write!(o, "constrain = {}", if on { "on (tool calls follow the tool schemas)" } else { "off (the grammar only checks tool calls)" });
+            true
         }
         "think" => {
             let on = matches!(val, "on" | "1" | "true");
@@ -808,6 +815,7 @@ pub fn run() -> ! {
             "retry" => agent::retry(),
             "tree" => snap::tree(arg == "all"),
             "snap" => snap::status(),
+            "hibernate" => crate::hib::cmd(arg),
             "branch" | "save" | "switch" | "load" | "drop" if arg.is_empty() => println!("usage: /{} NAME", c.name),
             "branch" => snap::branch(arg),
             "save" => snap::save_cmd(arg),
