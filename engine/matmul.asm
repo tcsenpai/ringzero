@@ -1,4 +1,4 @@
-; VENDORED from github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (shared/matmul.asm).
+; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/matmul.asm).
 ; Do not edit here: change upstream and re-vendor. Unmodified below this header.
 ; ============================================================================
 ; matmul.asm — High-throughput AVX2 + FMA + F16C Q8_0 matmul kernels (zero libc)

@@ -1,4 +1,4 @@
-; enable_avx_fpu: copied from github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255
+; enable_avx_fpu: copied from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5)
 ; (02-baremetal-os/boot.asm). Must run on EVERY core before it executes engine code.
 ; Clears CR0.EM, sets CR0.MP, sets CR4.OSFXSR|OSXMMEXCPT|OSXSAVE, sets XCR0 |= 7 (x87|SSE|AVX),
 ; then fninit and MXCSR = 0x1F80 (round-to-nearest-even, all exceptions masked).

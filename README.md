@@ -2,7 +2,7 @@
 
 Experimental "AI OS": a small Rust `no_std` x86-64 kernel, booted by Limine, with an LLM
 (Qwen3.5-2B Q8_0) running in ring 0 as a system agent. The inference engine is the NASM
-assembly from [llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`), linked
+assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
 Status: **M3**. Boots under BIOS and UEFI, runs the APs in the engine's worker loop, passes the
@@ -63,4 +63,4 @@ so GPL-2.0-only Linux driver code stays borrowable.
 | transitive: `bitflags` 2.13, `lock_api` 0.4, `scopeguard` 1.2 | | MIT OR Apache-2.0 | |
 | QEMU `it` keymap (copied at run time, not vendored) | QEMU 10 | GPL-2.0-or-later | VNC keysym map |
 | Limine bootloader (binary, fetched at build) | v11.2.1 | BSD-2-Clause | BIOS + UEFI loader |
-| llm.asm engine (vendored) | 1c73255 | MIT | inference |
+| llm.asm engine by alesha-pro (vendored, https://github.com/alesha-pro/llm.asm) | fork commit 1c73255 | MIT | inference |

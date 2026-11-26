@@ -1,5 +1,5 @@
 ; smp.asm: SMP thread-pool dispatch for the engine (tp_matmul_q8_0, tp_gqa_attn, tp_deltanet) and the
-; AP worker loop. Adapted from github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255
+; AP worker loop. Adapted from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5)
 ; (02-baremetal-os/smp.asm, MIT). Changes from upstream:
 ;   - AP bring-up (MADT, trampoline, INIT-SIPI-SIPI) is gone: Limine MP starts the APs and jumps to
 ;     ap_limine_entry with the limine_mp_info pointer in rdi (tid in its extra_argument, +24).

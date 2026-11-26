@@ -1,4 +1,4 @@
-; VENDORED from github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (shared/math.asm).
+; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/math.asm).
 ; Do not edit here: change upstream and re-vendor. Unmodified below this header.
 ; ============================================================================
 ; math.asm — Pure AVX2 / FMA / SSE2 math primitives (ZERO libm!)

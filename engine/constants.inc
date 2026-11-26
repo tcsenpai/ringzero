@@ -1,4 +1,4 @@
-; VENDORED from github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (shared/constants.inc).
+; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/constants.inc).
 ; Do not edit here: change upstream and re-vendor. Unmodified below this header.
 ; ============================================================================
 ; constants.inc — Linux x86-64 syscalls, .asmbin header layout, Runtime struct
