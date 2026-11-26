@@ -12,6 +12,15 @@ unsafe extern "C" {
     pub fn argmax_f32(x: *const f32, n: u64) -> u64;
     pub fn model_init(base: *const u8, size: u64, max_seq_override: u64) -> i64;
     pub fn transformer_forward(token: u32, pos: u64, compute_logits: i32);
+    /// M4.8 batched prefill (engine/prefill.asm): block buffers for up to max_b tokens (0 ok, <0 error)
+    pub fn prefill_init(max_b: u64) -> i64;
+    /// n prompt tokens (1..max_b) at pos0.. in one pass, state bit-identical to n transformer_forward calls
+    pub fn transformer_prefill(toks: *const u32, n: u64, pos0: u64, compute_logits: i32);
+    /// TSC spent in transformer_prefill / in its batched matmuls (the /prefill profile)
+    pub static mut pf_tsc_all: u64;
+    pub static mut pf_tsc_mm: u64;
+    /// 1 = AVX-VNNI batched matmul kernel, 0 = AVX2 (both bit-identical to the per-token matmul)
+    pub static mut bmm_vnni: u32;
     pub fn tok_encode_bpe(text: *const u8, len: u64, out: *mut u32, max: u64) -> u64;
     pub fn tok_build_chat_prompt(prompt: *const u8, out: *mut u32, max: u64, raw: u64, think: u64) -> u64;
     pub fn tok_write_stdout(token: u64);

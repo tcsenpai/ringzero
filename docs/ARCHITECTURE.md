@@ -24,7 +24,7 @@ flowchart TB
         SH["shell.rs<br/>text -> agent, !machine, /session commands,<br/>Tab completion, suggestions, history, Ctrl-C"]
         AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
-        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, tokenizer split,<br/>feed / generate, live token array"]
+        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32)"]
         SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay, eviction"]
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
         IDX["memidx.rs: memory index (RAM)<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion"]
@@ -35,7 +35,8 @@ flowchart TB
         TR["transformer.asm<br/>Qwen3.5-2B: 6 full-attn + 18 DeltaNet layers<br/>Qwen3-Embedding-0.6B: 28 full-attn layers<br/>(one g_ctx loaded at a time)"]
         KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(RINGZERO_KV=f32: FP32, 768 MiB)"]
         EKV["embedder arena<br/>KV 28 layers x 1024 tokens FP16, 113 MiB"]
-        MM["matmul.asm Q8_0"]
+        MM["matmul.asm Q8_0<br/>+ batch kernels (AVX2, AVX-VNNI)"]
+        PF["prefill.asm (M4.8)<br/>transformer_prefill: B prompt tokens<br/>per weight pass, bit-exact"]
         MA["math.asm"]
         TOK["tokenizer.asm BPE"]
         WK["smp.asm<br/>tp_* dispatch + worker loop on APs 1..7"]
@@ -85,6 +86,10 @@ flowchart TB
     AG -- "set_setting" --> SH
     AG -- "y/N confirm" --> SH
     AG --> LLM --> ENG --> TR
+    ENG -- "prompt blocks" --> PF
+    PF -- "tp_matmul_q8_0_batch" --> WK
+    PF -- "per token: rope_heads, tp_gqa_attn,<br/>tp_deltanet, g_dn_job" --> TR
+    PF -- "vcvtps2ph K/V rows" --> KV
     TR --> MM & MA & WK
     TR -- "vcvtps2ph / vcvtph2ps" --> KV
     LLM --> TOK
@@ -208,6 +213,34 @@ Legend:
    (2B), `embed::init` (embedder context) + boot embedding, golden self-test, bench, agent prefix prefill + snapshot (kernel/src/agent.rs), then the shell
    (kernel/src/shell.rs).
 
+## Prefill path (M4.8)
+
+`llm::forward(tokens, pos0, logits)` is the one entry for prompt tokens (`run`, `/fill`, `feed` for agent
+turns and the boot prefix). It cuts the prompt into blocks of `B` tokens (default 32, `/prefill B`; 1 =
+the old per-token path) and calls `transformer_prefill(toks, n, pos0, logits)` (engine/prefill.asm) per
+block; decode stays `transformer_forward`, one token per call, unchanged.
+
+Per layer and block, the matmuls take all n activation rows at once and the rest runs per token:
+
+```
+rmsnorm x_b -> xb_b                       (per token)
+tp_matmul_q8_0_batch(W_proj)              quantize n rows (quantize_x_q8_0_to, same bytes as decode),
+                                          one SMP job over the weight rows: each row read once, n dots
+full attn:  per token, in prompt order: QK-norm, RoPE(pos), K/V store at pos, tp_gqa_attn over 0..pos,
+            output gate -> causal inside the block and over the cached past
+DeltaNet:   per token, in prompt order: a/b dots, conv4_step, SiLU, tp_deltanet (recurrence), silu(z)
+tp_matmul_q8_0_batch(W_out), residual, post-norm, tp_matmul_q8_0_batch(W_gateup), SwiGLU,
+tp_matmul_q8_0_batch(W_down), residual
+```
+
+The per-token parts reuse the vendored kernels by pointing `g_ctx` BUF_Q / BUF_ATT_OUT at the token's
+row (restored on return). Buffers: `prefill_init(64)` takes 7 MiB from the arena at model init, before
+the snapshot pool. Batch matmul kernels (engine/matmul.asm, job kind `tp_K = 2` in smp.asm):
+`matmul_q8_0_batch_range` (AVX2, the decode kernel's sequence per row and token) and
+`matmul_q8_0_batch_vnni` (AVX-VNNI `vpdpbusd` on x + 128 with a -128 * sum(w) row correction: the same
+int32 per lane, so the same floats), picked by CPUID at `prefill_init`. Both leave the model state
+bit-identical to the per-token path (docs/BATCHED_PREFILL_RESULT.md).
+
 ## Memory
 
 - Kernel image: higher half, 3 PT_LOAD segments (RX text, R rodata, RW data+bss). The engine's
@@ -238,6 +271,7 @@ Rust kernel (ring 0, soft-float)          NASM engine (ring 0, AVX2/FMA/F16C)
   embed.rs: model_init (2nd), g_ctx swap,
             matmul_set_fp16 --------------->  transformer_forward on the embedder context
   memidx.rs: tp_matmul_q8_0 ------------->  index rows x query (engine/smp.asm, all cores)
+  llm.rs: prefill_init, transformer_prefill ->  prompt blocks (engine/prefill.asm, M4.8)
   sys_mmap_anon / sys_munmap   <-- imports -- transformer.asm   (mem.rs)
   sys_write_all / str_len      <-- imports -- tokenizer.asm     (engine.rs)
   tp_matmul_q8_0 / tp_gqa_attn /
@@ -268,7 +302,8 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 
 | Part | Language |
 |---|---|
-| Inference engine (math, matmul, tokenizer, transformer), vendored; AIOS changes marked in transformer.asm: FP16 KV store/read, max_seq override | NASM |
+| Inference engine (math, matmul, tokenizer, transformer), vendored; AIOS changes marked in transformer.asm: FP16 KV store/read, max_seq override, rope_heads / g_dn_job exported; in matmul.asm: quantize_x_q8_0_to, batch kernels | NASM |
+| Batched prefill (engine/prefill.asm, M4.8) and the batch matmul job kind (engine/smp.asm) | NASM |
 | `enable_avx_fpu` (engine/cpu.asm, from the old boot.asm) | NASM |
 | Boot, paging, AP startup | Limine |
 | `sample_top_p_bits` float shim (engine/cpu.asm) | NASM |

@@ -302,6 +302,12 @@ pub fn init() {
         smp::tsc_to_us(t2 - t1) / 1000);
 }
 
+/// The boot prefix ids that init() prefills (without the closing <|im_end|>\n): the `/prefill` bench input.
+pub fn prefix_tokens() -> &'static [u32] {
+    let n = build_prefix();
+    &toks()[..n - 2]
+}
+
 /// Hidden `toks` builtin: print the prefix token ids (checked against the HF tokenizer offline).
 pub fn dump_prefix_tokens() {
     let n = build_prefix();

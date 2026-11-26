@@ -20,6 +20,13 @@ const CTX_TOK_IM_END: usize = 520;
 const CTX_TOK_THINK_START: usize = 528;
 const CTX_TOK_THINK_END: usize = 536;
 const CTX_TOK_NL: usize = 560;
+const CTX_N_KV_HEADS: usize = 120;
+const CTX_HEAD_DIM: usize = 128;
+const CTX_BUF_K_CACHE: usize = 328;
+const CTX_BUF_V_CACHE: usize = 336;
+const CTX_BUF_DN_STATE: usize = 384;
+const CTX_N_FULL: usize = 416;
+const CTX_DN_ZERO_BYTES: usize = 496;
 const MAX_PROMPT_TOKENS: u64 = 8192;
 const MAX_GEN_TOKENS: u64 = 8192;
 pub const CTX_LEN: u64 = 32768; // M2.5 (M1-M3: 2048, kernel.asm opt_ctx_len default)
@@ -87,6 +94,99 @@ fn pick_next() -> u64 {
     }
 }
 
+// ---- M4.8 batched prefill ----
+
+/// Prompt tokens per engine pass (engine/prefill.asm); 1 = one transformer_forward per token (the old path).
+static mut PREFILL_B: u64 = 1;
+pub const PREFILL_MAX_B: u64 = 64;
+const PREFILL_DEFAULT: u64 = 32;
+static mut PREFILL_OK: bool = false;
+static mut VNNI_CPU: u32 = 0; // what prefill_init found
+
+pub fn prefill_block() -> u64 {
+    unsafe { PREFILL_B }
+}
+
+/// Set the prefill block (clamped to 1..=64; 1 when the batched buffers are missing). Returns the value set.
+pub fn set_prefill_block(b: u64) -> u64 {
+    unsafe {
+        PREFILL_B = if PREFILL_OK { b.clamp(1, PREFILL_MAX_B) } else { 1 };
+        PREFILL_B
+    }
+}
+
+/// Forward prompt tokens at pos0.. in blocks of PREFILL_B (logits for the last token when `logits`).
+/// Every block size leaves the same state, bit for bit (prefill.asm header).
+pub fn forward(t: &[u32], pos0: u64, logits: bool) {
+    let b = prefill_block().max(1) as usize;
+    let mut p = pos0;
+    for (k, c) in t.chunks(b).enumerate() {
+        let last = (logits && k * b + c.len() == t.len()) as i32;
+        unsafe {
+            if c.len() == 1 {
+                transformer_forward(c[0], p, last);
+            } else {
+                transformer_prefill(c.as_ptr(), c.len() as u64, p, last);
+            }
+        }
+        p += c.len() as u64;
+    }
+}
+
+/// FNV-1a (64-bit words) over the sequence state: K and V rows of positions < pos in every full-attention
+/// layer, the DeltaNet recurrent state and conv history; and over the logits. The exactness check.
+pub fn state_hash(pos: u64) -> (u64, u64) {
+    let fnv = |h: &mut u64, p: u64, bytes: u64| {
+        let w = unsafe { core::slice::from_raw_parts(p as *const u64, (bytes / 8) as usize) };
+        w.iter().for_each(|&x| *h = (*h ^ x).wrapping_mul(0x100_0000_01b3));
+    };
+    let e = unsafe { kv_elt_bytes };
+    let (rows, row) = (ctx(CTX_N_FULL) * ctx(CTX_N_KV_HEADS), ctx(CTX_HEAD_DIM) * e); // [full][kv_h][max_seq][hd]
+    let mut h = 0xcbf2_9ce4_8422_2325u64;
+    for base in [ctx(CTX_BUF_K_CACHE), ctx(CTX_BUF_V_CACHE)] {
+        for r in 0..rows {
+            fnv(&mut h, base + r * ctx(CTX_MAX_SEQ) * row, pos * row);
+        }
+    }
+    fnv(&mut h, ctx(CTX_BUF_DN_STATE), ctx(CTX_DN_ZERO_BYTES));
+    let mut hl = 0xcbf2_9ce4_8422_2325u64;
+    fnv(&mut hl, ctx(CTX_BUF_LOGITS), ctx(CTX_SAMPLE_N) * 4 & !7);
+    (h, hl)
+}
+
+fn print_state(pos: u64) {
+    let (h, hl) = state_hash(pos);
+    println!("STATE pos {} prefill block {} kv+deltanet fnv {:#018x} logits fnv {:#018x}", pos, prefill_block(), h, hl);
+}
+
+/// `/prefill [B] [avx2|vnni]`: set the prompt block (1 = per token) and the batched matmul kernel, then
+/// prefill the given tokens (the boot prefix) from position 0 and print the time and the state hash.
+/// Overwrites the live state.
+pub fn prefill_bench(arg: &str, toks: &[u32]) {
+    for a in arg.split_whitespace() {
+        match a {
+            "avx2" => unsafe { bmm_vnni = 0 },
+            "vnni" => unsafe { bmm_vnni = VNNI_CPU },
+            _ => {
+                if let Ok(b) = a.parse::<u64>() {
+                    set_prefill_block(b);
+                }
+            }
+        }
+    }
+    smp::park_phase(true);
+    unsafe { (pf_tsc_all, pf_tsc_mm) = (0, 0) };
+    let t0 = smp::rdtsc();
+    forward(toks, 0, true);
+    let us = smp::tsc_to_us(smp::rdtsc() - t0);
+    smp::park_phase(false);
+    let (a, f) = rate(toks.len() as u64, us);
+    let (all, mm) = unsafe { (smp::tsc_to_us(pf_tsc_all) / 1000, smp::tsc_to_us(pf_tsc_mm) / 1000) };
+    println!("[prefill] block {} ({}): {} tok in {}.{:03} s ({}.{:02} tok/s), next token {}, batched passes {} ms (matmuls {} ms)",
+        prefill_block(), if unsafe { bmm_vnni } != 0 { "vnni" } else { "avx2" }, toks.len(), us / 1_000_000, us / 1000 % 1000, a, f, pick_next(), all, mm);
+    print_state(toks.len() as u64);
+}
+
 fn print_csv(label: &str, t: &[u32]) {
     print!("{}", label);
     for (i, x) in t.iter().enumerate() {
@@ -109,11 +209,12 @@ fn run(prompt: &[u8], o: &Opts) -> Stats {
     smp::park_phase(true);
 
     let t0 = smp::rdtsc();
-    for i in 0..n {
-        unsafe { transformer_forward(*ptoks.add(i as usize), pos, (i + 1 == n) as i32) };
-        pos += 1;
-    }
+    forward(unsafe { core::slice::from_raw_parts(ptoks, n as usize) }, 0, true);
+    pos += n;
     let t1 = smp::rdtsc();
+    if o.margins {
+        print_state(pos);
+    }
     let mut next = pick_next();
 
     let t2 = smp::rdtsc();
@@ -196,14 +297,23 @@ pub fn init(base: *const u8, size: u64) -> bool {
         crate::klog!(b'E', "model: model_init failed ({})", r);
         return false;
     }
+    // batched prefill buffers now, before the snapshot pool takes the rest of the arena
+    let pr = unsafe { prefill_init(PREFILL_MAX_B) };
+    unsafe { (PREFILL_OK, VNNI_CPU) = (pr == 0, bmm_vnni) };
+    set_prefill_block(PREFILL_DEFAULT);
+    if pr != 0 {
+        crate::klog!(b'W', "model: batched prefill off ({}), one token per pass", pr);
+    }
     crate::klog!(b'I',
-        "model: model_init ok in {} ms, max_seq {}, KV cache {}, arena {} MiB, vocab sample_n {}",
+        "model: model_init ok in {} ms, max_seq {}, KV cache {}, arena {} MiB, vocab sample_n {}, prefill block {}",
         smp::tsc_to_us(smp::rdtsc() - t0) / 1000,
         ctx(CTX_MAX_SEQ),
         kv_type(),
         ctx(CTX_ARENA_SIZE) >> 20,
-        ctx(CTX_SAMPLE_N)
+        ctx(CTX_SAMPLE_N),
+        prefill_block()
     );
+    crate::klog!(b'I', "model: batched prefill matmul {}", if unsafe { bmm_vnni } != 0 { "AVX-VNNI" } else { "AVX2" });
     true
 }
 
@@ -268,8 +378,9 @@ pub fn bench_fill(n: u64) {
     println!("[fill] {} tokens (KV {}), progress every 4096", n, kv_type());
     smp::park_phase(true);
     let t0 = smp::rdtsc();
-    for i in 0..n {
-        if i % 64 == 0 && crate::shell::poll_intr() {
+    let mut i = 0;
+    while i < n {
+        if crate::shell::poll_intr() {
             println!("^C [fill] interrupted at {}", i);
             smp::park_phase(false);
             return;
@@ -278,13 +389,19 @@ pub fn bench_fill(n: u64) {
             let (a, b) = rate(i as u64, smp::tsc_to_us(smp::rdtsc() - t0));
             println!("[fill] {}/{} tok, {}.{:02} tok/s so far", i, n, a, b);
         }
-        unsafe { transformer_forward(t[i], i as u64, (i + 1 == n) as i32) };
+        let e = (i + 256).min(n);
+        forward(&t[i..e], i as u64, e == n);
+        i = e;
     }
     let t1 = smp::rdtsc();
+    print_state(n as u64);
+    let t1b = smp::rdtsc();
     OUT_TSC.store(0, core::sync::atomic::Ordering::Relaxed);
     let mut pos = n as u64;
     let mut next = pick_next();
+    let mut ids = [0u32; 65];
     for g in 0..65 {
+        ids[g] = next as u32;
         unsafe { tok_write_stdout(next) };
         if g == 64 {
             break;
@@ -296,7 +413,8 @@ pub fn bench_fill(n: u64) {
     let t2 = smp::rdtsc();
     println!("");
     smp::park_phase(false);
-    print_speed(&Stats { n_prompt: n as u64, n_gen: 65, prefill_us: smp::tsc_to_us(t1 - t0), decode_us: smp::tsc_to_us(t2 - t1), pos });
+    print_csv("GEN_TOKENS ", &ids);
+    print_speed(&Stats { n_prompt: n as u64, n_gen: 65, prefill_us: smp::tsc_to_us(t1 - t0), decode_us: smp::tsc_to_us(t2 - t1b), pos });
 }
 
 
@@ -444,12 +562,21 @@ pub fn fwd(t: u32, pos: u64, logits: i32) {
 
 /// Feed tokens at *pos. Logits only for the last one. false = interrupted by Ctrl-C (state is partial).
 pub fn feed(toks: &[u32], pos: &mut u64) -> bool {
-    for (i, &t) in toks.iter().enumerate() {
-        if i % 4 == 0 && crate::shell::poll_intr() {
+    let step = prefill_block().max(4) as usize; // Ctrl-C checked every 4 tokens or every block
+    let mut i = 0;
+    while i < toks.len() {
+        if crate::shell::poll_intr() {
             return false;
         }
-        fwd(t, *pos, (i + 1 == toks.len()) as i32);
-        *pos += 1;
+        let e = (i + step).min(toks.len());
+        for (j, &t) in toks[i..e].iter().enumerate() {
+            if let Some(r) = rec().get_mut(*pos as usize + j) {
+                *r = t;
+            }
+        }
+        forward(&toks[i..e], *pos, e == toks.len());
+        *pos += (e - i) as u64;
+        i = e;
     }
     true
 }
