@@ -2,7 +2,7 @@
 
 Every program below is a `wasm32-wasip1` build that runs on ringzero's WASI runtime (wasmi in ring 0, see
 [M5B_WASI_RESULT.md](M5B_WASI_RESULT.md) and [M8_RESULT.md](M8_RESULT.md)). `make wasm-apps` builds or fetches them
-(pinned versions and SHA-256, see the dependency table in the README) and copies them to `/bin` on the data disk,
+(pinned versions and SHA-256, see the dependency table in INFO.md) and copies them to `/bin` on the data disk,
 with CPython's standard library in `/lib/python3.15` and the demo inputs below in `/demo` (`tools/demo/`).
 
 How to type them: each block is one or more lines for the ringzero prompt (serial console: `nc HOST 4555`, or the

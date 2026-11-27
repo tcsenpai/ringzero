@@ -290,4 +290,4 @@ Mycelium's state must remain predictable and auditable at all times.
 - Commit subjects use one of: feat, fix, refactor, docs, style, test, build.
 
 - Edition naming: "ringzero <Provider><ver>@<size>[-<Provider><ver>@<size>]" listing every model, e.g. "ringzero Qwen35@2b" today and "ringzero Qwen35@2b-Qwen3@0.6b" once the embedder lands (tag QweQwe). Show it in the boot banner.
-- Every milestone ends with docs in sync, in the same commit as the code: README (features, quickstart, commands), docs/ARCHITECTURE.md (diagram), a docs/<milestone>_RESULT.md with real measurements, and docs/ROADMAP.md (generated from `myc list`).
+- Every milestone ends with docs in sync, in the same commit as the code: README.md (user-facing: features, quickstart, short and plain) and INFO.md (technical: every command, numbers, layout, licenses), docs/ARCHITECTURE.md (diagram), a docs/<milestone>_RESULT.md with real measurements, and docs/ROADMAP.md (generated from `myc list`).
