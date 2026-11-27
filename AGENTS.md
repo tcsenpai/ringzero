@@ -285,6 +285,8 @@ Mycelium's state must remain predictable and auditable at all times.
 
 ## ringzero project rules
 
+- DESIGN PRINCIPLE (user, 2026-11-27): ringzero presents itself as a Unix. The models already know Linux, so the OS follows Linux/Unix conventions wherever they fit: everything is a file (/proc, /sys as sysfs, /dev, /etc), familiar paths, command names and outputs, POSIX-like behaviour. New features expose state as files first and add a special tool only when a file cannot do the job. Our own data does not squat on Linux paths (agentd data moves from /sys to /var/lib/ringzero). Every design decision is checked against this rule.
+
 - `docs/ARCHITECTURE.md` holds the OS architecture diagram (mermaid) and must stay current: every change that adds, removes or rewires a component updates the diagram in the same commit, and reruns `tools/arch_pdf.sh` (checks every mermaid block parses and regenerates docs/ARCHITECTURE_DIAGRAMS.pdf).
 - Build and run on the Fedora box: ssh alias `fedorascale` (the maintainer's build box; its address stays out of the repo), never QEMU on the Mac. Keep Fedora RAM under 90%: one QEMU guest at a time, check `free -m` first.
 - Commit subjects use one of: feat, fix, refactor, docs, style, test, build.

@@ -2,6 +2,13 @@
 
 All diagrams of this page as one PDF: [ARCHITECTURE_DIAGRAMS.pdf](ARCHITECTURE_DIAGRAMS.pdf) (regenerate with `tools/arch_pdf.sh`, which also fails on any diagram that does not parse).
 
+## Design principle: Unix-like
+
+ringzero presents itself as a Unix: the models already know Linux, so the OS follows Linux/Unix conventions
+wherever they fit (everything is a file: /proc, /sys as sysfs, /dev, /etc; familiar paths, command names and
+outputs). New features expose state as files first and add a special tool only when a file cannot do the job.
+ringzero's own data lives outside the Linux paths (/var/lib/ringzero, migration from /sys planned).
+
 ## Diagram
 
 ```mermaid
