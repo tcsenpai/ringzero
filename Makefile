@@ -91,8 +91,11 @@ $(MANVEC): docs/MANUAL.md $(EMBED) $(wildcard engine/*.asm engine/*.inc) kernel/
 	MEM=$(GUEST_MEM) python3 tools/manvec.py $(BUILD)/manvec-pass1.iso $@
 	rm -rf $(BUILD)/manvec-pass1.iso $@.boot
 
+# T28: ask y/N before a call of a tool that changes the machine when its confidence margin is below CONF_ASK percent
+# (0..100, clamped; default 80; 25 = the tune-split pick of docs/T28_RESULT.md)
+CONF_ASK ?=
 kernel: upy
-	cd kernel && RINGZERO_EDITION="$(EDITION)" RINGZERO_MANVEC="$(MANVEC_PATH)" cargo build --release -j 8
+	cd kernel && RINGZERO_EDITION="$(EDITION)" RINGZERO_MANVEC="$(MANVEC_PATH)" RINGZERO_CONF_ASK="$(CONF_ASK)" cargo build --release -j 8
 
 # M5: MicroPython (MIT), fetched at a pinned tag + commit and turned into the ports/embed package that
 # kernel/build.rs compiles freestanding (config: kernel/upy/mpconfigport.h). Needs python3 on the build box.

@@ -167,11 +167,12 @@ name, a parameter choice with an optional one among the candidates, another opti
 value, an integer digit) the kernel takes P(best) - P(second) of the softmax over the tokens the grammar allows,
 grouped by outcome (tokens leading to the same name are summed, tokens that narrow nothing left out), from the logits
 the pick used (a decode step or a verify row): no extra forward pass, the sampling is unchanged. The smallest margin
-of the call sets the band: >= 0.80 run, 0.25-0.80 run and log, < 0.25 ask `[confidence] ... Run it? [y/N]` first for
+of the call sets the band: below `CONF_ASK` (default 0.80) ask `[confidence] ... Run it? [y/N]` first for
 set_setting, remember, write_file, mkdir, run_code, run_wasm (rm, forget, poweroff, reboot ask y/N anyway) and run
-with a notice for read-only tools. Thresholds picked on 120 tune tasks of `tools/confeval.py`; on the 120 held-out:
-AUROC 0.80 against wrong calls (0.89 against wrong tools), 0 of 8 wrong calls in the low band, 5 in the logged band,
-0 false escalations. 0.74 ms per call. Every call prints a `[confidence]` line; `!set confidence on|off` (default on).
+with a notice for read-only tools; at or above it run. `make iso CONF_ASK=N` (percent, 0..100) moves the line; the
+logged middle band runs from `CONF_ASK` to 0.80 and is empty at the default. On the 120 held-out tasks of
+`tools/confeval.py`: AUROC 0.80 against wrong calls (0.89 against wrong tools); below 0.80 sit 5 of the 8 wrong
+calls and 12 of the 90 right ones (the tune-split pick, `CONF_ASK=25`, catches 0 of 8). 0.74 ms per call. Every call prints a `[confidence]` line; `!set confidence on|off` (default on).
 Results: [docs/T28_RESULT.md](docs/T28_RESULT.md).
 
 Hibernation (M4.7b): `/hibernate`, and every `!poweroff` (also the agent's poweroff tool), writes the current
@@ -314,6 +315,7 @@ make model HF_DIR=/path/to/hf/qwen3.5-2b   # reuse a download (config.json, safe
 make model EMBED_HF_DIR=/path/to/hf/qwen3-embedding-0.6b   # same for the embedder
 make iso                 # kernel + Limine (fetched, pinned tag) + model -> build/ringzero.iso
 RINGZERO_KV=f32 make iso     # FP32 KV cache instead of FP16 (comparison build, 768 MiB of KV)
+make iso CONF_ASK=25         # T28: ask y/N below a 0.25 confidence margin instead of 0.80 (0..100)
 make run-bios            # QEMU/KVM, q35, 6 GiB (GUEST_MEM=6G), 8 CPUs, serial on stdio (Ctrl-C to quit)
 make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window

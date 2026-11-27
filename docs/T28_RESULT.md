@@ -26,7 +26,8 @@ the user's running instance, driven from the Mac over the serial port.
 - Per call: the smallest margin, where it was and the best token of the two outcomes, the first 8 margins and the
   time spent. Printed after the `[tool]` line and written to the kernel log:
   `[confidence] min margin 0.02 at 'tool name' ('run' vs 'cat'), 3 decision tokens: 0.02 0.99 0.99, 512 us -> ...`
-- Bands (agent.rs `CONF_LO = 0.25`, `CONF_HI = 0.80`, picked below): margin >= 0.80 `-> run`; 0.25 to 0.80
+- Bands as measured (agent.rs `CONF_LO = 0.25`, `CONF_HI = 0.80`, picked below; the beta asks below 0.80, see
+  "Beta default 0.80"): margin >= 0.80 `-> run`; 0.25 to 0.80
   `-> run (middle band, logged)`; below 0.25: a tool that changes the machine (set_setting, remember, write_file,
   mkdir, run_code, run_wasm) asks `[confidence] the agent is not sure about this call. Run it? [y/N]` first, and on
   no the model gets `error: not run: the agent was unsure ...`; rm, forget, poweroff and reboot ask y/N themselves,
@@ -100,6 +101,17 @@ but a third of the low margins were tokenization, not doubt: `=m` against `=` fo
 `=re` against `=` for reboot, and `\n` against ` ` after the digits of `read_log n` (0.00 on every read_log in the
 second build, which grouped names but not integers). Grouping tokens by outcome removed them; the numbers above are
 from the third build.
+
+## Beta default 0.80 (user decision, 2026-11-27)
+
+The beta asks below 0.80 instead of 0.25: catching most wrong calls is worth more questions. From the held-out
+table above, a margin below 0.80 holds 5 of the 8 wrong calls and 12 of the 90 right ones (13%). Below that line a
+tool that changes the machine asks y/N first and a read-only tool runs with the notice, as before; only the line
+moved. Build time: `make iso CONF_ASK=N` (percent integer, clamped to 0..100, env `RINGZERO_CONF_ASK`, agent.rs
+`CONF_LO`); `CONF_ASK=25` builds the tune-split pick. `CONF_HI` is max(0.80, `CONF_LO`): at the default both are
+0.80, so the logged middle band is empty and every call either runs or asks; with `CONF_ASK=25` the bands are the
+ones measured above. One variable instead of two keeps the build option simple; the middle band only logs, so
+nothing is lost when it is empty. `!set confidence on` prints the line in use (`a margin below 0.80 asks first`).
 
 ## tooleval (M45 protocol, final build)
 

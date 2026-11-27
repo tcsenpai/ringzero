@@ -37,6 +37,7 @@ fn main() {
     println!("cargo:rustc-env=RINGZERO_ENGINE_HASH={h:#x}");
     // T38: the manual's vectors (tools/manvec.py, MANUAL_VECTORS=1), linked by agentd.rs; empty = T22 indexing
     println!("cargo:rerun-if-env-changed=RINGZERO_MANVEC");
+    println!("cargo:rerun-if-env-changed=RINGZERO_CONF_ASK"); // T28: agent.rs CONF_LO (make iso CONF_ASK=N)
     let mv = env::var("RINGZERO_MANVEC").ok().filter(|p| !p.is_empty());
     if let Some(p) = &mv {
         println!("cargo:rerun-if-changed={p}");

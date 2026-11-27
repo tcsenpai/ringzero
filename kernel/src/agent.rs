@@ -577,11 +577,29 @@ const FX: [&str; 10] = ["set_setting", "remember", "forget", "write_file", "mkdi
 /// Of FX, the ones that ask the human y/N themselves (the confidence band adds no second question).
 const ASKS: [&str; 4] = ["rm", "poweroff", "reboot", "forget"];
 
-/// T28 bands of a call's smallest decision margin (gram.rs), picked on the tune split of tools/confeval.py
-/// (docs/T28_RESULT.md): at or above CONF_HI run, from CONF_LO run and log, below CONF_LO ask first (FX) or run with
-/// a notice (read-only tools).
-pub const CONF_LO: f32 = 0.25;
-pub const CONF_HI: f32 = 0.80;
+/// T28 bands of a call's smallest decision margin (gram.rs, docs/T28_RESULT.md): at or above CONF_HI run, from
+/// CONF_LO run and log, below CONF_LO ask first (FX) or run with a notice (read-only tools). Beta default (user,
+/// 2026-11-27): ask below 0.80 (held-out: 5 of 8 wrong calls asked, 12 of 90 right ones); `make iso CONF_ASK=25` is
+/// the tune-split pick. CONF_HI = max(0.80, CONF_LO), so the logged middle band is empty at the default.
+pub const CONF_LO: f32 = conf_ask(option_env!("RINGZERO_CONF_ASK")) as f32 / 100.0;
+pub const CONF_HI: f32 = if CONF_LO > 0.80 { CONF_LO } else { 0.80 };
+
+/// RINGZERO_CONF_ASK: percent integer, clamped to 0..100; unset or empty = 80.
+const fn conf_ask(s: Option<&str>) -> u32 {
+    let b = match s {
+        Some(s) if !s.is_empty() => s.as_bytes(),
+        _ => return 80,
+    };
+    let (mut i, mut v) = (0, 0u32);
+    while i < b.len() {
+        assert!(b[i].is_ascii_digit(), "RINGZERO_CONF_ASK: a percent integer, 0..100");
+        v = if v > 100 { 101 } else { v * 10 + (b[i] - b'0') as u32 };
+        i += 1;
+    }
+    if v > 100 { 100 } else { v }
+}
+const _: () = assert!(conf_ask(None) == 80 && conf_ask(Some("")) == 80 && conf_ask(Some("0")) == 0
+    && conf_ask(Some("25")) == 25 && conf_ask(Some("100")) == 100 && conf_ask(Some("2500")) == 100);
 
 #[derive(Clone, Copy, PartialEq)]
 enum Band {

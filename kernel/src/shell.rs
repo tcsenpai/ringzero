@@ -439,7 +439,11 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
         "confidence" => {
             let on = matches!(val, "on" | "1" | "true");
             unsafe { crate::gram::CONF_ON = on };
-            let _ = write!(o, "confidence = {}", if on { "on (a [confidence] line per tool call; a low margin asks first on tools that change the machine)" } else { "off" });
+            if on {
+                let _ = write!(o, "confidence = on (a [confidence] line per tool call; a margin below {:.2} asks first on tools that change the machine)", crate::agent::CONF_LO);
+            } else {
+                let _ = write!(o, "confidence = off");
+            }
             true
         }
         "seed" => match val.parse::<u64>() {
