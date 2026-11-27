@@ -78,7 +78,8 @@ pub static mut ROUNDS: usize = env_num(option_env!("RINGZERO_ROUNDS"), 10, ROUND
 pub const ROUNDS_MAX: usize = 20;
 const _: () = assert!(env_num(None, 10, 20) == 10 && env_num(Some("0"), 10, 20) == 1 && env_num(Some("99"), 10, 20) == 20);
 /// Appended to the last tool result: the next round cannot call a tool.
-const NO_MORE_TOOLS: &str = "(No more tools in this turn: answer now with what you have; if you could not find out, say so.)";
+const NO_MORE_TOOLS: &str = "(Tools are now disabled for this turn. Write your final answer to the user from the results above, \
+do not say that you will call a tool; if something is missing, say what you could not find.)";
 const MAX_ANSWER: u64 = 512;
 /// Tool results longer than this are cut, with a marker the model can see.
 const RES_CAP: usize = 8192;
