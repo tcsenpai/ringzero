@@ -146,9 +146,17 @@ Source: kernel/src/agent.rs SUMMARY_MAX, COMPACT_PCT, compact, ask
 - **THEN** the shell prints `[compact] context ... (80%, auto): summarizing...` before the answer
 
 ### Requirement: Answer language
-The system prompt SHALL tell the model to always answer in the language the user wrote their latest message in, never in the language of tool output or memory notes, briefly, in plain text without markdown headers, and never to invent numbers. Every tool-result turn SHALL end with "(Answer in the language of my message.)" without naming a language, and consolidation SHALL write episodes in the language the user wrote in.
-Source: kernel/src/agent.rs SYSTEM and the tool-result turn in the tool loop; kernel/src/agentd.rs CONS_ASK
+The system prompt SHALL tell the model to always answer in the language the user wrote their latest message in, never in the language of tool output or memory notes, briefly, in plain text without markdown headers, and never to invent numbers.
+Source: kernel/src/agent.rs SYSTEM
+
+#### Scenario: Italian question
+- **WHEN** the user writes in Italian
+- **THEN** the system prompt asks for the language of the user's message, without naming one
+
+### Requirement: Answer language after a tool result
+Every tool-result turn SHALL end with "(Answer in the language of my message.)", naming no language, and consolidation SHALL write episodes in the language the user wrote in.
+Source: kernel/src/agent.rs tool-result turn in the tool loop; kernel/src/agentd.rs CONS_ASK
 
 #### Scenario: English question answered after a tool result
 - **WHEN** the user writes in English and the agent calls a tool
-- **THEN** the turn with the tool result asks for the language of the user's message and no language is named or forced
+- **THEN** the turn with the tool result asks for the language of the user's message
