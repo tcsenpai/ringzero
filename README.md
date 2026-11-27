@@ -2,10 +2,16 @@
 
 An operating system where the AI is part of the kernel.
 
-ringzero boots on bare x86-64 (no Linux underneath) and runs a language model in ring 0, next to the
-scheduler and the drivers. You talk to the system in plain language at its shell; the model answers, reads
-and writes your files, runs programs and remembers you across reboots. It is an experiment: the question is
-what an OS looks like when the model is not an app on top of it, but one of its parts.
+ringzero boots on bare x86-64 (no Linux underneath) and runs two models in ring 0, next to the scheduler
+and the drivers, on one shared inference engine:
+
+- a **language model** (Qwen3.5) that you talk to at the shell: it answers, reads and writes your files and
+  runs programs;
+- an **embedding model** (Qwen3-Embedding-0.6B) that gives the system a semantic memory: it indexes your
+  notes, your files and your past conversations, so the OS can find things by meaning, not by file name.
+
+Together they make an OS that understands what you ask and remembers you across reboots. It is an
+experiment: the question is what an OS looks like when the models are not apps on top of it, but parts of it.
 
 ```
 ringzero[main]> quante righe ha /notes/casa.txt?
@@ -18,9 +24,12 @@ Il file /notes/casa.txt ha 12 righe.
 
 - **Talk to the machine.** Plain text goes to the system agent, which calls typed kernel tools: files,
   memory, CPU cores, logs, settings, power. Anything that deletes or powers off asks you first.
+- **Semantic memory, built in.** The embedding model indexes every text file you write and every session, in
+  the background while you are idle, into an index saved on the disk. "cosa devo comprare?" finds the
+  shopping list you wrote last week. `/search` queries it directly.
 - **It remembers you.** Facts you tell it ("mi chiamo Anna") and summaries of past sessions are kept on the
-  disk and come back after a reboot. A second, small embedding model indexes your notes and files, so "cosa
-  devo comprare?" finds the shopping list you wrote last week.
+  disk and come back after a reboot. The kernel, not the model, decides what goes into the model's context,
+  so the memory stays small and on topic.
 - **Undo for the AI.** Every turn is a snapshot of the model's state: `/undo`, `/redo`, `/retry`, named
   branches, save and load. Going back takes under a millisecond.
 - **Hibernate and resume.** Power off and the whole conversation, with its history tree, is written to disk.
