@@ -7,7 +7,7 @@ The runtime settings changed with `!set <key> <value>` (and the shortcuts `!kbd`
 
 ### Requirement: Setting keys
 `!set` SHALL accept exactly these keys: temperature (alias temp), cores, keyboard (alias kbd), think, compact, snappool, consolidate, slot, constrain, spec, gramdraft, confidence, seed; Tab SHALL complete the 13 main names; any other key SHALL be refused with `error: unknown setting '<key>' (...)` and nothing changes.
-Source: kernel/src/shell.rs:103, kernel/src/shell.rs:399-530
+Source: kernel/src/shell.rs SETTINGS, set_setting
 
 #### Scenario: Unknown key
 - **WHEN** the user sets the key colour, which does not exist
@@ -15,7 +15,7 @@ Source: kernel/src/shell.rs:103, kernel/src/shell.rs:399-530
 
 ### Requirement: Applied settings are logged
 Every setting that was applied SHALL write its result line to the kernel log; a refused value SHALL not.
-Source: kernel/src/shell.rs:531-534
+Source: kernel/src/shell.rs set_setting
 
 #### Scenario: Log line
 - **WHEN** the user types `!set slot 100`
@@ -23,7 +23,7 @@ Source: kernel/src/shell.rs:531-534
 
 ### Requirement: temperature
 `!set temperature T` SHALL accept a number from 0 to 2: 0 selects greedy decoding, above 0 top-p 0.95 sampling at T; other values SHALL be refused with `error: temperature must be a number from 0 to 2`. Default 0 (greedy). Saved in the hibernation image.
-Source: kernel/src/shell.rs:401-411, kernel/src/llm.rs:43, kernel/src/hib.rs:26, kernel/src/hib.rs:39
+Source: kernel/src/shell.rs set_setting; kernel/src/llm.rs TEMP_BITS; kernel/src/hib.rs extra, apply
 
 #### Scenario: Out of range
 - **WHEN** the user types `!set temperature 3`
@@ -31,7 +31,7 @@ Source: kernel/src/shell.rs:401-411, kernel/src/llm.rs:43, kernel/src/hib.rs:26,
 
 ### Requirement: cores
 `!set cores N` SHALL accept 1 up to the number of worker threads online and set the threads used for inference; other values SHALL be refused with `error: cores must be 1..<max>`. Default: every core online. Not saved: each boot uses every core.
-Source: kernel/src/shell.rs:412-422, kernel/src/smp.rs:180-182
+Source: kernel/src/shell.rs set_setting; kernel/src/smp.rs start
 
 #### Scenario: Too many cores
 - **WHEN** 8 threads are online and the user types `!set cores 9`
@@ -39,7 +39,7 @@ Source: kernel/src/shell.rs:412-422, kernel/src/smp.rs:180-182
 
 ### Requirement: keyboard
 `!set keyboard L` SHALL accept the layouts us and it; another name SHALL be refused with `error: keyboard layout must be one of: us it`. Default it. Not saved.
-Source: kernel/src/shell.rs:423-432, kernel/src/kbd.rs:15-22, kernel/src/kbd.rs:49
+Source: kernel/src/shell.rs set_setting; kernel/src/kbd.rs LAYOUTS, LAYOUT
 
 #### Scenario: US layout
 - **WHEN** the user types `!set keyboard us`
@@ -47,7 +47,7 @@ Source: kernel/src/shell.rs:423-432, kernel/src/kbd.rs:15-22, kernel/src/kbd.rs:
 
 ### Requirement: think
 `!set think V` SHALL turn model thinking on for `on`, `1` or `true` and off for any other value. Default off. Saved in the hibernation image.
-Source: kernel/src/shell.rs:477-482, kernel/src/llm.rs:42, kernel/src/hib.rs:27, kernel/src/hib.rs:40
+Source: kernel/src/shell.rs set_setting; kernel/src/llm.rs THINK; kernel/src/hib.rs extra, apply
 
 #### Scenario: Any other word turns it off
 - **WHEN** the user types `!set think yes`
@@ -55,7 +55,7 @@ Source: kernel/src/shell.rs:477-482, kernel/src/llm.rs:42, kernel/src/hib.rs:27,
 
 ### Requirement: compact
 `!set compact P` SHALL accept a percent from 1 to 95, the context fill at which a turn compacts the context; other values SHALL be refused with `error: compact must be a percent from 1 to 95`. Default 75. Saved in the hibernation image.
-Source: kernel/src/shell.rs:515-525, kernel/src/agent.rs:92, kernel/src/hib.rs:27, kernel/src/hib.rs:42
+Source: kernel/src/shell.rs set_setting; kernel/src/agent.rs COMPACT_PCT; kernel/src/hib.rs extra, apply
 
 #### Scenario: Zero refused
 - **WHEN** the user types `!set compact 0`
@@ -63,7 +63,7 @@ Source: kernel/src/shell.rs:515-525, kernel/src/agent.rs:92, kernel/src/hib.rs:2
 
 ### Requirement: snappool
 `!set snappool M` SHALL accept 64 MiB up to the pool size and cap the memory usable for snapshots, never below what is in use; other values SHALL be refused with `error: snappool must be 64..<max> MiB`. Default: the whole pool. Saved with the snapshot tree in the hibernation image.
-Source: kernel/src/shell.rs:483-492, kernel/src/snap.rs:546, kernel/src/snap.rs:705, kernel/src/snap.rs:908, kernel/src/snap.rs:1379-1391
+Source: kernel/src/shell.rs set_setting; kernel/src/snap.rs init_root, hib_save, txt, set_cap, max_mib
 
 #### Scenario: Below the minimum
 - **WHEN** the user types `!set snappool 32`
@@ -71,7 +71,7 @@ Source: kernel/src/shell.rs:483-492, kernel/src/snap.rs:546, kernel/src/snap.rs:
 
 ### Requirement: consolidate
 `!set consolidate S` SHALL accept any non-negative integer of idle seconds at the prompt before an automatic memory consolidation, 0 meaning only `/consolidate`; a value that is not an integer SHALL be refused. Default 60. Not saved.
-Source: kernel/src/shell.rs:504-514, kernel/src/agentd.rs:48
+Source: kernel/src/shell.rs set_setting; kernel/src/agentd.rs CONS_IDLE_S
 
 #### Scenario: Off
 - **WHEN** the user types `!set consolidate 0`
@@ -79,7 +79,7 @@ Source: kernel/src/shell.rs:504-514, kernel/src/agentd.rs:48
 
 ### Requirement: slot
 `!set slot N` SHALL accept a token budget from 0 to 1000 for the memory slot put in front of the first message of a conversation, 0 turning the slot off; other values SHALL be refused. Default 200. Not saved.
-Source: kernel/src/shell.rs:493-503, kernel/src/agentd.rs:32
+Source: kernel/src/shell.rs set_setting; kernel/src/agentd.rs SLOT_BUDGET
 
 #### Scenario: Slot off
 - **WHEN** the user types `!set slot 0`
@@ -87,7 +87,7 @@ Source: kernel/src/shell.rs:493-503, kernel/src/agentd.rs:32
 
 ### Requirement: constrain
 `!set constrain V` SHALL make tool calls follow the tool schemas for `on`, `1` or `true`, and for any other value let the grammar only check tool calls. Default on. Saved in the hibernation image.
-Source: kernel/src/shell.rs:433-438, kernel/src/gram.rs:259, kernel/src/hib.rs:27, kernel/src/hib.rs:41
+Source: kernel/src/shell.rs set_setting; kernel/src/gram.rs ON; kernel/src/hib.rs extra, apply
 
 #### Scenario: Off
 - **WHEN** the user types `!set constrain off`
@@ -95,7 +95,7 @@ Source: kernel/src/shell.rs:433-438, kernel/src/gram.rs:259, kernel/src/hib.rs:2
 
 ### Requirement: spec
 `!set spec V` SHALL turn speculative decoding on for `on` or `true`, set the longest draft to N and turn it on for an integer N from 1 to 15, and turn it off for any other value, including 0 and integers of 16 or more. Default on with drafts up to 8 tokens. When the build has no speculative path the line SHALL say `on, but not available on this build`. Not saved.
-Source: kernel/src/shell.rs:460-470, kernel/src/llm.rs:638-643
+Source: kernel/src/shell.rs set_setting; kernel/src/llm.rs SPEC_ROWS, SPEC_K
 
 #### Scenario: Longest draft
 - **WHEN** the user types `!set spec 4`
@@ -107,7 +107,7 @@ Source: kernel/src/shell.rs:460-470, kernel/src/llm.rs:638-643
 
 ### Requirement: gramdraft
 `!set gramdraft V` SHALL use the grammar's forced continuation inside a tool call as the speculative draft for `on`, `1` or `true`, and stop for any other value. Default on. Not saved.
-Source: kernel/src/shell.rs:471-476, kernel/src/llm.rs:645
+Source: kernel/src/shell.rs set_setting; kernel/src/llm.rs GRAM_DRAFT
 
 #### Scenario: Off
 - **WHEN** the user types `!set gramdraft off`
@@ -115,7 +115,7 @@ Source: kernel/src/shell.rs:471-476, kernel/src/llm.rs:645
 
 ### Requirement: confidence
 `!set confidence V` SHALL print a `[confidence]` line per tool call and ask first on low-margin calls of tools that change the machine for `on`, `1` or `true`, and do neither for any other value; the on line SHALL name the ask threshold CONF_LO with two decimals. Default on. Not saved.
-Source: kernel/src/shell.rs:439-448, kernel/src/gram.rs:425, kernel/src/agent.rs:587
+Source: kernel/src/shell.rs set_setting; kernel/src/gram.rs CONF_ON; kernel/src/agent.rs CONF_LO
 
 #### Scenario: On line names the threshold
 - **WHEN** the kernel was built with the default CONF_ASK and the user types `!set confidence on`
@@ -123,7 +123,7 @@ Source: kernel/src/shell.rs:439-448, kernel/src/gram.rs:425, kernel/src/agent.rs
 
 ### Requirement: seed
 `!set seed R` SHALL set the sampler RNG state to a positive integer R; 0 and non-integers SHALL be refused with `error: seed must be a positive integer`. Default 42. The RNG state is stored with every snapshot point, so `/undo` and `/switch` bring it back.
-Source: kernel/src/shell.rs:449-459, kernel/src/llm.rs:44, kernel/src/snap.rs:427
+Source: kernel/src/shell.rs set_setting; kernel/src/llm.rs RNG; kernel/src/snap.rs save
 
 #### Scenario: Zero refused
 - **WHEN** the user types `!set seed 0`
@@ -131,7 +131,7 @@ Source: kernel/src/shell.rs:449-459, kernel/src/llm.rs:44, kernel/src/snap.rs:42
 
 ### Requirement: Agent can change three settings
 The agent's set_setting tool SHALL reach only temperature, cores and keyboard; the other keys SHALL be changeable only by the user at the shell.
-Source: kernel/src/agent.rs:30, kernel/src/agent.rs:57, kernel/src/agent.rs:507-512
+Source: kernel/src/agent.rs TOOLS, SPECS, exec
 
 #### Scenario: Agent tries confidence
 - **WHEN** the model calls set_setting with key `confidence`
@@ -139,7 +139,7 @@ Source: kernel/src/agent.rs:30, kernel/src/agent.rs:57, kernel/src/agent.rs:507-
 
 ### Requirement: Settings survive hibernation only in part
 A resumed hibernation image SHALL restore temperature, think, constrain, compact, the compaction count, the transcript and the snapshot pool cap; every other setting SHALL start at its default on each boot.
-Source: kernel/src/hib.rs:20-46, kernel/src/snap.rs:705, kernel/src/snap.rs:908
+Source: kernel/src/hib.rs key, apply; kernel/src/snap.rs hib_save, txt
 
 #### Scenario: Keyboard after resume
 - **WHEN** the user sets `!kbd us`, powers off and boots again into the resumed conversation

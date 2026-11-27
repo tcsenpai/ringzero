@@ -7,7 +7,7 @@ Baseline of how the ringzero kernel decodes Qwen3.5 output for the ring 0 agent:
 
 ### Requirement: Context window
 The system SHALL request a 32768-token context from the engine (`CTX_LEN` as max_seq_override, which replaces the model header's max_seq_len when nonzero). The agent SHALL skip a round with `[agent] context full, type 'clear' to start over` when the next prompt would leave fewer than 64 positions.
-Source: kernel/src/llm.rs:33, kernel/src/llm.rs:316, engine/transformer.asm:256-263, kernel/src/agent.rs:686-690
+Source: kernel/src/llm.rs CTX_LEN, init; engine/transformer.asm .store_scale_mode, .use_hdr_seq; kernel/src/agent.rs ask
 
 #### Scenario: near-full context mid-turn
 - **WHEN** the position plus the next prompt's tokens plus 64 reaches max_seq
@@ -19,7 +19,7 @@ Source: kernel/src/llm.rs:33, kernel/src/llm.rs:316, engine/transformer.asm:256-
 
 ### Requirement: Sampling and temperature
 The system SHALL decode greedily (argmax) by default, SHALL accept a temperature from 0 to 2 (`!set temperature T`, `/temp T`, or the set_setting tool), and above 0 SHALL sample top-p 0.95 at that temperature. The sampler RNG SHALL start at 42; `!set seed N` sets it.
-Source: kernel/src/llm.rs:43-45, kernel/src/llm.rs:86-97, kernel/src/shell.rs:401-411, kernel/src/shell.rs:449
+Source: kernel/src/llm.rs TEMP_BITS, TOPP_BITS, rate, pick_next; kernel/src/shell.rs set_setting
 
 #### Scenario: temperature 0.7
 - **WHEN** the user runs `/temp 0.7`
@@ -31,7 +31,7 @@ Source: kernel/src/llm.rs:43-45, kernel/src/llm.rs:86-97, kernel/src/shell.rs:40
 
 ### Requirement: Speculative decoding availability
 The system SHALL decode with speculation on by default (`SPEC_ON`), off with `!set spec off`, and only when the batched prefill buffers, 16 logits rows and a DeltaNet state copy were taken from the arena at boot; otherwise it SHALL log `model: speculative decoding off (arena full)` and decode one token per pass.
-Source: kernel/src/llm.rs:638-646, kernel/src/llm.rs:670-685, kernel/src/llm.rs:802, kernel/src/shell.rs:460-468
+Source: kernel/src/llm.rs SPEC_ROWS, SPEC_OK, st, spec_init, generate; kernel/src/shell.rs set_setting
 
 #### Scenario: spec off
 - **WHEN** the user runs `!set spec off`
@@ -39,7 +39,7 @@ Source: kernel/src/llm.rs:638-646, kernel/src/llm.rs:670-685, kernel/src/llm.rs:
 
 ### Requirement: Prompt-lookup draft source
 Outside a tool call the system SHALL draft from the earlier place in the conversation (after the boot prefix, plus emitted tokens not fed yet) that agrees longest with the end of the context, with matches of 3 to 32 tokens (latest on a tie), drafting at most the match length minus 1 and at most the current draft length.
-Source: kernel/src/llm.rs:720-760, kernel/src/llm.rs:814-816, kernel/src/llm.rs:834-837
+Source: kernel/src/llm.rs fwd_verify, lookup, generate
 
 #### Scenario: two-token match
 - **WHEN** the end of the context agrees with an earlier place for only 2 tokens
@@ -51,7 +51,7 @@ Source: kernel/src/llm.rs:720-760, kernel/src/llm.rs:814-816, kernel/src/llm.rs:
 
 ### Requirement: Draft length and back-off
 The system SHALL use a longest draft of `SPEC_K` tokens (default 8; `!set spec N`, N in 1..15, sets it and turns speculation on). The lookup draft length SHALL grow by 2 after a full accept and shrink by 1 otherwise, and lookup drafting SHALL pause for 2, 4, 8, 16, then 32 tokens after consecutive verifies with nothing accepted.
-Source: kernel/src/llm.rs:643, kernel/src/llm.rs:803, kernel/src/llm.rs:810-813, kernel/src/llm.rs:875-900, kernel/src/shell.rs:460-463
+Source: kernel/src/llm.rs SPEC_K, generate; kernel/src/shell.rs set_setting
 
 #### Scenario: set draft length
 - **WHEN** the user runs `!set spec 4`
@@ -59,7 +59,7 @@ Source: kernel/src/llm.rs:643, kernel/src/llm.rs:803, kernel/src/llm.rs:810-813,
 
 ### Requirement: Draft verification and acceptance
 The system SHALL verify the pending tokens plus a draft in one batched pass with logits per row, SHALL pick each row as the per-token loop does (sampler, grammar inside a call, stop checks), and SHALL accept draft tokens while the pick equals them. On a partial accept it SHALL restore the saved DeltaNet state and feed the accepted tokens again in the next pass.
-Source: kernel/src/llm.rs:625-635, kernel/src/llm.rs:846-891
+Source: kernel/src/llm.rs Stop, generate
 
 #### Scenario: draft rejected at the third token
 - **WHEN** a 5-token draft matches the picks for 2 tokens and differs at the third
@@ -71,7 +71,7 @@ Source: kernel/src/llm.rs:625-635, kernel/src/llm.rs:846-891
 
 ### Requirement: Grammar draft inside tool calls
 Inside a tool call, with `GRAM_DRAFT` on (default; `!set gramdraft on|off`), the system SHALL draft first the text the grammar implies, chaining at most 8 pieces and at most 15 tokens, never `</tool_call>`, and SHALL use the prompt lookup only when that draft is empty. With the grammar in check-only mode it SHALL draft nothing.
-Source: kernel/src/llm.rs:644-645, kernel/src/llm.rs:828-837, kernel/src/gram.rs:729-803
+Source: kernel/src/llm.rs Stop, GRAM_DRAFT, generate; kernel/src/gram.rs unique, draft
 
 #### Scenario: tool name prefix
 - **WHEN** the call so far is `\n<function=ca`
@@ -83,7 +83,7 @@ Source: kernel/src/llm.rs:644-645, kernel/src/llm.rs:828-837, kernel/src/gram.rs
 
 ### Requirement: Tool-call grammar scope
 The system SHALL start the tool-call grammar when the model emits the `<tool_call>` token (248058), hide the call's text from the console from that token on, end the grammar at the end of the round, and log one `[grammar] ...` line per call ending in `valid call`, `valid call, steered`, `INVALID call` or `unfinished call`.
-Source: kernel/src/llm.rs:450, kernel/src/llm.rs:776-780, kernel/src/llm.rs:902-903, kernel/src/gram.rs:293-302, kernel/src/gram.rs:805-828
+Source: kernel/src/llm.rs TOK_TOOL_CALL, emit, generate; kernel/src/gram.rs active, begin, draft, finish
 
 #### Scenario: plain answer
 - **WHEN** the model answers without `<tool_call>`
@@ -91,7 +91,7 @@ Source: kernel/src/llm.rs:450, kernel/src/llm.rs:776-780, kernel/src/llm.rs:902-
 
 ### Requirement: Tool-call grammar structure
 The system SHALL allow inside a call only `<function=NAME>`, then `<parameter=KEY>` VALUE `</parameter>` blocks, then `</function>` and the `</tool_call>` token, where NAME is one of the 18 schema tools, each KEY is a parameter of that tool used at most once, every required parameter comes before `</function>`, and at most 4 whitespace bytes separate parts.
-Source: kernel/src/gram.rs:1-7, kernel/src/gram.rs:37, kernel/src/gram.rs:93-162, kernel/src/agent.rs:49-68
+Source: kernel/src/gram.rs WS_MAX, push, step; kernel/src/agent.rs SPECS
 
 #### Scenario: unknown tool
 - **WHEN** the model writes `<function=mem_info>`
@@ -103,7 +103,7 @@ Source: kernel/src/gram.rs:1-7, kernel/src/gram.rs:37, kernel/src/gram.rs:93-162
 
 ### Requirement: Tool-call grammar values
 The system SHALL accept an enum value only from its listed values, an integer only as `-?digits` of at most 18 characters, and a free string value that does not contain `</function>` or `<parameter=`; inside a call no token longer than 128 bytes and no special token except `</tool_call>` after `</function>` SHALL be allowed.
-Source: kernel/src/gram.rs:32-35, kernel/src/gram.rs:163-207, kernel/src/gram.rs:304-318
+Source: kernel/src/gram.rs SPECIAL_MIN, MAXLEN, step, accept
 
 #### Scenario: enum value outside the schema
 - **WHEN** the model writes `colour` as the key of set_setting
@@ -111,7 +111,7 @@ Source: kernel/src/gram.rs:32-35, kernel/src/gram.rs:163-207, kernel/src/gram.rs
 
 ### Requirement: Grammar masking
 The system SHALL keep the sampler's pick when the grammar accepts it; otherwise it SHALL set every rejected token's logit to -inf and pick again with the same sampler, forcing the only allowed token when there is one. With `!set constrain off` the grammar SHALL only report where the call leaves it, without changing any pick.
-Source: kernel/src/gram.rs:9-14, kernel/src/gram.rs:350-411, kernel/src/shell.rs:433-438
+Source: kernel/src/gram.rs walk, fix; kernel/src/shell.rs set_setting
 
 #### Scenario: constrain off
 - **WHEN** constrain is off and the model writes an invalid name
@@ -119,7 +119,7 @@ Source: kernel/src/gram.rs:9-14, kernel/src/gram.rs:350-411, kernel/src/shell.rs
 
 ### Requirement: Confidence decision tokens
 With confidence on (default; `!set confidence on|off`) the system SHALL treat as decision tokens of a call the tool name, a parameter name when an optional one is a candidate, another optional parameter or the end, an enum value, and an integer digit or its end; never a free string value, layout whitespace or a byte with only one allowed way on.
-Source: kernel/src/gram.rs:413-425, kernel/src/gram.rs:467-513, kernel/src/shell.rs:439-447
+Source: kernel/src/gram.rs fix, CONF_ON, last_conf, decision; kernel/src/shell.rs set_setting
 
 #### Scenario: free value
 - **WHEN** the model writes the path of a cat call
@@ -131,7 +131,7 @@ Source: kernel/src/gram.rs:413-425, kernel/src/gram.rs:467-513, kernel/src/shell
 
 ### Requirement: Confidence margin
 At each decision token the system SHALL compute P(best outcome) minus P(second) of a softmax at temperature 1 over the tokens the grammar allows, summing tokens with the same outcome, from the logits the pick used (no extra forward pass), and SHALL take the smallest margin of the call as its confidence.
-Source: kernel/src/gram.rs:622-704, kernel/src/gram.rs:461-465, kernel/src/agent.rs:614-635
+Source: kernel/src/gram.rs outcome, conf, Conf, last_conf; kernel/src/agent.rs Band, conf_line
 
 #### Scenario: confidence line
 - **WHEN** the model calls `read_log` with n=5
@@ -139,7 +139,7 @@ Source: kernel/src/gram.rs:622-704, kernel/src/gram.rs:461-465, kernel/src/agent
 
 ### Requirement: Confidence bands
 The system SHALL put a call in the High band when its smallest margin is at or above `CONF_HI` = max(0.80, `CONF_ASK`/100), in the Mid band when it is at or above `CONF_ASK`/100, and in the Low band below that; at the default `CONF_ASK` the Mid band is empty.
-Source: kernel/src/agent.rs:583-588, kernel/src/agent.rs:607-617
+Source: kernel/src/agent.rs fs_tool, CONF_HI, conf_ask, conf_line
 
 #### Scenario: margin 0.50 with CONF_ASK=25
 - **WHEN** a call's smallest margin is 0.50 and `CONF_ASK` is 25
@@ -151,7 +151,7 @@ Source: kernel/src/agent.rs:583-588, kernel/src/agent.rs:607-617
 
 ### Requirement: Agent action per band
 The system SHALL run High and Mid band calls. For a Low band call it SHALL ask `[confidence] the agent is not sure about this call. Run it? [y/N]` before set_setting, remember, write_file, mkdir, run_code and run_wasm, add no second question for rm, poweroff, reboot and forget (they ask themselves), and run read-only tools with a notice in the `[confidence]` line.
-Source: kernel/src/agent.rs:578-581, kernel/src/agent.rs:618-624, kernel/src/agent.rs:745-755
+Source: kernel/src/agent.rs fs_tool, ASKS, conf_line, ask
 
 #### Scenario: low-confidence write
 - **WHEN** a write_file call is in the Low band and the user answers `n`
