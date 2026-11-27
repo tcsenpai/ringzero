@@ -36,8 +36,10 @@ static CONSOLE: Mutex<Console> =
 
 pub fn init(fb: Option<Fb>) {
     let mut c = CONSOLE.lock();
-    // SAFETY: 0x3F8 is COM1 on PC/q35 and nothing else drives it.
-    c.serial = unsafe { Uart16550Tty::new_port(0x3F8, Config::default()) }.ok();
+    // SAFETY: 0x3F8 is COM1 on PC/q35 and nothing else drives it. Bytes typed on the serial line while the kernel
+    // loads can land in the init's loopback self-test and fail it (then there is no serial console at all); the
+    // test drains the FIFO first, so another try passes.
+    c.serial = (0..8).find_map(|_| unsafe { Uart16550Tty::new_port(0x3F8, Config::default()) }.ok());
     if let Some(f) = &fb {
         // shortcut: 32 bpp only (what QEMU std-vga and OVMF GOP give), add other depths for real HW.
         unsafe { core::ptr::write_bytes(f.addr, 0, f.pitch * f.height) };
