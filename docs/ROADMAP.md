@@ -7,9 +7,9 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 📋 Tasks (Tree View)
 ✓ 🔴 Release fixes from the user's manual test [E1]
 │   └── ✓ 🔴 Beta release (today, 2026-11-27) [E1]
-│       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1]
+│       ├── ✓ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1]
 │       ├── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1]
-│       ├── ○ 🟠 Unix compatibility layer (design principle) [E1]
+│       ├── ✓ 🟠 Unix compatibility layer (design principle) [E1]
 │       └── ○ 🟢 Release cadence: post-beta updates, then weekly [E1]
 ✓ 🔴 M0 scaffold: Limine boot + Rust hello [E1]
 │   └── ✓ 🔴 M1 engine in ring 0 [E1]
@@ -25,7 +25,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   │   └── ✓ 🟠 Beta release gate [E1]
 │               │       │   │       ├── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1]
-│               │       │   │       ├── ○ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1]
+│               │       │   │       ├── ✓ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1]
 │               │       │   │       ├── ○ 🟢 Decision model (user note, post-beta) [E1]
 │               │       │   │       ├── ○ 🟢 Engine kernels for other model architectures (e.g. Gemma) [E1]
 │               │       │   │       └── T51: Beta release (today, 2026-11-27) (circular)
