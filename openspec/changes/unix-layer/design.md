@@ -11,7 +11,8 @@ file (what sysfs does), not byte-exact Linux formats.
 ## Goals / Non-Goals
 Goals: a Unix tree every reader sees the same way; ringzero data off Linux paths with an automatic, crash-safe
 migration; fewer tools in the prompt where a file does the job. Non-goals: tmpfs, symlinks, users and modes,
-writable /proc or /sys, settings as files, Linux-like `!ls` output.
+writable /proc, a writable /sys beyond /sys/power/state, settings as files (`/proc/sys`, a later change), Linux-like
+`!ls` output.
 
 ## Decisions
 
@@ -43,13 +44,13 @@ Who writes: S = shell (`!write`, `!mkdir`, `!rm`), A = agent tools (write_file, 
 | /sys/devices/system/cpu/{online,possible} | `0-7` | ro |
 | /sys/devices/system/cpu/inference | cores the engine uses now, e.g. `0-7` (`!set cores`) | ro |
 | /sys/devices/system/cpu/cpuN/role | `BSP: shell, agent loop, engine slice` / `engine worker` / `engine worker (parked)` | ro |
-| /sys/power/state | `disk` (what /hibernate does); writing it is an open question (Q5) | ro |
+| /sys/power/state | `disk` (the one state ringzero has). Writing `disk` hibernates and powers off (as Linux's suspend to disk: `/hibernate` then `!poweroff`); `mem`, `freeze` and `standby` fail with `not supported: ringzero has no suspend to RAM ...` (EINVAL for a program), anything else with `invalid argument` | S, A (asks y/N like poweroff), W (a program the agent runs asks y/N; a shell run does not) |
 | /dev/null | reads end at once | accepted, discarded (S, W) |
 | /dev/zero | zero bytes | accepted, discarded (S, W) |
 | /dev/random, /dev/urandom | RDRAND, else the TSC-seeded xorshift of wasm.rs `rand` (not for cryptography) | accepted, discarded (S, W) |
 | /dev/tty, /dev/console | WASI shell runs: raw console input as today; writes go to the console. Agent runs: ENOENT (no terminal) | console (W) |
 | /dev/vda | raw disk, read-only (Q4) | ro |
-| /etc/hostname | FAT file, made at boot as `ringzero` if missing; read at boot into the banner | S, A, W |
+| /etc/hostname | FAT file, made at boot as `ringzero` if missing; read at boot and logged as `host: NAME (/etc/hostname)` right after the disk mounts (the banner is printed before the disk is up) | S, A, W |
 | /etc/os-release | virtual: `NAME=ringzero`, `ID=ringzero`, `ID_LIKE=unix`, `VERSION`, `PRETTY_NAME` (edition) | ro |
 | /etc/passwd | virtual: `root:x:0:0:root:/:/bin/sh` (Q9) | ro |
 | /etc/* (any other) | FAT files, the user's configuration | S, A, W |
@@ -135,6 +136,21 @@ its boot prefix and writes `/sys/bootsnap.bin`; facts and episodes look lost on 
 older kernel recorded is kept but not merged (Q8). Going back on purpose: copy `/var/lib/ringzero/mem/*` to
 `/sys/mem/` with mtools on the host (recipe in INFO.md) before booting the older ISO.
 
+### D9. Merging what an older kernel wrote (Q8)
+D7 keeps it apart by default. `/agentd merge-legacy [DIR]` (DIR: a folder name in /var/lib/ringzero/legacy or an
+absolute path; empty = every folder with a `mem/` and no `merged` file) merges it on request:
+- Compatibility first: each store present (journal.log, facts.log, episodes.log) must parse from byte 0 with this
+  kernel's record codec (mstore.rs `parse`: magic, length, checksum, UTF-8); a store that does not is refused with
+  `... is not in this kernel's record format (not compatible): nothing merged` and nothing of that folder changes.
+  A torn tail is skipped (counted in the summary). index.bin is never imported: the merged records are queued and
+  embedded again by the idle scheduler, as at a rebuild.
+- Facts: the legacy store's end state (S and X records replayed), then one `remember` per key with source
+  `merge-legacy` (the same key and value validation as `/remember`, the 64-fact cap); a key that already holds the
+  same value, or a value written later here (record time), is kept.
+- Episodes and journal: the records whose (kind, time, text) the current store does not hold are appended with
+  their original kind and time, and queued for the index like the replay at boot does.
+- The folder gets a `merged` file with the time and the summary; a second merge of it says `already merged`.
+
 ### D8. Model-facing text
 SYSTEM gets one sentence in place of "(not Linux)": "Its file tree is Unix-like: /proc and /sys hold live system
 state (cat /proc/meminfo, /proc/cpuinfo, /proc/uptime), /dev the devices, /etc the configuration, /tmp scratch
@@ -153,14 +169,19 @@ files." ls: "List a directory. /proc and /sys hold live system state." cat: "Rea
 Ship in one release with the upgrade note "the first boot moves ringzero's data to /var/lib/ringzero; a saved
 hibernation is not resumed across this upgrade". Rollback: D7.
 
-## Open Questions (recommended answer in brackets)
-- Q1. Remove the four info tools, keep them in the prompt, or hidden aliases? [hidden aliases, gated by tooleval]
-- Q2. /tmp in RAM or on the disk? [disk, emptied at a fresh boot and kept on hibernation resume; RAM later if needed]
-- Q3. Is /etc/hostname writable, and what reads it? [writable by everyone, read at boot into the banner only]
-- Q4. Expose /dev/vda? [yes, read-only; shell and agent cat refuse devices, programs can read it]
-- Q5. Writable /sys/power/state (`echo disk > /sys/power/state` hibernates)? [no: power stays behind y/N tools]
-- Q6. Settings as files (/proc/sys/ringzero/temperature, ...)? [later, own change, with the tooleval]
-- Q7. Boot cache under /var/cache/ringzero (FHS) or /var/lib/ringzero? [/var/lib/ringzero: one protected tree]
-- Q8. Merge records written by an older kernel after a rollback? [no auto-merge; keep in legacy/, document]
-- Q9. passwd-lite and motd? [passwd: one read-only root line; motd: skip]
-- Q10. Agent writes under /var/lib/ringzero: refuse? [yes, permission denied; the shell keeps access]
+## Decisions on the open questions (user, 2026-11-27)
+- Q1. Hidden aliases for meminfo, cpuinfo, list_cores and uptime, gated by the tooleval (D5); if the gate fails they
+  stay in the prompt with descriptions that name their file. Result in docs/T55_RESULT.md.
+- Q2. /tmp on the disk, emptied at a fresh boot, kept when a hibernation image resumes.
+- Q3. /etc/hostname writable by everyone (shell, agent, programs).
+- Q4. /dev/vda read-only (programs read it; cat refuses devices).
+- Q5. /sys/power/state behaves like Linux: writable, `disk` hibernates and powers off; `mem`, `freeze` and `standby`
+  print a clear not-supported error (no ACPI S3 or device resume in ringzero). The agent's write_file to it asks y/N
+  exactly like the poweroff tool, and so does a program the agent runs; the shell and programs run from the shell
+  act at once (the human typed them).
+- Q6. Settings as files under /proc/sys: later, a separate change.
+- Q7. The boot cache stays in /var/lib/ringzero (one protected tree).
+- Q8. What an older kernel wrote after the migration is kept in legacy/ by default, and `/agentd merge-legacy [DIR]`
+  merges it on request when the format is compatible (D9).
+- Q9. /etc/passwd is one read-only root line; no motd.
+- Q10. Agent writes under /var/lib/ringzero are refused (`permission denied`); the shell keeps access.

@@ -14,15 +14,17 @@ read_log) exist only because the state was not in files. The 2B model reads `cat
 - /proc gains `kmsg` (the kernel log ring) and `mounts`; `uptime` gains a readable form after the seconds;
   `cpuinfo` prints the flags once instead of once per core.
 - /sys: `class/block/vda/{size,ro,device}`, `bus/pci/devices/<addr>/{vendor,device,class,driver}`,
-  `devices/system/cpu/{online,possible,inference,cpuN/role}`, `power/state`.
+  `devices/system/cpu/{online,possible,inference,cpuN/role}`, `power/state` (writable as on Linux: `disk` hibernates
+  and powers off; the agent's write asks y/N like poweroff).
 - /dev: `null`, `zero`, `random`, `urandom`, `tty`, `console`, `vda` (raw disk, read-only).
-- /etc (real FAT directory): `hostname` (writable, default `ringzero`), plus virtual read-only `os-release` and
-  `passwd` (one root line).
+- /etc (real FAT directory): `hostname` (writable, default `ringzero`, logged at boot), plus virtual read-only
+  `os-release` and `passwd` (one root line).
 - /tmp (real FAT directory): scratch, emptied at a fresh boot, kept when a hibernation image resumes, not indexed.
 - **BREAKING (disk layout)**: ringzero's own data moves to `/var/lib/ringzero/` (`mem/*.log`, `mem/index.bin`,
   `hib/image.bin`, `bootsnap.bin`). The first boot of the new kernel migrates an old disk automatically and
   idempotently (copy, verify, commit marker, remove); an older kernel booted on a migrated disk sees an empty
-  memory (documented, not prevented).
+  memory (documented, not prevented); what it writes is kept in /var/lib/ringzero/legacy/ and
+  `/agentd merge-legacy [DIR]` merges it on request when the record format is compatible.
 - `/var/lib/ringzero` is read-only for WASI programs (EACCES, as `/sys` is today) and for the agent's
   write_file, mkdir and rm (today the agent can overwrite `/sys/mem/facts.log`).
 - Tools: meminfo, cpuinfo, list_cores and uptime leave the prompt and stay as hidden aliases (a call still works);
@@ -30,7 +32,8 @@ read_log) exist only because the state was not in files. The 2B model reads `cat
   the tree in one sentence each.
 
 ## Non-goals
-- No tmpfs in RAM, no symlinks, no permissions model beyond the fixed rules above, no writable /sys or /proc.
+- No tmpfs in RAM, no symlinks, no permissions model beyond the fixed rules above, no writable /proc, no writable
+  /sys beyond /sys/power/state.
 - Settings as files (`/proc/sys/...`) and Linux-like shell output (`!ls -l` columns) are follow-ups.
 
 ## Impact

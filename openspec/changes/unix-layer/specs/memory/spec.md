@@ -1,3 +1,25 @@
+## ADDED Requirements
+
+### Requirement: Merge of stores an older kernel wrote
+`/agentd merge-legacy [DIR]` SHALL merge legacy/DIR/mem (empty DIR: every folder not merged yet): facts through `remember` (source `merge-legacy`) unless the same or a later value is held, journal and episode records not held yet appended with their own time, all queued for the index, then a `merged` file in the folder.
+Source: kernel/src/agentd.rs merge_legacy, merge_one; kernel/src/shell.rs run
+
+#### Scenario: Merge after a rollback
+- **WHEN** an older kernel saved the fact pet_name = Pixel after the migration and the user types `/agentd merge-legacy`
+- **THEN** `/facts` lists pet_name = Pixel with source merge-legacy and the summary says one fact merged
+
+### Requirement: Merge refuses an incompatible store
+`/agentd merge-legacy` SHALL refuse a folder, changing no store, when a store present there does not parse from its first byte with this kernel's record codec (`not in this kernel's record format (not compatible)`), and SHALL answer `already merged` for a folder that has a `merged` file.
+Source: kernel/src/agentd.rs merge_one; kernel/src/mstore.rs parse
+
+#### Scenario: Incompatible store
+- **WHEN** a legacy facts.log does not start with a valid record
+- **THEN** the folder is refused with the not-compatible message and no store changes
+
+#### Scenario: Twice
+- **WHEN** the user types `/agentd merge-legacy` again for the same folder
+- **THEN** nothing is merged
+
 ## MODIFIED Requirements
 
 ### Requirement: Append-only record stores on disk
@@ -69,8 +91,8 @@ Source: kernel/src/agentd.rs cons_finish
 - **THEN** "no EPISODE line in the output, no episode saved" is logged and valid facts are still stored
 
 ### Requirement: Memory shell commands
-The system SHALL provide `/facts`, `/remember KEY VALUE`, `/forget KEY`, `/consolidate`, `/agentd` (status plus the last 10 decisions), `/agentd log N` (last N decisions, default 30, from a ring of 128), `/index add TEXT`, `/index stats`, `/index clear` (rebuild), `/index dim N` and `/search QUERY`.
-Source: kernel/src/shell.rs CMDS, index_cmd, run; kernel/src/agentd.rs DL, log_last, list_facts
+The system SHALL provide `/facts`, `/remember KEY VALUE`, `/forget KEY`, `/consolidate`, `/agentd` (status plus the last 10 decisions), `/agentd log N` (last N decisions, default 30, from a ring of 128), `/agentd merge-legacy [DIR]`, `/index add TEXT`, `/index stats`, `/index clear` (rebuild), `/index dim N` and `/search QUERY`.
+Source: kernel/src/shell.rs CMDS, index_cmd, run; kernel/src/agentd.rs DL, log_last, list_facts, merge_legacy
 
 #### Scenario: Clearing the index
 - **WHEN** the user types `/index clear`

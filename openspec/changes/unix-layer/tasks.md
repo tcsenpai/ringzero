@@ -7,7 +7,7 @@
 ## 2. Mount table and virtual trees
 - [ ] 2.1 fs.rs `mount_of`, routing in read, entry, list, ls, open, check_rw; `ls /` shows proc, sys, dev
 - [ ] 2.2 procfs.rs: kmsg, mounts, uptime readable form, cpuinfo flags once
-- [ ] 2.3 sysfs.rs: class/block/vda, bus/pci/devices/<addr>, devices/system/cpu, power/state
+- [ ] 2.3 sysfs.rs: class/block/vda, bus/pci/devices/<addr>, devices/system/cpu, power/state (writable: disk hibernates, the agent asks y/N)
 - [ ] 2.4 devfs.rs and wasm.rs `Fd::Dev`: null, zero, random, urandom, tty, console, vda (read-only); shell and agent cat refuse devices
 - [ ] 2.5 /etc: hostname default at boot, banner; virtual os-release and passwd
 - [ ] 2.6 /tmp: made at boot, emptied at a fresh boot, kept on hibernation resume; fs::walk skips /tmp and /var/lib/ringzero
@@ -18,8 +18,9 @@
 - [ ] 3.2 layout.rs migration per D6 (copy, verify, commit marker, remove; RAM-only agentd on failure)
 - [ ] 3.3 Fixture: an old-layout disk image (facts, journal, index, image, bootsnap, a stray /sys file); boot it, check facts in `/facts`, `/search` hits, legacy/ contents, `layout:` lines
 - [ ] 3.4 Crash test: kill QEMU after each migration step (debug env var that stops after step N), reboot, check the end state is the same as an uninterrupted run
-- [ ] 3.5 Rollback test: boot the previous release ISO on the migrated disk, then the new one; check legacy/sys-<time>/ and the warning
+- [ ] 3.5 Rollback test: boot the previous release ISO on the migrated disk, then the new one; check legacy/sys-<time>/ and the warning; `/agentd merge-legacy` merges it once, refuses an incompatible store
 - [ ] 3.6 Disk-full test: migration pending, agentd RAM-only, retry succeeds after freeing space
+- [ ] 3.7 agentd.rs merge_legacy: `/agentd merge-legacy [DIR]` (compatibility check, facts through remember, new journal and episode records, index queue, `merged` marker)
 
 ## 4. Agent text
 - [ ] 4.1 SYSTEM sentence, ls and cat descriptions (D8); TOOLS and SPECS with hidden aliases (if 1.4 passes)
