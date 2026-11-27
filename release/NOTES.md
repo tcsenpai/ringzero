@@ -58,6 +58,9 @@ For a window replace `-display none` with `-vga std -display gtk`. For the 2B us
   uncertain call that writes (a file, a directory, a setting, a fact).
 - Programs from `/bin` (WASI) and built-in MicroPython.
 - Built-in manual (`/man`), speculative decoding for copied text and for tool calls.
+- A read-only `/proc` (cpuinfo, meminfo, uptime, version, devices, PCI list), so the agent and the programs can
+  read the machine state as files.
+- Role colors on the serial console and the framebuffer (`!set color off` for plain text).
 
 ## Known limits
 
