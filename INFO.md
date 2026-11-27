@@ -49,23 +49,72 @@ note in the RAM memory index (Q8_0 rows), `/search QUERY` returns the top 5 by e
 joining only for identifier-like queries or a strong keyword match, and shows which signal matched. The agent
 has a `recall` tool over the same index (through agentd, below). Results: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md).
 
-/proc (T54, the Unix principle: state as files): a read-only virtual directory in front of the FAT volume
-(kernel/src/procfs.rs, routed by fs.rs), generated at every read, so `!ls /proc`, `!cat /proc/meminfo`, the agent's
-`ls` and `cat` tools and WASI programs (`!run cat /proc/cpuinfo`, `!run ls /proc`, python3's `open()`) see the
-same files. Familiar Linux names, plain `key: value` content (not byte-exact Linux formats):
+File tree (T54 /proc, T55 the rest; the Unix principle: state as files). One mount table in fs.rs (`mount_of`)
+routes every path, so `!ls` and `!cat`, the agent's `ls` and `cat` tools and WASI programs (`!run cat ...`, `!run ls
+...`, python3's `open()`) see the same tree. Familiar Linux paths and names, plain content (one value per file in
+/sys, `key: value` in /proc), not byte-exact Linux formats. `ls /` lists `dev/`, `proc/` and `sys/` next to the
+FAT entries.
 
-| File | Content |
-|---|---|
-| `/proc/cpuinfo` | one block per core: processor, model name, cpu MHz (TSC), cpu cores, role (BSP or engine worker), flags from CPUID (sse.., avx, avx2, fma, f16c, bmi2, avx512f, ...) |
-| `/proc/meminfo` | MemTotal, MemFree, MemAvailable, ModelWeights, SnapshotPool, KernelHeap in kB |
-| `/proc/uptime` | seconds since boot |
-| `/proc/version` | `ringzero version 0.1.0 beta (EDITION), Rust kernel, x86_64, not Linux` |
-| `/proc/devices` | the active drivers: 16550 serial, PS/2 keyboard (layout), Limine framebuffer (size), virtio-blk (PCI slot, MiB), fatfs (FAT type, label, size, free), proc |
-| `/proc/bus/pci/devices` | PCI bus 0 from the config ports: `bus:dev.fn vendor:device class (code), driver` |
+| Path | Content | Who may change it |
+|---|---|---|
+| `/proc/cpuinfo` | one block per core: processor, model name, cpu MHz (TSC), cpu cores, role; the CPUID flags (sse.., avx, avx2, fma, f16c, bmi2, avx512f, ...) in processor 0 only, the others say `flags: as processor 0` | nobody (read-only) |
+| `/proc/meminfo` | MemTotal, MemFree, MemAvailable, ModelWeights, SnapshotPool, KernelHeap in kB | nobody |
+| `/proc/uptime` | `25.36 seconds (0 h 0 min 25 s)`: the first field stays a number for programs | nobody |
+| `/proc/version` | `ringzero version 0.1.0 beta (EDITION), Rust kernel, x86_64, not Linux` | nobody |
+| `/proc/devices` | the active drivers: 16550 serial, PS/2 keyboard (layout), Limine framebuffer (size), virtio-blk (PCI slot, MiB), fatfs (FAT type, label, size, free), proc, sysfs, devfs | nobody |
+| `/proc/bus/pci/devices` | PCI bus 0 from the config ports: `bus:dev.fn vendor:device class (code), driver` | nobody |
+| `/proc/kmsg` | the kernel log ring (256 lines), oldest first, a snapshot at read time; the `read_log` tool gives the last n | nobody |
+| `/proc/mounts` | `/dev/vda / vfat rw`, `proc /proc proc ro`, `sysfs /sys sysfs ro`, `devfs /dev devfs rw` | nobody |
+| `/sys/class/block/vda/{size,ro,device}` | 512-byte sectors (`1048576` for 512 MiB), `0`, the PCI address | nobody |
+| `/sys/bus/pci/devices/0000:00:DD.F/{vendor,device,class,driver}` | `0x1af4`, `0x1001`, `0x010000`, `virtio-blk` or `none` | nobody |
+| `/sys/devices/system/cpu/{online,possible,inference}` | `0-7`; inference = the cores the engine uses now (`!set cores 4` makes it `0-3`) | nobody |
+| `/sys/devices/system/cpu/cpuN/role` | `BSP: shell, agent loop, engine slice`, `engine worker`, or not used for inference now | nobody |
+| `/sys/power/state` | `disk`. Writing `disk` hibernates and powers off (as Linux: the image of `/hibernate`, then `!poweroff`); `mem`, `freeze` and `standby` fail with `not supported: ringzero has no suspend to RAM` (EINVAL for programs), other values with `invalid argument` | shell and programs run from the shell at once; the agent's write_file and programs the agent runs ask y/N like the poweroff tool |
+| `/dev/null`, `/dev/zero` | empty, zero bytes; writes are discarded | anyone (discarded) |
+| `/dev/random`, `/dev/urandom` | RDRAND bytes (else a TSC-seeded xorshift; not for cryptography) | anyone (discarded) |
+| `/dev/tty`, `/dev/console` | the console for a program run from the shell (raw input, the editor); not found for the agent's runs | writes print |
+| `/dev/vda` | the raw disk, a block device for programs (`python3`: the FAT boot sector at offset 0) | nobody |
+| `/etc/hostname` | a FAT file, made as `ringzero` at boot when missing, logged as `host: NAME (/etc/hostname)` | anyone |
+| `/etc/os-release`, `/etc/passwd` | virtual: NAME, ID, ID_LIKE=unix, VERSION, VERSION_ID, PRETTY_NAME (the edition); `root:x:0:0:root:/:/bin/sh` | nobody |
+| `/tmp` | scratch on the disk: emptied at a boot that does not resume a hibernation image, kept when one resumes; not indexed | anyone |
+| `/var/lib/ringzero` | ringzero's own data: `mem/{journal,facts,episodes}.log`, `mem/index.bin`, `hib/image.bin`, `bootsnap.bin`, `layout` (the migration marker), `legacy/` | the kernel; the shell (`!rm` asks); the agent's write_file, mkdir and rm get `permission denied: ringzero's own data (use remember and forget)`, programs EACCES |
 
-Writes, mkdir, rm and rename under /proc fail with `read-only file system` (WASI: EROFS); `ls /` shows `proc/`.
-The file indexer does not walk it. The ls tool's description names the files. T54 results (also the round limit
-and the confidence change): [docs/T54_RESULT.md](docs/T54_RESULT.md).
+Every other change under /proc, /sys, /dev and the two virtual /etc files fails with `read-only file system`
+(programs: EROFS 69). `!cat` and the agent's cat refuse a device but /dev/null (`is a device: read it with a
+program, e.g. head -c 16 /dev/urandom`), so an endless /dev/zero never reaches a tool result. The file indexer
+skips /var/lib/ringzero, /tmp, /lib and the virtual trees. The agent's `meminfo`, `cpuinfo`, `uptime` and
+`list_cores` tools answer with /proc/meminfo, /proc/cpuinfo, /proc/uptime and /sys/devices/system/cpu, and their
+descriptions name the file (taking them out of the prompt failed the T55 tooleval gate); the system prompt says the
+tree is Unix-like and names /proc/devices for the drivers, the `ls` and `cat` descriptions name /proc, /sys
+(`ls`: /proc/devices the drivers) and /etc, and run_code is described as the sandbox for calculations.
+
+Disk layout migration (T55). ringzero 0.1 kept its data in FAT `/sys` (`/sys/mem`, `/sys/hib/image.bin`,
+`/sys/bootsnap.bin`). The first boot of a newer kernel moves it, before agentd, the agent and hibernation touch
+the disk (layout.rs): it copies `/sys/mem/{journal,facts,episodes}.log` and `index.bin` to `/var/lib/ringzero/mem/`
+and any other file in FAT `/sys`, `/proc` or `/dev` to `/var/lib/ringzero/legacy/`, reads each copy back (size and
+FNV-1a 64), writes `/var/lib/ringzero/layout` (`ringzero-layout 2`) and syncs, and only then removes the sources;
+the old boot cache and hibernation image are dropped (the new boot prefix cannot match them). It never renames
+(fatfs frees the old directory entry before it writes the new one). One `layout:` line per step and a summary
+(`layout: migrated 4 files, 59 KiB, 2 old caches dropped`). A crash at any step ends, at a later boot, in the same
+state; when a copy fails (disk full, I/O error) every old file stays, agentd runs without disk stores for that boot
+(`/agentd`: `off (layout migration pending: REASON)`, no boot cache or image written) and the next boot retries.
+An older kernel booted on a migrated disk finds an empty memory (its data is intact in /var/lib/ringzero). What it
+writes to FAT `/sys` is moved by the next boot of the new kernel to `/var/lib/ringzero/legacy/sys-<time>/` (with a
+warning) and not merged; `/agentd merge-legacy [DIR]` merges it on request: each store must parse with this
+kernel's record codec (else `not compatible`, nothing changes), facts go through the `/remember` validation (the
+newer value of a key wins), episode and journal records not held yet are appended with their own time, everything
+merged is queued for the index, and the folder gets a `merged` file. Going back to an older ISO on purpose: copy
+the stores to the old place on the host first, with the guest stopped:
+
+```
+mmd -i build/disk.img ::/sys ::/sys/mem
+mcopy -i build/disk.img ::/var/lib/ringzero/mem/journal.log ::/var/lib/ringzero/mem/facts.log \
+      ::/var/lib/ringzero/mem/episodes.log ::/var/lib/ringzero/mem/index.bin /tmp/rzmem/   # mkdir /tmp/rzmem first
+mcopy -i build/disk.img /tmp/rzmem/* ::/sys/mem/
+```
+
+T54 and T55 results (the round limit, the confidence change, the tool review): [docs/T54_RESULT.md](docs/T54_RESULT.md),
+[docs/T55_RESULT.md](docs/T55_RESULT.md).
 
 Disk (M4): a virtio-blk disk (`build/disk.img`, 512 MiB FAT32, made once by `make disk`) is mounted at `/` at
 boot; the banner prints its size and free space. Shell: `!ls [PATH]`, `!cat PATH`, `!write PATH TEXT` (`\n` =
@@ -80,13 +129,13 @@ queue, and `/search` or `recall` return the chunks as `[/path] text`. Results:
 agentd (M4.5): a kernel subsystem owns the agent's memory, because the 2B model is small; the model only reads
 and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and every agentd decision is logged
 (`/agentd log`, kernel log level D).
-- Persistent stores in `/sys/mem` on the disk: an append-only journal of turns and tool results, facts (key ->
+- Persistent stores in `/var/lib/ringzero/mem` on the disk (T55; `/sys/mem` before, migrated at the first boot): an append-only journal of turns and tool results, facts (key ->
   value, source, time) and episodes (session summaries). Records carry a length and a checksum; at boot each file
   is scanned to its last good record and a torn tail is cut.
-- The memory index is saved to `/sys/mem/index.bin` with a header (embedder hash, dim, Q8_0 layout, chunker
+- The memory index is saved to `/var/lib/ringzero/mem/index.bin` with a header (embedder hash, dim, Q8_0 layout, chunker
   version, the size and mtime of each indexed file) and loaded at boot in about a millisecond; only files that
   changed on the disk (also from the host) and new records are embedded again.
-- Boot snapshot cache: the prefilled system prompt + tools state (33 MiB) is saved to `/sys/bootsnap.bin` and
+- Boot snapshot cache: the prefilled system prompt + tools state (33 MiB) is saved to `/var/lib/ringzero/bootsnap.bin` and
   loaded at the next boot in about 0.2 s instead of a prefill (BIOS boot to the prompt 40.6 s cold, 11.9 s
   cached, before M4.8). Since the batched prefill (M4.8) a miss prefills the 1315-token prefix in 5.8 s instead of
   36-40 s, and a cold boot reaches the prompt in about 28 s instead of 71 s (QEMU start to prompt, shared box). The key covers the model, the prefix tokens and the engine build; any change means a prefill.
@@ -104,7 +153,7 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   to its snapshot point after.
 Results: [docs/M45_RESULT.md](docs/M45_RESULT.md).
 
-Built-in manual (T22): [docs/MANUAL.md](docs/MANUAL.md) is a manual written for the model (29 short sections, one
+Built-in manual (T22): [docs/MANUAL.md](docs/MANUAL.md) is a manual written for the model (30 short sections, one
 topic each, English, each with an `Asked as:` line of Italian and English wordings that is embedded but not shown).
 It is compiled into the kernel (`include_str!`) and indexed one section per memory-index entry, `[manual: TITLE]
 ...`, in idle time at the first boot (29 entries, about 20 s of idle embedding); the entries are saved with the
@@ -119,7 +168,7 @@ user's message (or the query) is such a how-to question and the section scores c
 section titles. The system prompt and the boot prefix are unchanged. Results:
 [docs/T22_MANUAL_RESULT.md](docs/T22_MANUAL_RESULT.md).
 
-Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 29 sections' Q8_0
+Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 30 sections' Q8_0
 rows into the kernel (`include_bytes!`, 31580 bytes), so a fresh disk has the manual in its index at boot with no
 embedder work. Two passes, both in `make kernel`: pass 1 builds an ISO without vectors (`MANUAL_VECTORS=0
 ISO=build/manvec-pass1.iso`), `tools/manvec.py` boots it headless once (QEMU/KVM, no disk, guest RAM
@@ -151,7 +200,8 @@ WASI (M5b): programs compiled to `wasm32-wasip1` run from the disk on [wasmi](ht
 volume. `!wasm PATH|NAME [ARGS...] [< FILE]` (`!run` is the same command) runs one: a bare NAME is
 `/bin/NAME.wasm`, else the uutils coreutils tool NAME (`!run ls -l /` runs `coreutils.wasm` with argv[0] `ls`);
 `"..."` keeps spaces in an argument, `< FILE` is stdin (without it stdin is at end of file). The program sees `/`
-as its preopened directory (fd 3, cwd `/`): `..` above `/` is refused, `/sys` (agentd's files) is read-only.
+as its preopened directory (fd 3, cwd `/`): `..` above `/` is refused, `/var/lib/ringzero` (ringzero's data) is
+read-only (EACCES), the virtual /proc, /sys and /etc files EROFS, and /dev holds the devices (file tree above).
 stdout and stderr go to the console; each run is a fresh instance and ends with a status line (exit code, time,
 fuel, memory). The memory cap is 256 MiB per instance (`RINGZERO_WASM_MIB=512 make iso` for another), the time
 budget 60 s at the shell and 10 s for the agent, and Ctrl-C stops a program (checked every 10 M fuel, about
@@ -200,7 +250,7 @@ calls and 12 of the 90 right ones (the tune-split pick, `CONF_ASK=25`, catches 0
 Results: [docs/T28_RESULT.md](docs/T28_RESULT.md).
 
 Hibernation (M4.7b): `/hibernate`, and every `!poweroff` (also the agent's poweroff tool), writes the current
-conversation and its whole snapshot tree to `/sys/hib/image.bin`: the point and name tables, the questions
+conversation and its whole snapshot tree to `/var/lib/ringzero/hib/image.bin` (also `echo disk > /sys/power/state`): the point and name tables, the questions
 and answers, the KV rows of every point, the DeltaNet state of the current point (the others come back
 thinned: visiting one replays its tokens, checked against a hash taken at save time), the raw transcript and
 the agent settings (temperature, think, constrain, compaction). The key is the boot snapshot key (model,
@@ -311,6 +361,7 @@ agentd at the prompt:
 ```
 /agentd                  # stores, index (saved or changed), idle queue, consolidation state, last decisions
 /agentd log 40           # the last 40 decisions (slot contents, facts accepted or rejected, jobs, recovery)
+/agentd merge-legacy     # merge what an older kernel wrote after the migration (legacy/sys-<time>/), once
 /facts                   # saved facts: key = value (source, time)
 /remember KEY VALUE      # save a fact yourself; /forget KEY deletes one (asks y/N)
 /consolidate             # episode + facts from this session now (Ctrl-C stops and restores the conversation)
@@ -375,6 +426,7 @@ make iso                 # kernel + Limine (fetched, pinned tag) + model -> buil
 RINGZERO_KV=f32 make iso     # FP32 KV cache instead of FP16 (comparison build, 768 MiB of KV)
 make iso CONF_ASK=25         # T28: ask y/N below a 0.25 confidence margin instead of 0.80 (0..100)
 make iso ROUNDS=6            # T54: tool rounds per question before the answer without tools (1..20, default 10)
+make iso LAYOUT_STOP=5       # T55 crash test builds only: halt the migration of a 0.1 disk after step N (a copy, the commit, a removal)
 make run-bios            # QEMU/KVM, q35, 6 GiB (GUEST_MEM=6G), 8 CPUs, serial on stdio (Ctrl-C to quit)
 make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window
@@ -415,8 +467,10 @@ Memory index, from the shell:
 | Path | What |
 |---|---|
 | `kernel/src/blk.rs`, `fs.rs`, `fidx.rs` | virtio-blk on PCI, FAT32 at /, file indexer (M4) |
-| `kernel/src/procfs.rs` | /proc: read-only virtual files generated at read time (cpuinfo, meminfo, uptime, version, devices, bus/pci/devices) (T54) |
-| `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log; record stores in /sys/mem (M4.5) |
+| `kernel/src/procfs.rs` | /proc: read-only virtual files generated at read time (cpuinfo, meminfo, uptime, version, devices, kmsg, mounts, bus/pci/devices) (T54, T55) |
+| `kernel/src/sysfs.rs`, `devfs.rs` | /sys (class/block, bus/pci/devices, devices/system/cpu, power/state) and /dev (null, zero, random, urandom, tty, console, vda) (T55) |
+| `kernel/src/layout.rs` | /var/lib/ringzero paths, the migration of a 0.1 disk, /etc/hostname and the virtual /etc files, /tmp (T55) |
+| `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log, merge-legacy; record stores in /var/lib/ringzero/mem (M4.5, T55) |
 | `kernel/src/gram.rs` | tool-call grammar: byte automaton from the tool schemas, vocab trie, logit mask (M4.7a) |
 | `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
 | `kernel/src/wasm.rs` | WASI runtime (M5b): `!wasm`/`!run`, `run_wasm`, wasmi engine per run, fuel slices (budget, Ctrl-C), WASI preview1 host functions over fs.rs; the wasm memory slot is in `mem.rs` |

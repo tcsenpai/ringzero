@@ -6,7 +6,7 @@ Baseline of the agent memory owned by the kernel subsystem agentd: on-disk recor
 ## Requirements
 
 ### Requirement: Append-only record stores on disk
-The system SHALL keep three append-only stores, `/sys/mem/journal.log`, `/sys/mem/facts.log` and `/sys/mem/episodes.log`, where each record is an 18-byte header (`'R'`, kind u8, payload length u32, Unix-seconds timestamp u64, folded FNV-1a checksum u32 over kind, timestamp and payload, little endian) followed by a UTF-8 payload of at most 16384 bytes (longer payloads are cut at a char boundary).
+The system SHALL keep three append-only stores, `/var/lib/ringzero/mem/journal.log`, `/var/lib/ringzero/mem/facts.log` and `/var/lib/ringzero/mem/episodes.log`, where each record is an 18-byte header (`'R'`, kind u8, payload length u32, Unix-seconds timestamp u64, folded FNV-1a checksum u32 over kind, timestamp and payload, little endian) followed by a UTF-8 payload of at most 16384 bytes (longer payloads are cut at a char boundary).
 Source: kernel/src/mstore.rs FNV0, sum, append
 
 #### Scenario: Oversized payload is cut
@@ -18,7 +18,7 @@ The system SHALL, when loading a store, stop at the first record with a bad magi
 Source: kernel/src/mstore.rs Rec, load
 
 #### Scenario: Append cut short by a crash
-- **WHEN** the last record of `/sys/mem/facts.log` is missing its final 3 bytes at boot
+- **WHEN** the last record of `/var/lib/ringzero/mem/facts.log` is missing its final 3 bytes at boot
 - **THEN** every earlier record is replayed, the file is truncated at the end of the previous record, and a decision line "recover ... torn tail of N bytes ... truncated" is logged
 
 ### Requirement: RAM-only mode without a disk
@@ -27,7 +27,7 @@ Source: kernel/src/agentd.rs init, append
 
 #### Scenario: Boot without a disk
 - **WHEN** the kernel boots with no mounted volume
-- **THEN** `/agentd` reports the stores as "off (no disk)" and no file under `/sys/mem` is written
+- **THEN** `/agentd` reports the stores as "off (no disk)" and no file under `/var/lib/ringzero/mem` is written
 
 ### Requirement: Journal of turns
 The system SHALL append to the journal a `B` record "boot" at boot, a `U` record per user message, a `T` record "name -> result" per tool call with the result cut to 1024 bytes, an `A` record per non-empty answer, a `C` record per compaction summary and a `P` record "poweroff" at shutdown or reboot when the stores are on and the embedder is ready.
@@ -35,7 +35,7 @@ Source: kernel/src/agentd.rs init, save_index, shutdown, said_end, on_compact
 
 #### Scenario: A tool call is journaled
 - **WHEN** the agent calls a tool whose result is 5000 bytes long
-- **THEN** a `T` record "<tool name> -> <first 1024 bytes of the result>" is appended to `/sys/mem/journal.log`
+- **THEN** a `T` record "<tool name> -> <first 1024 bytes of the result>" is appended to `/var/lib/ringzero/mem/journal.log`
 
 ### Requirement: Fact key validation
 The system SHALL normalize a fact key by trimming it, mapping space, `-` and `.` to `_` and lowercasing ASCII, and SHALL reject the fact unless the result is 2 to 32 characters of `a-z`, `0-9` and `_` starting with a letter.
@@ -58,7 +58,7 @@ Source: kernel/src/agentd.rs norm_value, remember
 - **THEN** the fact is rejected with "error: placeholder value" and nothing is written
 
 ### Requirement: Fact dedup, update and capacity
-The system SHALL answer "already saved: KEY = VALUE" without writing when the key already holds the same value, replace the value of an existing key (one `S` record in `/sys/mem/facts.log`, the old value logged), and refuse a new key once 64 facts are stored with "the fact store is full (64 facts); forget one first".
+The system SHALL answer "already saved: KEY = VALUE" without writing when the key already holds the same value, replace the value of an existing key (one `S` record in `/var/lib/ringzero/mem/facts.log`, the old value logged), and refuse a new key once 64 facts are stored with "the fact store is full (64 facts); forget one first".
 Source: kernel/src/agentd.rs MAX_FACTS, remember
 
 #### Scenario: Store full
@@ -122,7 +122,7 @@ Source: kernel/src/memidx.rs ROW_MAX, RRF_K, bm25, identifier_like, Found, searc
 - **THEN** the summary line says "BM25 not used (embedding order)"
 
 ### Requirement: Index persistence and rebuild
-The system SHALL save the index to `/sys/mem/index.bin` with a 72-byte `RZIX` version 1 header (embedder hash, dim, layout 0x5108, chunker version, counts, checksum) and the store sizes it covers, and at boot SHALL load it only if header, size and checksum match, else rebuild it by embedding every record, file and manual section again.
+The system SHALL save the index to `/var/lib/ringzero/mem/index.bin` with a 72-byte `RZIX` version 1 header (embedder hash, dim, layout 0x5108, chunker version, counts, checksum) and the store sizes it covers, and at boot SHALL load it only if header, size and checksum match, else rebuild it by embedding every record, file and manual section again.
 Source: kernel/src/memidx.rs search, load; kernel/src/agentd.rs append, replay, scan_files, index_extra
 
 #### Scenario: Records written after the last save
@@ -130,7 +130,7 @@ Source: kernel/src/memidx.rs search, load; kernel/src/agentd.rs append, replay, 
 - **THEN** only the records past the covered offset are queued for embedding
 
 #### Scenario: Embedder changed
-- **WHEN** the kernel boots with a different embedder file than the one that saved `/sys/mem/index.bin`
+- **WHEN** the kernel boots with a different embedder file than the one that saved `/var/lib/ringzero/mem/index.bin`
 - **THEN** "index: not loaded (embedder changed): rebuilding" is logged and every memory record and file is queued for embedding
 
 ### Requirement: When the index is saved
@@ -139,7 +139,7 @@ Source: kernel/src/agentd.rs save_index, shutdown, pick
 
 #### Scenario: Poweroff with work still queued
 - **WHEN** `!poweroff` runs while memory texts are still queued
-- **THEN** "shutdown: index not saved, N texts and files still queued" is logged and `/sys/mem/index.bin` is left as it was
+- **THEN** "shutdown: index not saved, N texts and files still queued" is logged and `/var/lib/ringzero/mem/index.bin` is left as it was
 
 ### Requirement: Memory slot for a new conversation
 The system SHALL put in front of the first user message of a conversation, and of the first one after a compaction, a block headed "[memory from earlier conversations, kept by the kernel; use it to answer]" with facts newest first within 120 tokens, then at most 3 notes from the top 4 hits, all within `!set slot N` tokens (default 200, 0 = off).
@@ -194,7 +194,7 @@ Source: kernel/src/agentd.rs CONS_MAX, cons_begin, cons_abort, consolidate_now
 - **THEN** "^C [agentd] consolidation stopped, conversation restored (ctx N)" is printed and the context position is the one before the consolidation
 
 ### Requirement: Consolidation output becomes an episode and facts
-The system SHALL store the first non-empty "EPISODE:" line of the consolidation output (cut to 600 bytes) as an `E` record in `/sys/mem/episodes.log` and index it as "[episode N] TEXT", SHALL pass at most 8 "FACT: key = value" lines through the grounded fact validation with source "consolidation (episode N)", and SHALL then reset the session's turns and grounding text.
+The system SHALL store the first non-empty "EPISODE:" line of the consolidation output (cut to 600 bytes) as an `E` record in `/var/lib/ringzero/mem/episodes.log` and index it as "[episode N] TEXT", SHALL pass at most 8 "FACT: key = value" lines through the grounded fact validation with source "consolidation (episode N)", and SHALL then reset the session's turns and grounding text.
 Source: kernel/src/agentd.rs cons_finish
 
 #### Scenario: No episode line
@@ -202,12 +202,32 @@ Source: kernel/src/agentd.rs cons_finish
 - **THEN** "no EPISODE line in the output, no episode saved" is logged and valid facts are still stored
 
 ### Requirement: Memory shell commands
-The system SHALL provide `/facts`, `/remember KEY VALUE`, `/forget KEY`, `/consolidate`, `/agentd` (status plus the last 10 decisions), `/agentd log N` (last N decisions, default 30, from a ring of 128), `/index add TEXT`, `/index stats`, `/index clear` (rebuild), `/index dim N` and `/search QUERY`.
-Source: kernel/src/shell.rs CMDS, index_cmd, run; kernel/src/agentd.rs DL, log_last, list_facts
+The system SHALL provide `/facts`, `/remember KEY VALUE`, `/forget KEY`, `/consolidate`, `/agentd` (status plus the last 10 decisions), `/agentd log N` (last N decisions, default 30, from a ring of 128), `/agentd merge-legacy [DIR]`, `/index add TEXT`, `/index stats`, `/index clear` (rebuild), `/index dim N` and `/search QUERY`.
+Source: kernel/src/shell.rs CMDS, index_cmd, run; kernel/src/agentd.rs DL, log_last, list_facts, merge_legacy
 
 #### Scenario: Clearing the index
 - **WHEN** the user types `/index clear`
-- **THEN** "[index] cleared: every file and memory record is queued again (idle time at the prompt)" is printed and facts in `/sys/mem/facts.log` are kept
+- **THEN** "[index] cleared: every file and memory record is queued again (idle time at the prompt)" is printed and facts in `/var/lib/ringzero/mem/facts.log` are kept
+
+### Requirement: Merge of stores an older kernel wrote
+`/agentd merge-legacy [DIR]` SHALL merge legacy/DIR/mem (empty DIR: every folder not merged yet): facts through `remember` (source `merge-legacy`) unless the same or a later value is held, journal and episode records not held yet appended with their own time, all queued for the index, then a `merged` file in the folder.
+Source: kernel/src/agentd.rs merge_legacy, merge_one; kernel/src/shell.rs run
+
+#### Scenario: Merge after a rollback
+- **WHEN** an older kernel saved the fact pet_name = Pixel after the migration and the user types `/agentd merge-legacy`
+- **THEN** `/facts` lists pet_name = Pixel with source merge-legacy and the summary says one fact merged
+
+### Requirement: Merge refuses an incompatible store
+`/agentd merge-legacy` SHALL refuse a folder, changing no store, when a store present there does not parse from its first byte with this kernel's record codec (`not in this kernel's record format (not compatible)`), and SHALL answer `already merged` for a folder that has a `merged` file.
+Source: kernel/src/agentd.rs merge_one; kernel/src/mstore.rs parse
+
+#### Scenario: Incompatible store
+- **WHEN** a legacy facts.log does not start with a valid record
+- **THEN** the folder is refused with the not-compatible message and no store changes
+
+#### Scenario: Twice
+- **WHEN** the user types `/agentd merge-legacy` again for the same folder
+- **THEN** nothing is merged
 
 ## Open questions
 - `/forget KEY` and the agent's `forget` tool append an `X` record even when the store is off; with no disk `append` returns early, so a forget is RAM only. Intended, but not stated anywhere in the docs.

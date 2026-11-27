@@ -1,13 +1,11 @@
-// agentd's persistent stores on the FAT volume (/sys/mem): append-only files of records
+// agentd's persistent stores on the FAT volume (/var/lib/ringzero/mem, T55; layout.rs): append-only files of records
 //   'R' kind:u8 len:u32 ts:u64 sum:u32 payload[len]   (little endian, ts = Unix seconds from the RTC)
 // sum = folded FNV-1a over kind, ts and payload. FAT has no journaling, so a crash in the middle of an append
 // can leave a torn tail: load() scans to the last good record and truncates the file there (logged).
 use crate::fs;
 use alloc::vec::Vec;
 
-pub const JOURNAL: &str = "/sys/mem/journal.log";
-pub const FACTS: &str = "/sys/mem/facts.log";
-pub const EPISODES: &str = "/sys/mem/episodes.log";
+pub use crate::layout::{EPISODES, FACTS, JOURNAL};
 const HDR: usize = 18;
 pub const MAX_REC: usize = 16 << 10;
 pub const FNV0: u64 = 0xcbf2_9ce4_8422_2325;

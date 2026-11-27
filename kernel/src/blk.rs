@@ -186,6 +186,32 @@ impl Dev {
     }
 }
 
+/// T55: disk size in bytes (/sys/class/block/vda/size), None without a disk.
+pub fn size() -> Option<u64> {
+    unsafe { (*core::ptr::addr_of!(DEV)).as_ref() }.map(|d| d.size)
+}
+
+/// T55: /dev/vda for programs: read the raw disk at `off`; fatfs's position is kept.
+pub fn read_raw(off: u64, out: &mut [u8]) -> Result<usize, DiskErr> {
+    let d = unsafe { (*core::ptr::addr_of_mut!(DEV)).as_mut() }.ok_or(DiskErr::Io)?;
+    let keep = core::mem::replace(&mut d.pos, off);
+    let mut n = 0;
+    let r = loop {
+        match d.read(&mut out[n..]) {
+            Ok(0) => break Ok(n),
+            Ok(k) => {
+                n += k;
+                if n == out.len() {
+                    break Ok(n);
+                }
+            }
+            Err(e) => break Err(e),
+        }
+    };
+    d.pos = keep;
+    r
+}
+
 impl IoBase for Disk {
     type Error = DiskErr;
 }

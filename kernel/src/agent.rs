@@ -14,26 +14,29 @@ use crate::{klog, llm, print, println, shell, smp, snap, sys};
 use core::fmt::Write;
 
 const SYSTEM: &str = "You are the system agent of ringzero, an experimental operating system with its own Rust \
-kernel (not Linux). You run inside the kernel (ring 0) and answer the user at the shell. Use the tools to read real data from this machine \
+kernel. Its file tree is Unix-like: /proc and /sys hold live system state (cat /proc/meminfo, /proc/cpuinfo, \
+/proc/uptime; the drivers in /proc/devices), /dev the device files, /etc the configuration, /tmp scratch files. You run inside the kernel (ring 0) and answer the user at the shell. Use the tools to read real data from this machine \
 or to act on it, and never invent numbers. Always reply in the language the user wrote their latest message in, \
 never in the language of tool output or memory notes, briefly, in plain text without markdown headers. run_code is \
-a MicroPython sandbox without files: use ls, cat and run_wasm for files and programs.";
+a MicroPython sandbox without files, for calculations: use ls, cat and run_wasm for files and programs.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
+// T55: the information tools answer with the file that holds the state (FILES); hiding them failed the tooleval gate
+// (docs/T55_RESULT.md), so they stay in the prompt and name their file.
 const TOOLS: [&str; 18] = [
-    r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: free, used and total RAM in MiB.", "parameters": {"type": "object", "properties": {}}}}"#,
-    r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features.", "parameters": {"type": "object", "properties": {}}}}"#,
-    r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does.", "parameters": {"type": "object", "properties": {}}}}"#,
+    r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: the content of /proc/meminfo (MemTotal, MemFree, MemAvailable in kB).", "parameters": {"type": "object", "properties": {}}}}"#,
+    r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features: the content of /proc/cpuinfo.", "parameters": {"type": "object", "properties": {}}}}"#,
+    r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does (/sys/devices/system/cpu).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "read_log", "description": "Last n lines of the kernel log.", "parameters": {"type": "object", "properties": {"n": {"type": "integer", "description": "number of lines, default 10"}}}}}"#,
-    r#"{"type": "function", "function": {"name": "uptime", "description": "Time since boot.", "parameters": {"type": "object", "properties": {}}}}"#,
+    r#"{"type": "function", "function": {"name": "uptime", "description": "Time since boot: the content of /proc/uptime.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "poweroff", "description": "Shut down the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "reboot", "description": "Reboot the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "set_setting", "description": "Change a system setting. temperature: sampling temperature, 0 = greedy. cores: CPU cores used for inference. keyboard: PS/2 keyboard layout, us or it.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "enum": ["temperature", "cores", "keyboard"]}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
     r#"{"type": "function", "function": {"name": "remember", "description": "Save a fact the user told you, kept across reboots.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "description": "snake_case, e.g. user_name"}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
     r#"{"type": "function", "function": {"name": "forget", "description": "Delete a saved fact (asks the user).", "parameters": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}}}"#,
     r#"{"type": "function", "function": {"name": "recall", "description": "Search saved facts, past conversations and files on the disk.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}}"#,
-    r#"{"type": "function", "function": {"name": "ls", "description": "List a directory on the disk. /proc has live system files: cpuinfo, meminfo, uptime, version, devices (drivers), bus/pci/devices.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
-    r#"{"type": "function", "function": {"name": "cat", "description": "Read a text file on the disk or in /proc.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "ls", "description": "List a directory. /proc and /sys hold live system state, /proc/devices the drivers.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "cat", "description": "Read a text file, also under /proc, /sys and /etc.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "write_file", "description": "Create or replace a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}}"#,
     r#"{"type": "function", "function": {"name": "mkdir", "description": "Create a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "rm", "description": "Delete a file or an empty directory (asks the user).", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
@@ -314,7 +317,7 @@ fn build_prefix() -> usize {
 }
 
 /// Boot snapshot cache: the prefilled prefix state on the disk (snap.rs), keyed by model, prefix and engine.
-const BOOT_SNAP: &str = "/sys/bootsnap.bin";
+use crate::layout::BOOTSNAP as BOOT_SNAP;
 
 /// Boot: load the prefix state from the disk cache, or prefill the system prompt + tools from position 0
 /// (and write the cache); then snapshot it as point #0.
@@ -360,7 +363,7 @@ pub fn init() {
     let t2 = smp::rdtsc();
     let bytes = snap::init_root(pos);
     let t3 = smp::rdtsc();
-    if !hit && crate::fs::mounted() {
+    if !hit && crate::fs::mounted() && crate::layout::pending().is_none() {
         match snap::save_prefix(BOOT_SNAP, key, pos) {
             Ok(b) => crate::dlog!("boot cache: written, {} MiB in {} ms", b >> 20, smp::tsc_to_us(smp::rdtsc() - t3) / 1000),
             Err(e) => crate::dlog!("boot cache: write failed ({})", e),
@@ -451,16 +454,31 @@ fn arg<'a>(c: &Call<'a>, k: &str) -> Option<&'a str> {
     c.args[..c.n].iter().find(|(a, _)| *a == k).map(|(_, v)| *v)
 }
 
+/// T55: the information tools and the file each one reads.
+const FILES: [(&str, &str); 4] = [("meminfo", "/proc/meminfo"), ("cpuinfo", "/proc/cpuinfo"),
+    ("list_cores", "/sys/devices/system/cpu"), ("uptime", "/proc/uptime")];
+
 /// Tool calls of the current turn that changed the machine (printed by /undo, which cannot revert them).
 static mut FXT: SBuf<160> = SBuf::new();
 
 fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
     let fx = unsafe { &mut *core::ptr::addr_of_mut!(FXT) };
     match c.name {
-        "meminfo" => sys::meminfo(o),
-        "cpuinfo" => sys::cpuinfo(o),
-        "list_cores" => sys::cores(o),
-        "uptime" => sys::uptime(o),
+        // T55: the information tools answer with the file that holds the state
+        "meminfo" | "cpuinfo" | "list_cores" | "uptime" => {
+            let file = FILES.iter().find(|a| a.0 == c.name).map_or("", |a| a.1);
+            if c.name == "list_cores" {
+                for f in ["online", "inference"] {
+                    let v = crate::sysfs::read(&alloc::format!("devices/system/cpu/{}", f)).unwrap_or_default();
+                    let _ = write!(o, "{}: {}", f, core::str::from_utf8(&v).unwrap_or(""));
+                }
+                for i in 0..smp::MAX_THREADS.load(core::sync::atomic::Ordering::Relaxed) {
+                    let _ = write!(o, "cpu{}: {}\n", i, crate::sysfs::role(i));
+                }
+            } else {
+                o.push(&crate::fs::virt_read(file).unwrap_or_default());
+            }
+        }
         "read_log" => {
             let k = arg(c, "n").and_then(|v| v.parse::<usize>().ok()).unwrap_or(10).clamp(1, 256);
             let mut first = true;
@@ -527,6 +545,12 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
 fn fs_tool<const N: usize>(c: &Call, o: &mut SBuf<N>, fx: &mut SBuf<160>) -> Result<(), &'static str> {
     use crate::{fidx, fs};
     let p = fs::canon(arg(c, "path").unwrap_or(""))?;
+    // T55: ringzero's own data changes only through remember and forget
+    let lib = "/var/lib/ringzero";
+    if matches!(c.name, "write_file" | "mkdir" | "rm") && p.len() >= lib.len() && p[..lib.len()].eq_ignore_ascii_case(lib)
+        && matches!(p.as_bytes().get(lib.len()), None | Some(b'/')) {
+        return Err("permission denied: ringzero's own data (use remember and forget)");
+    }
     let mut note = |what: &str| {
         let _ = write!(fx, "{}{} {}", if fx.n > 0 { ", " } else { "" }, what, p);
     };
@@ -548,6 +572,17 @@ fn fs_tool<const N: usize>(c: &Call, o: &mut SBuf<N>, fx: &mut SBuf<160>) -> Res
         }
         "write_file" => {
             let data = arg(c, "content").unwrap_or("");
+            if p.eq_ignore_ascii_case("/sys/power/state") && data.trim() == "disk" {
+                // T55: a power change asks like the poweroff tool (other values fail in fs::write, nothing to ask)
+                let q = "\n[agent] wants to HIBERNATE and power off the machine (write to /sys/power/state). Proceed?";
+                if !shell::confirm(q) {
+                    let _ = write!(o, "{} The machine stays on.", DECLINED);
+                    return Ok(());
+                }
+                fs::write(&p, data.as_bytes())?;
+                let _ = write!(o, "wrote {} bytes to {}", data.len(), p);
+                return Ok(());
+            }
             fs::write(&p, data.as_bytes())?;
             fidx::enqueue(&p, data.as_bytes());
             note("write_file");
@@ -601,7 +636,7 @@ pub const CONF_HI: f32 = if CONF_LO > 0.80 { CONF_LO } else { 0.80 };
 
 /// A build-time integer (RINGZERO_CONF_ASK percent 0..100, RINGZERO_ROUNDS 1..20): unset or empty = def, clamped
 /// to max (and to at least 1 when def > 0 and max < 100, the rounds); a character that is not a digit fails the build.
-const fn env_num(s: Option<&str>, def: u32, max: u32) -> u32 {
+pub(crate) const fn env_num(s: Option<&str>, def: u32, max: u32) -> u32 {
     let b = match s {
         Some(s) if !s.is_empty() => s.as_bytes(),
         _ => return def,

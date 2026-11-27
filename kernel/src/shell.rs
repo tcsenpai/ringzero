@@ -141,7 +141,7 @@ const CMDS: &[Cmd] = &[
     c("drop", SLASH, &[], "NAME|#ID  delete a branch, a save or a point"),
     c("snap", SLASH, &[], "snapshot status: point, pool, timings"),
     c("hibernate", SLASH, &["discard", "status"], "[discard|status]  save the conversation and its points to the disk (!poweroff does it too); the next boot resumes it"),
-    c("agentd", SLASH, &["log"], "[log [N]]  memory subsystem: stores, index, queue, consolidation, decisions"),
+    c("agentd", SLASH, &["log", "merge-legacy"], "[log [N] | merge-legacy [DIR]]  memory subsystem: stores, index, queue, consolidation, decisions; merge-legacy merges what an older kernel wrote (/var/lib/ringzero/legacy)"),
     c("facts", SLASH, &[], "saved facts (key = value, source, time)"),
     c("remember", SLASH, &[], "KEY VALUE  save a fact"),
     c("forget", SLASH, &[], "KEY  delete a fact (asks y/N)"),
@@ -172,7 +172,7 @@ fn find(pre: u8, name: &str) -> Option<&'static Cmd> {
 fn help() {
     println!("Type a message to talk to the system agent (Qwen3.5 in ring 0, with tools; Qwen3-Embedding-0.6B for /embed,");
     println!("/index, /search and its recall tool). Ctrl-C stops the agent. agentd keeps facts, episodes and a journal on");
-    println!("the disk (/sys/mem) and puts saved facts in front of the first message of every conversation.");
+    println!("the disk (/var/lib/ringzero/mem) and puts saved facts in front of the first message of every conversation.");
     for (pre, label) in [(BANG, "!  machine commands"), (SLASH, "/  session commands")] {
         println!("{}:", label);
         for c in CMDS.iter().filter(|c| c.pre & pre != 0) {
@@ -695,7 +695,7 @@ fn fs_cmd(name: &str, arg: &str) {
                 let data = text.trim().replace("\\n", "\n");
                 fs::write(&p, data.as_bytes())?;
                 fidx::enqueue(&p, data.as_bytes());
-                println!("[fs] wrote {} bytes to {}{}", data.len(), p, if fidx::pending() { " (queued for the memory index)" } else { "" });
+                println!("[fs] wrote {} bytes to {}{}", data.len(), p, if fidx::pending() && fs::indexed(&p) { " (queued for the memory index)" } else { "" });
             }
             "mkdir" => {
                 let p = fs::canon(arg)?;
@@ -887,7 +887,9 @@ pub fn run() -> ! {
                 println!("[park] {}", desc);
             }
             "agentd" => {
-                if let Some(r) = arg.strip_prefix("log") {
+                if let Some(r) = arg.strip_prefix("merge-legacy") {
+                    crate::agentd::merge_legacy(r.trim());
+                } else if let Some(r) = arg.strip_prefix("log") {
                     crate::agentd::log_last(r.trim().parse::<usize>().unwrap_or(30));
                 } else {
                     crate::agentd::status();

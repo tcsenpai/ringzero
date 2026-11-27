@@ -4,7 +4,8 @@
 // poweroff and reboot flush the FS info sector and the device cache. File times come from the CMOS RTC
 // (sys::rtc), so a file changed on the host (mtools) is told apart by its size and mtime (agentd, M4.5).
 // T54: /proc is a virtual read-only directory (procfs.rs) in front of the volume: ls, read, entry and list serve
-// it, every write path fails with ROFS.
+// it, every write path fails with ROFS. T55: one mount table (mount_of): /proc, /sys (sysfs.rs), /dev (devfs.rs)
+// and /etc/os-release, /etc/passwd (layout.rs) are virtual, everything else is the FAT volume.
 use crate::blk::{self, Disk, DiskErr};
 use crate::klog;
 use alloc::string::String;
@@ -64,6 +65,7 @@ pub fn init() {
             let mut o = crate::log::SBuf::<160>::new();
             df(&mut o);
             klog!(b'I', "disk: mounted at /: {}", o.as_str());
+            crate::layout::init(); // T55: data move, /etc and /tmp, before agentd, agent and hib touch the disk
         }
         Err(e) => klog!(b'E', "disk: mount failed ({}); not FAT? `make disk` formats a new image", err(e)),
     }
@@ -95,11 +97,111 @@ pub fn check(path: &str) -> Result<&str, &'static str> {
 
 /// T54: /proc is virtual (procfs.rs) and read-only: every change under it fails with this error.
 pub const ROFS: &str = "read-only file system";
+/// T55: cat of a device (the shell's and the agent's): an endless /dev/zero never reaches a tool result.
+pub const DEVICE: &str = "is a device: read it with a program, e.g. head -c 16 /dev/urandom";
 
-/// `check` plus: Err(ROFS) for a path under /proc.
+/// T55: the mounts of the tree.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Mount {
+    Proc,
+    Sys,
+    Dev,
+    Etc, // the two virtual files in the real /etc
+    Fat,
+}
+
+/// T55: set by layout.rs while it migrates an old disk, so the FAT directories /sys, /proc and /dev are reachable.
+pub static mut RAW: bool = false;
+
+/// The mount of a checked path (relative to /) and the path inside it ("" = the mount's root).
+pub fn mount_of(rel: &str) -> (Mount, &str) {
+    if unsafe { RAW } {
+        return (Mount::Fat, rel);
+    }
+    let (first, rest) = rel.split_once('/').unwrap_or((rel, ""));
+    for (n, m) in [("proc", Mount::Proc), ("sys", Mount::Sys), ("dev", Mount::Dev)] {
+        if first.eq_ignore_ascii_case(n) {
+            return (m, rest);
+        }
+    }
+    if first.eq_ignore_ascii_case("etc") && crate::layout::etc_virtual(rest).is_some() {
+        return (Mount::Etc, rest);
+    }
+    (Mount::Fat, rel)
+}
+
+/// (is_dir, size) of a path on a virtual mount.
+fn v_entry(m: Mount, r: &str) -> Option<(bool, u64)> {
+    match m {
+        Mount::Proc => crate::procfs::entry(r),
+        Mount::Sys => crate::sysfs::entry(r),
+        Mount::Dev => crate::devfs::entry(r),
+        Mount::Etc => crate::layout::etc_virtual(r).map(|v| (false, v.len() as u64)),
+        Mount::Fat => None,
+    }
+}
+
+/// The content of a virtual file (devices: empty, fs::read refuses them).
+fn v_read(m: Mount, r: &str) -> Option<Vec<u8>> {
+    match m {
+        Mount::Proc => crate::procfs::read(r),
+        Mount::Sys => crate::sysfs::read(r),
+        Mount::Etc => crate::layout::etc_virtual(r),
+        _ => None,
+    }
+}
+
+/// A virtual file's content; a virtual directory is the same error fatfs gives for one, a device the DEVICE one.
+pub fn virt_read(path: &str) -> Result<Vec<u8>, &'static str> {
+    let (m, r) = mount_of(check(path)?);
+    match v_entry(m, r) {
+        Some((true, _)) => Err("not a directory, or a directory where a file was expected"),
+        Some(_) if m == Mount::Dev => if r == "null" { Ok(Vec::new()) } else { Err(DEVICE) },
+        Some(_) => v_read(m, r).ok_or("not found"),
+        None => Err("not found"),
+    }
+}
+
+/// T55: a virtual tree given as its paths (directories end with '/'): (is_dir, size) of `r`.
+pub fn tree_entry<S: AsRef<str>>(nodes: &[S], r: &str, read: impl Fn(&str) -> Option<Vec<u8>>) -> Option<(bool, u64)> {
+    if r.is_empty() || nodes.iter().any(|e| e.as_ref().strip_suffix('/') == Some(r)) {
+        return Some((true, 0));
+    }
+    nodes.iter().any(|e| e.as_ref() == r).then(|| read(r).map_or(0, |v| v.len() as u64)).map(|n| (false, n))
+}
+
+/// The entries of the directory `r` of a virtual tree as (name, is_dir, size).
+pub fn tree_list<S: AsRef<str>>(nodes: &[S], r: &str, read: impl Fn(&str) -> Option<Vec<u8>>) -> Option<Vec<(String, bool, u64)>> {
+    if !tree_entry(nodes, r, &read)?.0 {
+        return None;
+    }
+    let pre = if r.is_empty() { String::new() } else { alloc::format!("{}/", r) };
+    Some(nodes.iter().filter_map(|e| {
+        let e = e.as_ref();
+        let rest = e.strip_prefix(pre.as_str())?;
+        let (name, dir) = match rest.strip_suffix('/') {
+            Some(d) => (d, true),
+            None => (rest, false),
+        };
+        if name.is_empty() || name.contains('/') {
+            return None;
+        }
+        Some((String::from(name), dir, if dir { 0 } else { read(e).map_or(0, |v| v.len() as u64) }))
+    }).collect())
+}
+
+/// `check` plus: Err(ROFS) for a path on a virtual mount.
 fn check_rw(path: &str) -> Result<&str, &'static str> {
     let rel = check(path)?;
-    if crate::procfs::is_proc(rel) { Err(ROFS) } else { Ok(rel) }
+    if mount_of(rel).0 != Mount::Fat { Err(ROFS) } else { Ok(rel) }
+}
+
+/// T55: /tmp, /var/lib/ringzero (ringzero's data), /lib (CPython's stdlib) and the virtual mounts are not the
+/// user's documents: the file indexer skips them.
+pub fn indexed(path: &str) -> bool {
+    let Ok(rel) = check(path) else { return false };
+    let under = |d: &str| rel.len() >= d.len() && rel[..d.len()].eq_ignore_ascii_case(d) && matches!(rel.as_bytes().get(d.len()), None | Some(b'/'));
+    mount_of(rel).0 == Mount::Fat && !["tmp", "lib", "var/lib/ringzero"].iter().any(|d| under(d))
 }
 
 /// The checked path in one spelling ("/a/b"), the key the indexer uses.
@@ -119,23 +221,14 @@ pub fn ls(path: &str, o: &mut impl core::fmt::Write) -> Result<usize, &'static s
     Ok(n)
 }
 
-/// A /proc file's content; a /proc directory is the same error fatfs gives for one.
-pub fn proc_read(rel: &str) -> Result<Vec<u8>, &'static str> {
-    match crate::procfs::entry(rel) {
-        Some((true, _)) => Err("not a directory, or a directory where a file was expected"),
-        Some(_) => crate::procfs::read(rel).ok_or("not found"),
-        None => Err("not found"),
-    }
-}
-
 /// Read at most `max` bytes from `off`; returns (bytes, file size).
 pub fn read(path: &str, off: u64, max: usize) -> Result<(Vec<u8>, u64), &'static str> {
     let rel = check(path)?;
     if rel.is_empty() {
         return Err("/ is a directory");
     }
-    if crate::procfs::is_proc(rel) {
-        let v = proc_read(rel)?;
+    if mount_of(rel).0 != Mount::Fat {
+        let v = virt_read(path)?;
         let (size, a) = (v.len() as u64, (off as usize).min(v.len()));
         return Ok((v[a..(a + max).min(v.len())].to_vec(), size));
     }
@@ -147,8 +240,19 @@ pub fn read(path: &str, off: u64, max: usize) -> Result<(Vec<u8>, u64), &'static
     Ok((v, size))
 }
 
-/// Create or replace a file; missing parent directories are created.
+/// Create or replace a file; missing parent directories are created. T55: /sys/power/state and the data
+/// devices take a write (the shell's !write and the agent's write_file, which asks first for the power file).
 pub fn write(path: &str, data: &[u8]) -> Result<(), &'static str> {
+    match mount_of(check(path)?) {
+        (Mount::Sys, r) if r == crate::sysfs::POWER => return crate::sysfs::power_write(data),
+        (Mount::Dev, r) if crate::devfs::writable(r) => {
+            if crate::devfs::is_console(r) {
+                crate::console::write_bytes(data);
+            }
+            return Ok(());
+        }
+        _ => {}
+    }
     let rel = check_rw(path)?;
     if rel.is_empty() {
         return Err("/ is a directory");
@@ -301,6 +405,15 @@ fn mtime(d: fatfs::DateTime) -> u32 {
         | (t.hour as u32) << 11 | (t.min as u32) << 5 | (t.sec as u32 / 2)
 }
 
+/// A FAT mtime (`mtime` packing, local time from the RTC) as seconds since the epoch (0 stays 0).
+pub fn unix_of(mt: u32) -> u64 {
+    if mt == 0 {
+        return 0;
+    }
+    let d = crate::sys::days((mt >> 25) + 1980, mt >> 21 & 15, mt >> 16 & 31);
+    (d * 86_400) as u64 + (mt >> 11 & 31) as u64 * 3600 + (mt >> 5 & 63) as u64 * 60 + (mt & 31) as u64 * 2
+}
+
 /// (size, mtime) of a file.
 pub fn meta(path: &str) -> Result<(u64, u32), &'static str> {
     match entry(path)? {
@@ -316,8 +429,9 @@ pub fn entry(path: &str) -> Result<(bool, u64, u32), &'static str> {
         fs()?;
         return Ok((true, 0, 0));
     }
-    if crate::procfs::is_proc(rel) {
-        return crate::procfs::entry(rel).map(|(d, n)| (d, n, 0)).ok_or("not found");
+    let (m, r) = mount_of(rel);
+    if m != Mount::Fat {
+        return v_entry(m, r).map(|(d, n)| (d, n, 0)).ok_or("not found");
     }
     let (dir, name) = rel.rsplit_once('/').unwrap_or(("", rel));
     let root = fs()?.root_dir();
@@ -336,9 +450,14 @@ pub fn entry(path: &str) -> Result<(bool, u64, u32), &'static str> {
 /// A directory's entries as (name, is_dir, size).
 pub fn list(path: &str) -> Result<Vec<(String, bool, u64)>, &'static str> {
     let rel = check(path)?;
-    if crate::procfs::is_proc(rel) {
-        return match crate::procfs::entry(rel) {
-            Some((true, _)) => crate::procfs::list(rel).ok_or("not found"),
+    let (m, r) = mount_of(rel);
+    if m != Mount::Fat {
+        return match v_entry(m, r) {
+            Some((true, _)) => match m {
+                Mount::Proc => crate::procfs::list(r),
+                Mount::Sys => crate::sysfs::list(r),
+                _ => crate::devfs::list(r),
+            }.ok_or("not found"),
             Some(_) => Err("not a directory, or a directory where a file was expected"),
             None => Err("not found"),
         };
@@ -353,8 +472,10 @@ pub fn list(path: &str) -> Result<Vec<(String, bool, u64)>, &'static str> {
             v.push((name, e.is_dir(), e.len()));
         }
     }
-    if rel.is_empty() && !v.iter().any(|e| e.0.eq_ignore_ascii_case("proc")) {
-        v.push((String::from("proc"), true, 0)); // T54: the virtual /proc shows in `ls /`
+    if rel.is_empty() && !unsafe { RAW } {
+        // T54, T55: the virtual mounts show in `ls /` (a FAT directory of the same name is moved away by layout.rs)
+        v.retain(|e| !["proc", "sys", "dev"].iter().any(|n| e.0.eq_ignore_ascii_case(n)));
+        v.extend(["dev", "proc", "sys"].map(|n| (String::from(n), true, 0)));
     }
     Ok(v)
 }
@@ -379,8 +500,8 @@ pub fn open(path: &str) -> Result<File, &'static str> {
     if rel.is_empty() {
         return Err("/ is a directory");
     }
-    if crate::procfs::is_proc(rel) {
-        return Err(ROFS); // callers read /proc through read() (wasm.rs keeps the bytes in the fd)
+    if mount_of(rel).0 != Mount::Fat {
+        return Err(ROFS); // callers read virtual files through read() (wasm.rs keeps the bytes in the fd)
     }
     fs()?.root_dir().open_file(rel).map_err(err)
 }
@@ -441,8 +562,8 @@ pub fn rename(from: &str, to: &str) -> Result<(), &'static str> {
     root.rename(a, &root, b).map_err(err)
 }
 
-/// Every file on the volume outside /sys (agentd's own files) and /lib (M8: CPython's stdlib, not the user's
-/// documents), as (path, size, mtime).
+/// Every file on the volume the indexer reads (T55: not under /var/lib/ringzero, /tmp or /lib, see `indexed`),
+/// as (path, size, mtime).
 pub fn walk(f: &mut dyn FnMut(&str, u64, u32)) -> Result<(), &'static str> {
     fn rec(d: &Dir, path: &mut String, f: &mut dyn FnMut(&str, u64, u32)) -> Result<(), &'static str> {
         let ents: Vec<(String, bool, u64, u32)> = d.iter().filter_map(|e| e.ok())
@@ -454,7 +575,7 @@ pub fn walk(f: &mut dyn FnMut(&str, u64, u32)) -> Result<(), &'static str> {
             path.push_str(&name);
             if !dir {
                 f(path, size, mt);
-            } else if path != "/sys" && path != "/lib" {
+            } else if indexed(path) {
                 rec(&d.open_dir(&name).map_err(err)?, path, f)?;
             }
             path.truncate(k);

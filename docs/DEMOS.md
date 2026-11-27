@@ -34,6 +34,22 @@ There are no pipes in the shell: one program per command, `< FILE` for stdin (`!
 `/bin/coreutils.wasm` is the uutils `feat_wasm` set: `du`, `df`, `chown` and the other tools that need missing
 WASI calls are not in it (`coreutils: unknown program 'du'`).
 
+## The file tree (/proc, /sys, /dev, /etc)
+
+The programs read the same system files as `!cat` and the agent's `cat` tool:
+
+```
+!run cat /sys/devices/system/cpu/online
+!run head -c 16 /dev/urandom
+!run rg virtio /proc/kmsg
+!run python3 -c "print(open('/sys/class/block/vda/size').read().strip(), 'sectors')"
+!run python3 -c "d = open('/dev/vda', 'rb').read(512); print(d[3:11], d[510:].hex())"
+!cat /etc/os-release
+```
+
+The last python3 line prints `b'mkfs.fat' 55aa` on a disk made by `make disk`: the FAT boot sector. Writing `disk`
+to `/sys/power/state` (`!run python3 -c "open('/sys/power/state', 'w').write('disk')"`) hibernates and powers off.
+
 ## ripgrep (15.2.0)
 
 ```
