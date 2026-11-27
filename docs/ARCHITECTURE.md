@@ -208,7 +208,7 @@ sequenceDiagram
     participant D as agentd.rs
     participant X as memidx.rs + embed.rs
     participant L as llm.rs + engine
-    S->>A: ask("come mi chiamo?") on a fresh line (boot prefix, system turn open)
+    S->>A: ask("what is my name?") on a fresh line (boot prefix, system turn open)
     A->>L: feed <|im_end|>\n (close the system turn)
     A->>D: slot(q)
     D->>D: facts, newest first, within 120 tok

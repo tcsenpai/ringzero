@@ -106,7 +106,7 @@
       <p>Facts you tell it ("my name is Anna") and summaries of past sessions are kept on the disk and come back
         after a reboot.</p></li>
     <li><h3>It knows its own manual</h3>
-      <p>"come faccio a ibernare?" is answered from the built-in manual, which the kernel indexes and puts in front
+      <p>"how do I hibernate?" is answered from the built-in manual, which the kernel indexes and puts in front
         of the question. <code>/man TOPIC</code> searches it directly.</p></li>
     <li><h3>Tool calls that cannot break</h3>
       <p>While the model writes a tool call, the kernel only lets through tokens that keep it valid against the
@@ -132,14 +132,17 @@
 <span class="d">[exit 0]</span></code></pre>
     <figcaption>From the <a href="https://github.com/tcsenpai/ringzero#readme">README</a>.</figcaption>
   </figure>
-  <p>A call the model was unsure about, on a tool that writes to the disk:</p>
+  <p>A tool call on the 4B q4: the grammar drafts the parts of the call that leave no choice, the speculative
+    pass checks them in one batch, and the kernel scores how sure the model was before running it:</p>
   <figure class="term">
-<pre><code><span class="p">ringzero[main]&gt;</span> crea il file /notes/x.md con scritto # titolo
-<span class="t">write_file(path=/notes/x.md, content=# titolo)</span>
-<span class="r">[confidence] min margin 0.16 at 'tool name' ('write' vs 'mkdir') -&gt; ask y/N</span></code></pre>
-    <figcaption>Excerpt from the live check in
-      <a href="https://github.com/tcsenpai/ringzero/blob/main/docs/T28_RESULT.md">docs/T28_RESULT.md</a> (4B q4).
-      Answered n: the model gets <code>error: not run</code> and the file is not written.</figcaption>
+<pre><code><span class="p">ringzero[main]&gt;</span> create the file /notes/plan.md containing # plan
+<span class="d">[grammar] on: 41 tok, 0 masked (0 forced) -&gt; valid call</span>
+<span class="d">[decode] 42 tok in 1246.47 ms (32.89 tok/s)  spec 28/30 accepted (93%), grammar 27/28</span>
+<span class="t">[tool] write_file(path=/notes/plan.md, content=# plan)</span>
+<span class="r">[confidence] min margin 0.99 at 'tool name' ('write' vs 'run') -&gt; run</span>
+<span class="t">[tool] -&gt; wrote 6 bytes to /notes/plan.md</span></code></pre>
+    <figcaption>Lines from a live run (shortened). Below the ask threshold the kernel asks y/N before a call that
+      changes the machine, see <a href="https://github.com/tcsenpai/ringzero/blob/main/docs/T28_RESULT.md">docs/T28_RESULT.md</a>.</figcaption>
   </figure>
 </section>
 
