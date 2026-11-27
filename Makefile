@@ -64,7 +64,7 @@ ISO    := $(BUILD)/ringzero.iso
 QEMU   := qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m $(GUEST_MEM) -smp 8 \
           -cdrom $(ISO) -boot d -serial stdio -display $(QEMU_DISPLAY) -no-reboot $(call DRIVE,$(DISK))
 
-.PHONY: kernel upy iso model disk wasm-apps run-bios run-uefi run-remote run-local clean
+.PHONY: kernel upy iso model disk wasm-apps beta run-bios run-uefi run-remote run-local clean
 .DELETE_ON_ERROR:
 
 # Qwen3.5-2B -> $(MODEL) and Qwen3-Embedding-0.6B -> $(EMBED) from Hugging Face, each skipped when the .asmbin
@@ -140,7 +140,7 @@ $(BUILD)/%.img:
 	mkdir -p $(BUILD)
 	@if [ -e $@ ]; then echo "$@ exists, not touching it"; exit 0; fi; \
 	 truncate -s $(DISK_MB)M $@.tmp && \
-	 { mkfs.vfat -F 32 -n RINGZERO $@.tmp >/dev/null || mformat -F -v RINGZERO -i $@.tmp ::; } && mv -n $@.tmp $@ && \
+	 { mkfs.vfat $(if $(SOURCE_DATE_EPOCH),--invariant) -F 32 -n RINGZERO $@.tmp >/dev/null || mformat -F -v RINGZERO -i $@.tmp ::; } && mv -n $@.tmp $@ && \
 	 echo "created $@ ($(DISK_MB) MiB FAT32)"
 
 # M5b: WASI programs for /bin, built or fetched by tools/wasm_apps.sh into WASM_DIR, then copied onto the disk
@@ -161,6 +161,21 @@ wasm-apps: $(DISK)
 	mmd -i $(DISK) ::/demo 2>/dev/null || true
 	mcopy -o -i $(DISK) tools/demo/* ::/demo/
 	mdir -i $(DISK) ::/bin
+
+# T34 beta (docs/BETA.md): both ISOs (4B q4, the recommended edition, and the default 2B q8) and one fresh data disk
+# with the M8 apps and /demo in build/beta, plus SHA256SUMS. SOURCE_DATE_EPOCH (default: the last commit's time)
+# fixes every timestamp xorriso, mkfs.vfat (--invariant: fixed volume id) and mtools write, so a second run on the
+# same tree and inputs gives the same bytes. Needs the models (make model, both editions) and KVM (manual vectors;
+# the 2B goes first so pass 1 boots a 6G guest).
+BETA ?= $(BUILD)/beta
+beta: export SOURCE_DATE_EPOCH ?= $(shell git log -1 --format=%ct 2>/dev/null || echo 1764201600)
+beta:
+	mkdir -p $(BETA)
+	$(MAKE) iso MODEL=2b QUANT=q8 ISO=$(BETA)/ringzero-beta-2b-q8.iso
+	$(MAKE) iso MODEL=4b QUANT=q4 ISO=$(BETA)/ringzero-beta-4b-q4.iso
+	rm -f $(BETA)/disk.img
+	$(MAKE) wasm-apps DISK=$(BETA)/disk.img
+	cd $(BETA) && sha256sum ringzero-beta-4b-q4.iso ringzero-beta-2b-q8.iso disk.img | tee SHA256SUMS
 
 run-bios: iso $(DISK)
 	$(QEMU)
