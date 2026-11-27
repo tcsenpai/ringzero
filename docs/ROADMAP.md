@@ -5,6 +5,12 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ```text
 
 📋 Tasks (Tree View)
+✓ 🔴 Release fixes from the user's manual test [E1]
+│   └── ○ 🔴 Beta release (today, 2026-11-27) [E1]
+│       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T51]
+│       ├── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1] [blocked by T51]
+│       ├── ○ 🟠 Unix compatibility layer (design principle) [E1] [blocked by T51]
+│       └── ○ 🟢 Release cadence: post-beta updates, then weekly [E1] [blocked by T51]
 ✓ 🔴 M0 scaffold: Limine boot + Rust hello [E1]
 │   └── ✓ 🔴 M1 engine in ring 0 [E1]
 │       └── ✓ 🟠 M2 console and shell with @ agent prefix [E1]
@@ -17,14 +23,12 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
 │               │       │   │   └── ✓ 🟠 Beta release gate [E1]
-│               │       │   │       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T51]
+│               │       │   │       ├── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1]
 │               │       │   │       ├── ○ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1]
 │               │       │   │       ├── ○ 🟢 Decision model (user note, post-beta) [E1]
 │               │       │   │       ├── ○ 🟢 Engine kernels for other model architectures (e.g. Gemma) [E1]
-│               │       │   │       └── ○ 🔴 Beta release (today, 2026-11-27) [E1]
-│               │       │   │           ├── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
-│               │       │   │           └── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1] [blocked by T51]
+│               │       │   │       └── T51: Beta release (today, 2026-11-27) (circular)
 │               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
 │               │       ├── ✓ 🟠 M4.7b Hibernate the agent: snapshots to disk [E1]
 │               │       ├── ○ 🟠 Kernel event bus to the agent (deterministic perimeter) [E1]
@@ -75,5 +79,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 53 task(s) shown
+ℹ️ 56 task(s) shown
 ```
