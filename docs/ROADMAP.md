@@ -16,14 +16,15 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
 │               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
-│               │       │   │   └── ✓ 🟠 Beta release gate [E1] [blocked by T46, T47]
+│               │       │   │   └── ✓ 🟠 Beta release gate [E1] [blocked by T46]
 │               │       │   │       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T51]
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1]
 │               │       │   │       ├── ○ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1]
 │               │       │   │       ├── ○ 🟢 Decision model (user note, post-beta) [E1]
 │               │       │   │       ├── ○ 🟢 Engine kernels for other model architectures (e.g. Gemma) [E1]
-│               │       │   │       └── ○ 🔴 Beta release (today, 2026-11-27) [E1] [blocked by T46, T47, T52]
-│               │       │   │           └── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
+│               │       │   │       └── ○ 🔴 Beta release (today, 2026-11-27) [E1] [blocked by T46]
+│               │       │   │           ├── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
+│               │       │   │           └── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1] [blocked by T51]
 │               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
 │               │       ├── ✓ 🟠 M4.7b Hibernate the agent: snapshots to disk [E1]
 │               │       ├── ○ 🟠 Kernel event bus to the agent (deterministic perimeter) [E1]
@@ -41,12 +42,12 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
 │                           └── T34: Beta release gate (circular)
-○ 🟠 Fixes found by the OpenSpec baseline (before release) [E1]
+✓ 🟠 Fixes found by the OpenSpec baseline (before release) [E1]
 │   └── T51: Beta release (today, 2026-11-27) (circular)
 ✓ 🟠 GitHub Pages site from the branding kit [E1]
-○ 🟠 Branding: boot banner overhaul, logo palette, VNC password ringzero [E1]
+✓ 🟠 Branding: boot banner overhaul, logo palette, VNC password ringzero [E1]
 │   ├── T34: Beta release gate (circular)
-│   ├── ○ 🟠 Shell colors by role (serial + framebuffer), !set color [E1] [blocked by T47]
+│   ├── ○ 🟠 Shell colors by role (serial + framebuffer), !set color [E1]
 │   │   ├── T34: Beta release gate (circular)
 │   │   └── T51: Beta release (today, 2026-11-27) (circular)
 │   └── T51: Beta release (today, 2026-11-27) (circular)
@@ -74,5 +75,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 52 task(s) shown
+ℹ️ 53 task(s) shown
 ```
