@@ -14,17 +14,25 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │   └── ✓ 🟠 M4.5 agentd: deterministic context and memory subsystem [E1]
 │               │       ├── ✓ 🟠 M4.8 base: batched prefill in the engine [E1]
 │               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
+│               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
+│               │       │   │   └── ○ 🟠 Beta release gate [E1] [blocked by T22, T28, T38, T39]
+│               │       │   │       └── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T34]
 │               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
 │               │       ├── ✓ 🟠 M4.7b Hibernate the agent: snapshots to disk [E1]
 │               │       ├── ○ 🟠 Kernel event bus to the agent (deterministic perimeter) [E1]
 │               │       ├── ○ 🟠 Built-in OS manual in memory [E1]
+│               │       │   ├── T34: Beta release gate (circular)
+│               │       │   └── ○ 🟢 Manual vectors baked into the kernel binary (build flag, default on) [E1] [blocked by T22]
+│               │       │       ├── T34: Beta release gate (circular)
+│               │       │       └── ○ 🟠 Grammar as a speculative draft source [E1] [blocked by T38]
+│               │       │           └── T34: Beta release gate (circular)
 │               │       ├── ○ 🟢 Deterministic replay as audit log [E1]
 │               │       └── ✓ 🟢 M4.7a Constrained decoding for tool calls [E1]
 │               └── ✓ 🟢 M5 Code execution: MicroPython freestanding [E1]
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
-│                           └── ○ 🟠 Beta release gate [E1]
+│                           └── T34: Beta release gate (circular)
 ✓ 🟠 agentd memory slot relevance fix (before beta) [E1]
 │   └── T34: Beta release gate (circular)
 ✓ 🟠 Compaction recall [E1]
@@ -34,17 +42,22 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │   │   └── ✓ 🟠 Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B [E1]
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
+○ 🟢 Type-ahead prefill: prefill while the user types [E1]
 ○ 🟢 Interruptible between layers [E1]
 ○ 🟢 Tools as capabilities in ring 3 [E1]
 ○ 🟢 Uncertainty-aware agent [E1]
+│   └── T34: Beta release gate (circular)
 ✓ 🟢 Spike: embedding model in kernel (Qwen3-Embedding-0.6B) [E1]
 │   └── T16: Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B (circular)
 ✓ 🟢 Spike: 2B tool-calling reliability on Linux [E1]
 │   └── T4: M3 agent loop and system tools (circular)
+○ 🔵 Live logit view on the framebuffer [E1]
+○ 🔵 Shareable mind-state files [E1]
+○ 🔵 Spike: zero-shot Safe/Dangerous probe on Qwen3.5-4B [E1]
 ○ 🔵 Native ELF in ring 3 (only if needed) [E1]
 ○ 🔵 Console: VNC-friendly scrolling [E1]
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 35 task(s) shown
+ℹ️ 43 task(s) shown
 ```
