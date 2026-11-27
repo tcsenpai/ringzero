@@ -25,6 +25,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   │   └── ✓ 🟠 Beta release gate [E1]
 │               │       │   │       ├── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1]
+│               │       │   │       │   └── ○ 🟢 MTP draft only in tool-call rounds [E1] [blocked by T44]
 │               │       │   │       ├── ✓ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1]
 │               │       │   │       ├── ○ 🟢 Decision model (user note, post-beta) [E1]
 │               │       │   │       ├── ○ 🟢 Engine kernels for other model architectures (e.g. Gemma) [E1]
@@ -46,6 +47,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
 │                           └── T34: Beta release gate (circular)
+○ 🟠 Evaluate NeoHorse-1-4B and QwenPaw-Flash-4B (Q4) [E1]
 ✓ 🟠 Fixes found by the OpenSpec baseline (before release) [E1]
 │   └── T51: Beta release (today, 2026-11-27) (circular)
 ✓ 🟠 GitHub Pages site from the branding kit [E1]
@@ -64,6 +66,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │   │   └── ✓ 🟠 Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B [E1]
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
+○ 🟢 T55 follow-ups: 2**100 first call, 2B drivers answer [E1]
 ○ 🟢 Type-ahead prefill: prefill while the user types [E1]
 ○ 🟢 Interruptible between layers [E1]
 ○ 🟢 Tools as capabilities in ring 3 [E1]
@@ -79,5 +82,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 56 task(s) shown
+ℹ️ 59 task(s) shown
 ```

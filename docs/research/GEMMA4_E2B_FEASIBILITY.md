@@ -226,7 +226,7 @@ better system agent [E].
 
 ## Not checked
 
-- No weights were downloaded or run; no speed was measured. Fedora (`ssh fedorascale`) was not used: every fact needed was
+- No weights were downloaded or run; no speed was measured. The build box was not used: every fact needed was
   readable from HF files and HTTP range reads of the safetensors and GGUF headers.
 - Contents of `gemma-4-E2B-it-qat-q4_0-unquantized` and whether our Q4_0 rounding matches the QAT grid.
 - Whether the BOS token is required at every prefill restart (the template always emits it once).
