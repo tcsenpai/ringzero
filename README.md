@@ -14,10 +14,10 @@ Together they make an OS that understands what you ask and remembers you across 
 experiment: the question is what an OS looks like when the models are not apps on top of it, but parts of it.
 
 ```
-ringzero[main]> quante righe ha /notes/casa.txt?
-[tool] run_wasm(path=wc, args=-l /notes/casa.txt)
-[tool] -> 12 /notes/casa.txt
-Il file /notes/casa.txt ha 12 righe.
+ringzero[main]> count the lines of /demo/stats.py with wc
+[tool] run_wasm(path=wc, args=-l /demo/stats.py)
+[tool] -> 24 /demo/stats.py
+[exit 0]
 ```
 
 ## What it does
@@ -25,9 +25,9 @@ Il file /notes/casa.txt ha 12 righe.
 - **Talk to the machine.** Plain text goes to the system agent, which calls typed kernel tools: files,
   memory, CPU cores, logs, settings, power. Anything that deletes or powers off asks you first.
 - **Semantic memory, built in.** The embedding model indexes every text file you write and every session, in
-  the background while you are idle, into an index saved on the disk. "cosa devo comprare?" finds the
+  the background while you are idle, into an index saved on the disk. "what do I need to buy?" finds the
   shopping list you wrote last week. `/search` queries it directly.
-- **It remembers you.** Facts you tell it ("mi chiamo Anna") and summaries of past sessions are kept on the
+- **It remembers you.** Facts you tell it ("my name is Anna") and summaries of past sessions are kept on the
   disk and come back after a reboot. The kernel, not the model, decides what goes into the model's context,
   so the memory stays small and on topic.
 - **Undo for the AI.** Every turn is a snapshot of the model's state: `/undo`, `/redo`, `/retry`, named
@@ -58,16 +58,16 @@ make run-local MODEL=4b QUANT=q4 # boot it in a QEMU window
 Then, at the `ringzero[main]>` prompt:
 
 ```
-mi chiamo Anna e il mio numero preferito è 4711
-!write /notes/todo.txt comprare il latte
-cosa devo comprare?
-crea una tabella spesa in /spesa.db con sqlite e dimmi il prodotto più caro
+my name is Anna and my favourite number is 4711
+!write /notes/todo.txt buy milk
+what do I need to buy?
+create a table in /shop.db with sqlite, add three products with prices, and tell me the most expensive
 !run python3
 /undo
 !poweroff
 ```
 
-Boot again and ask "come mi chiamo?". More copy-paste examples: [docs/DEMOS.md](docs/DEMOS.md).
+Boot again and ask "what is my name?". More copy-paste examples: [docs/DEMOS.md](docs/DEMOS.md).
 
 ## Which model
 
@@ -92,6 +92,13 @@ serial, PS/2, framebuffer.
 - [INFO.md](INFO.md): every command, the measurements, the source layout, the licenses
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the architecture diagram
 - [docs/ROADMAP.md](docs/ROADMAP.md): what is done and what comes next
+
+## Related work
+
+- D. Son, *ProbeLogits: Kernel-Level LLM Inference Primitives for AI-Native Operating Systems*, 2026,
+  [arXiv:2604.11943](https://arxiv.org/abs/2604.11943). Anima OS, a bare-metal x86-64 Rust kernel with LLM
+  inference inside, reads the model's next-token logits as a kernel primitive for classifying agent actions.
+  ringzero acts on the logits in the kernel too (the tool-call grammar mask, and the planned uncertainty signal).
 
 ## Status
 
