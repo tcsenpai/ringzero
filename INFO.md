@@ -308,6 +308,29 @@ Tool-call grammar and hibernation:
 /snap                    # point, pool, timings and the state hash of the live state
 ```
 
+Machine commands and the other settings (`!help` and `/help` print the same table; every `!set` key, its values and
+default are in [openspec/specs/settings/spec.md](openspec/specs/settings/spec.md)):
+
+```
+!cpu                     # CPU model, clock, features
+!uptime                  # time since boot
+!stats                   # threads, parking, arena, heap, context fill, KV type, keyboard (also /stats)
+!park off|idle|<usec>    # worker core parking: always spin, park between requests (default), or after a spin window
+!reboot                  # reboot now (!poweroff powers off and writes the hibernation image)
+!set temperature 0.7     # 0..2, 0 = greedy (default); /temp 0.7 is the same
+!set cores 4             # cores used for inference, 1..online (default all); !cores 4 is the same
+!set keyboard us         # PS/2 layout us|it (default it); !kbd us is the same
+!set think on            # model thinking on|off (default off); /think on is the same
+!set compact 60          # context fill percent that triggers a compaction, 1..95 (default 75)
+!set snappool 512        # MiB the snapshot pool may use, 64..pool size (default the whole pool)
+!set seed 7              # sampler RNG state, positive integer (default 42; stored with every snapshot point)
+```
+
+On/off settings (think, constrain, confidence, gramdraft) take on/1/true or off/0/false; any other value is
+refused with `error: <key> must be on or off` and the setting keeps its value. `!set spec` takes on, off or a
+longest draft from 1 to 15 and refuses anything else. An unknown key prints the list of every key. Saved in the
+hibernation image: temperature, think, constrain, compact (and the snapshot pool cap with the tree).
+
 More:
 
 ```sh

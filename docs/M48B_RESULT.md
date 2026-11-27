@@ -173,3 +173,10 @@ indication only; the interleaved runs above are the speed measurement.
 - The engine source hash changed (prefill.asm), so the boot snapshot cache misses once on the first boot of this
   build and a hibernation image from an older build is not resumed (fresh conversation, user files and memory
   are kept).
+
+## Correction (2026-11-27)
+
+The design section above says MATCH_MIN = 4. The code that produced every number in this document uses
+MATCH_MIN = 3 (kernel/src/llm.rs, const MATCH_MIN and fn lookup): a draft needs at least 3 matching tokens and
+drafts at most `match length - 1` tokens, so a 3-token match drafts up to 2. The measurements are unchanged; only the
+description was wrong. Found by the OpenSpec baseline (openspec/specs/decoding).

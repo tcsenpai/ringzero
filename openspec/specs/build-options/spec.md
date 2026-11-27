@@ -97,14 +97,6 @@ Source: kernel/src/mem.rs init, HEAP_BYTES; kernel/src/wasm.rs init; kernel/src/
 - **WHEN** the kernel is built without RINGZERO_HEAP_MIB
 - **THEN** the heap is 192 MiB
 
-### Requirement: OPEN: rebuild on heap and wasm memory changes
-OPEN: kernel/build.rs declares rerun-if-env-changed for RINGZERO_KV, RINGZERO_EDITION, RINGZERO_MANVEC, RINGZERO_CONF_ASK and RINGZERO_UPY_HEAP_MIB but not for RINGZERO_HEAP_MIB or RINGZERO_WASM_MIB; whether cargo rebuilds the kernel when only those change MUST be confirmed on the build box.
-Source: kernel/build.rs main, upy
-
-#### Scenario: Heap changed alone
-- **WHEN** only RINGZERO_HEAP_MIB changes between two builds
-- **THEN** the expected outcome (rebuild or stale kernel) is not confirmed
-
 ### Requirement: Beta build
 `make beta` SHALL build ringzero-beta-2b-q8.iso, then ringzero-beta-4b-q4.iso, then a fresh data disk with the apps in build/beta, and write SHA256SUMS; SOURCE_DATE_EPOCH SHALL default to the last commit time so two runs on the same tree give the same bytes.
 Source: Makefile target beta
@@ -120,3 +112,11 @@ Source: Makefile VNC_PASS, target run-remote
 #### Scenario: Default password
 - **WHEN** the user runs `make run-remote` without VNC_PASS and connects a VNC client to port 5901
 - **THEN** the client asks for a password and `ringzero` opens the framebuffer
+
+### Requirement: Build variables rebuild the kernel
+kernel/build.rs SHALL declare rerun-if-env-changed for every RINGZERO_* variable the kernel reads at build time (KV, EDITION, MANVEC, CONF_ASK, HEAP_MIB, WASM_MIB, UPY_HEAP_MIB), so changing one of them alone rebuilds the kernel.
+Source: kernel/build.rs main, upy
+
+#### Scenario: Heap changed alone
+- **WHEN** only RINGZERO_HEAP_MIB changes between two builds
+- **THEN** cargo reruns the build script and compiles the kernel again
