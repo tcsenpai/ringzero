@@ -199,8 +199,8 @@ Model options (M7): Qwen3.5-2B or Qwen3.5-4B, in Q8_0 or Q4_0 (W4A8, own asm ker
 kernel), see [Which model for which machine](#which-model-for-which-machine) and
 [docs/M7_Q4_RESULT.md](docs/M7_Q4_RESULT.md).
 
-Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to the
-remote instance: [docs/M47_RESULT.md](docs/M47_RESULT.md) (earlier: [M5b WASI](docs/M5B_WASI_RESULT.md), [M5 MicroPython](docs/M5_MICROPYTHON_RESULT.md), [M4.5](docs/M45_RESULT.md), [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
+Architecture diagram: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Results and how to connect to a
+headless instance: [docs/M47_RESULT.md](docs/M47_RESULT.md) (earlier: [M5b WASI](docs/M5B_WASI_RESULT.md), [M5 MicroPython](docs/M5_MICROPYTHON_RESULT.md), [M4.5](docs/M45_RESULT.md), [M4](docs/M4_RESULT.md), [Embedder](docs/EMBEDDER_RESULT.md), [Snapshots v1](docs/SNAPSHOTS_V1_RESULT.md), [M2.5](docs/M25_RESULT.md),
 [M2+M3](docs/M2M3_RESULT.md), [M0](docs/M0_RESULT.md), [M1](docs/M1_RESULT.md)).
 
 ## Which model for which machine
@@ -221,7 +221,7 @@ another guest ([docs/M7_Q4_RESULT.md](docs/M7_Q4_RESULT.md)); quality = KLD and 
 | 9B | - | (~6 GB Q4) | (~10G) | - | (est. 10-17) | - | not built: [feasibility study](docs/FEASIBILITY-q4-qwen35-9b.md) |
 
 Short version: a 16 GB machine runs any row; the 4B Q4 (`q4`) is the best quality per GB, the 4B Q8 the best
-quality, the 2B the fastest. The working model (the remote instance) is the **4B q4**: best tool selection of the
+quality, the 2B the fastest. The working model (the one used day to day) is the **4B q4**: best tool selection of the
 three on the tool-call sets at about 21 tok/s ([docs/MODEL_CHOICE.md](docs/MODEL_CHOICE.md)); the build default
 stays the 2B. Every 4B option needs an 8G guest (6G no longer boots it since M5 / M5b). `QUANT=q4` keeps the attention and DeltaNet projections in Q8_0 because quantizing them
 to Q4 doubles the error (`q4all`); embeddings / lm_head are Q8_0 and norms, conv and DeltaNet gates f32 in all options.
@@ -229,7 +229,7 @@ to Q4 doubles the error (`q4all`); embeddings / lm_head are Q8_0 and norms, conv
 ```sh
 make model MODEL=4b QUANT=q4      # Qwen/Qwen3.5-4B (~9.3 GB download) -> models/qwen35-4b-q4_0mlp-v4.asmbin (+ embedder)
 make iso MODEL=4b QUANT=q4        # -> build/ringzero.iso (the banner shows the edition)
-make run-remote MODEL=4b QUANT=q4 # 8G guest (GUEST_MEM overrides): what the remote instance runs
+make run-remote MODEL=4b QUANT=q4 # 8G guest (GUEST_MEM overrides): the working model, headless
 make model MODEL=4b QUANT=q8 && make iso MODEL=4b QUANT=q8 && make run-remote MODEL=4b QUANT=q8   # 4B Q8, 8G guest
 make model MODEL=4b QUANT=q4all && make iso MODEL=4b QUANT=q4all                                   # 4B, every projection Q4
 make model && make iso && make run-remote                          # the default 2B Q8
@@ -271,15 +271,15 @@ M8 (common software, one block per tool in [docs/DEMOS.md](docs/DEMOS.md)): `!ru
 `!run python3` / `!run lua` / `!run sqlite3 FILE` (Ctrl-D ends them), `!run kibi /notes/todo.txt` on the serial
 console, or ask "quali tabelle ci sono nel database sqlite /demo/shop.db?" (after the sqlite3 demo created it).
 
-Remote instance on the Fedora box (Tailscale HOST-ADDRESS), running the 4B q4 on an 8G guest
-(restart it with `make run-remote MODEL=4b QUANT=q4`, see [docs/MODEL_CHOICE.md](docs/MODEL_CHOICE.md)):
+A headless instance on the build box (`make run-remote`, for example with `MODEL=4b QUANT=q4` on an 8G guest), used
+from another machine (HOST = the build box's address):
 
 ```sh
-nc HOST-ADDRESS 4555                 # serial shell: press Enter to get "ringzero[main]> "
-stty -echo -icanon; nc HOST-ADDRESS 4555; stty sane    # without the double local echo (Tab works too)
-open vnc://HOST-ADDRESS:5901         # framebuffer + PS/2 keyboard, password: aios
-ssh fedorascale 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
-ssh fedorascale 'cd ~/coding/ringzero && make run-local'   # at the Fedora desktop: the same VM in a QEMU window
+nc HOST 4555                         # serial shell: press Enter to get "ringzero[main]> "
+stty -echo -icanon; nc HOST 4555; stty sane    # without the double local echo (Tab works too)
+open vnc://HOST:5901                 # framebuffer + PS/2 keyboard, password: aios
+tail -f build/remote-serial.log      # on the build box: everything on serial
+make run-local                       # at the build box's desktop: the same VM in a QEMU window
 ```
 
 agentd at the prompt:
@@ -306,6 +306,17 @@ Tool-call grammar and hibernation:
 /prefill 32              # time the boot prefix prefill (block 32; /prefill 1 = per token), print the state hash
 /hibernate status        # is there an image; /hibernate discard deletes it and !poweroff skips it (fresh next boot)
 /snap                    # point, pool, timings and the state hash of the live state
+```
+
+Machine and session basics (`/help` or `!help` prints every command with its arguments):
+
+```
+!cpu                     # CPU model, clock and the features the engine uses (AVX2 FMA F16C, VNNI)
+!uptime                  # time since boot
+!stats                   # threads, parking, arena, context (/stats is the same)
+!park off|idle|USEC      # worker core parking between passes
+!reboot                  # reboot now (!poweroff: hibernate and power off)
+/temp 0.7                # sampling temperature (0 = greedy); /think on|off: model thinking
 ```
 
 More:
