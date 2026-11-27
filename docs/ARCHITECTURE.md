@@ -229,7 +229,7 @@ sequenceDiagram
     D->>D: facts, newest first, within 120 tok
     D->>X: embed the queued memory texts, then search(q): top 24, split into manual sections and the rest (top 4)
     D->>D: T22: if q asks how to do something (how do I, come faccio, come + first-person verb, ...): the best manual section with cos >= 0.55, one line, within 200 tok
-    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...), of the top 4 keep cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars, not q, at most 3, within 200 tok (each candidate logged)
+    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...), of the top 4 keep cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars (file chunk >= 8), not q, at most 3, within 200 tok (each candidate logged)
     D-->>A: "[memory from earlier conversations, ...]\n- user_name: Cris\n- the user said earlier: ...\n\n" (logged: ids, cos, tokens, ms)
     A->>D: on_user(q): journal 'U' record, "[said] q" queued when the turn ends (statements with a first-person word, and only if no tool but remember / forget / recall ran)
     A->>L: user turn = slot + q, then the usual tool loop

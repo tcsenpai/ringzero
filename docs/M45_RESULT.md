@@ -220,3 +220,40 @@ new rules). The thresholds are tuned on these two eval sets and the M4.5 tests, 
   dirty or leak clusters (`fsck.vfat -a build/disk.img`).
 - **Host load**: decode and prefill speed drop by 10-60% while another guest runs on the box (seen during these
   tests); boot times above were taken without it.
+
+## F8: short file notes (after 0.1.0)
+
+On the 0.1.0 beta (4B q4) `!write /notes/todo.txt buy milk`, idle, `/clear`, "cosa devo comprare?" answered "Non ho
+informazioni su ciò che devi comprare": the chunk `[/notes/todo.txt] buy milk` scored 0.642 but its body (8
+characters) is under the T35 minimum of 20, logged `too short`. In English the 4B called `recall` itself and
+answered. Fix (`slot()`, kernel/src/agentd.rs): a file chunk needs a body of FILE_NOTE_MIN = 8 characters; `[said]`
+and `[episode N]` notes keep 20. The cosine floors are unchanged. The `recall` tool never applied the minimum.
+
+Tests on a fresh copy of the beta `disk.img`, 4B q4, 8G, temperature 0 (slot lines from `/agentd log`):
+
+| Message after `/clear` | 0.1.0 | FILE_NOTE_MIN = 8 |
+|---|---|---|
+| "what do I need to buy?" | slot empty (`too short`, cos 0.572); `recall(query=buy)` -> "You need to buy milk" | slot: `file /notes/todo.txt: buy milk` -> "You need to buy milk." |
+| "cosa devo comprare?" | slot empty (cos 0.642, `too short`) -> "Non ho informazioni..." | slot: the same line -> "Devi comprare latte, come indicato nel file /notes/todo.txt." |
+| "what is my dog called?" (`/notes/pet.txt`) | slot: pet.txt (0.690) -> "Pixel" | the same |
+| "what is the capital of France?" | slot empty (todo.txt 0.290) -> "Paris" | the same |
+| "quanto fa 12 per 12?" | slot empty (todo.txt 0.324) | the same (the 4B answers "12 ÷ 12 = 1" in both) |
+
+A/B (`tools/tooleval.py`, M45 protocol above: constrain on, `SLOT=200`, a fresh copy of the test disk without
+`/sys`, the files indexed first; 4B q4):
+
+| | 0.1.0 | FILE_NOTE_MIN = 3 (first try) | **FILE_NOTE_MIN = 8** |
+|---|---|---|---|
+| spike (30) | 24 | 26 | **25** |
+| in-OS (24) | 23 | 22 | **23** |
+| first call right, spike (25) / in-OS (22) | 22 / 20 | 22 / 19 | **22 / 20** |
+| spike exact args (15) | 9 | 9 | **9** |
+| malformed / schema errors / grammar lines not valid | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 |
+| slot candidates kept / `too short` | 20 / 55 | 64 / 0 | 36 / 40 |
+
+With 3 the one-word files of the test disk (`/notes/idea.txt` "ciao", `/notes/notes.txt` "hello",
+`/notes/m47.txt` "prova") passed the cosine floor for unrelated requests and went into the slot (14, 11 and 4
+prompts); "crea la cartella /notes/m47" then called `rm` instead of `mkdir`. With 8 they stay out. The prompt that
+gained with 8: "leggi il file /home/todo.md" (one `cat`, was `cat`, `ls`, `ls`), with `/notes/todo.txt`
+("comprare il latte") in the slot. Limit: a one-word file ("latte") is still not recalled by the slot, only by the
+`recall` tool.

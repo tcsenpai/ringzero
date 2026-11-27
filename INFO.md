@@ -93,8 +93,8 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
 - Context compiler: the first message of every conversation, and the first turn after a compaction, gets a
   memory slot of at most 200 tokens: saved facts, then notes recalled for that message (earlier statements of the
   user, episodes, file chunks). This fixes the M2.5 compaction recall failure. Recalled notes are filtered (T35):
-  cosine 0.55 or more (0.40 for a keyword match), 20 characters or more, at most 3 lines, not the message itself;
-  only statements about the user (a first-person word: mi, mio, sono, my, I, ...) are kept as earlier statements,
+  cosine 0.55 or more (0.40 for a keyword match), 20 characters or more (8 for a file chunk), at most 3 lines, not
+  the message itself; only statements about the user (a first-person word: mi, mio, sono, my, I, ...) are kept as earlier statements,
   and not when the agent carried them out with a tool (remember / forget / recall do not count). `/agentd log` lists every
   candidate with its score and verdict.
 - Idle work runs in one priority queue at the prompt (embed memory texts, embed file chunks, save the index,
@@ -282,8 +282,7 @@ make run-local           # or: the same VM in a QEMU window on the box's desktop
 
 Try at the prompt: `!write /notes/pet.txt my dog is called Pixel and he loves carrots`, `!cat /notes/pet.txt`, `!ls /`, then ask
 "create a file /notes/idea.txt that says hello", or after a few seconds of idle (the file is then in the memory
-index) `/clear` and "what is my dog called?". Very short notes (under 20 characters, like "buy milk") are not
-recalled yet (follow-up F8). Tell it "my name is Anna and my favourite number is 4711", run `/consolidate`, then
+index) `/clear` and "what is my dog called?". Tell it "my name is Anna and my favourite number is 4711", run `/consolidate`, then
 `/facts`; `!poweroff`, boot again and ask "what is my name?": the facts and the memory index are still there, and
 the second boot loads the prompt state from the disk cache, and resumes the conversation from the
 hibernation image (`/snap` shows the same state hash before the poweroff and after the boot). Python: `!py 17*23`,
