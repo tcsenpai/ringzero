@@ -34,6 +34,7 @@ unsafe extern "C" {
     pub static mut g_ctx: [u64; 80];
     /// global Q8_0 scale mode of matmul.asm (not in g_ctx): set again after every context swap
     pub fn matmul_set_fp16(is_fp16: u64);
+    /// `w` bit 0 set = Q4_0 weights (matmul.asm M7): a Q8_0 buffer must be at least 2-byte aligned
     pub fn tp_matmul_q8_0(w: *const u8, x: *const f32, out: *mut f32, m: u64, k: u64);
     /// bytes per KV cache element: 2 (FP16, default build) or 4 (RINGZERO_KV=f32)
     pub static kv_elt_bytes: u64;

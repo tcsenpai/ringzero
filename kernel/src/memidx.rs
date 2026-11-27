@@ -33,7 +33,11 @@ struct Idx {
 }
 
 static mut IX: Idx = Idx { n: 0, dim: DIM, text_n: 0, off: [0; CAP + 1], embed_us: 0, embed_tok: 0, gen: 0 };
-static mut ROWS: [u8; CAP * ROW_MAX] = [0; CAP * ROW_MAX];
+/// The rows go to tp_matmul_q8_0 as one weight matrix: bit 0 of that pointer tags Q4_0 (matmul.asm, M7), so a plain
+/// u8 array (align 1) at an odd address was read as Q4_0 and every cos came out NaN. 64 like the model's tensors.
+#[repr(C, align(64))]
+struct Rows([u8; CAP * ROW_MAX]);
+static mut ROWS: Rows = Rows([0; CAP * ROW_MAX]);
 static mut TXT: [u8; TEXT_BYTES] = [0; TEXT_BYTES];
 static mut COS: [f32; CAP] = [0.0; CAP];
 static mut BM: [f32; CAP] = [0.0; CAP];
@@ -312,7 +316,7 @@ pub fn store_row(text: &str, row: &[u8]) -> Result<usize, &'static str> {
     }
     let text = text.trim();
     let text = &text[..crate::agent::floor_char(text, TEXT_MAX)];
-    unsafe { (&mut *core::ptr::addr_of_mut!(ROWS))[x.n * st..(x.n + 1) * st].copy_from_slice(row) };
+    unsafe { (&mut *core::ptr::addr_of_mut!(ROWS.0))[x.n * st..(x.n + 1) * st].copy_from_slice(row) };
     let t = unsafe { &mut *core::ptr::addr_of_mut!(TXT) };
     t[x.text_n..x.text_n + text.len()].copy_from_slice(text.as_bytes());
     x.off[x.n] = x.text_n as u32;
@@ -328,7 +332,7 @@ pub fn store_row(text: &str, row: &[u8]) -> Result<usize, &'static str> {
 pub fn retain(mut keep: impl FnMut(&str) -> bool) -> usize {
     let x = ix();
     let st = stride(x.dim);
-    let (rows, t) = unsafe { (&mut *core::ptr::addr_of_mut!(ROWS), &mut *core::ptr::addr_of_mut!(TXT)) };
+    let (rows, t) = unsafe { (&mut *core::ptr::addr_of_mut!(ROWS.0), &mut *core::ptr::addr_of_mut!(TXT)) };
     let (mut w, mut tw) = (0, 0);
     for r in 0..x.n {
         let (a, b) = (x.off[r] as usize, x.off[r + 1] as usize);
@@ -395,7 +399,7 @@ pub fn search(q: &str, hits: &mut [Hit]) -> Result<Found, &'static str> {
     };
     unsafe {
         matmul_set_fp16(1); // the rows carry fp16 scales; the loaded model's mode goes back right after
-        tp_matmul_q8_0(core::ptr::addr_of!(ROWS) as *const u8, v.as_ptr(), cos.as_mut_ptr(), x.n as u64, x.dim as u64);
+        tp_matmul_q8_0(core::ptr::addr_of!(ROWS.0) as *const u8, v.as_ptr(), cos.as_mut_ptr(), x.n as u64, x.dim as u64);
         matmul_set_fp16(ctx(CTX_FP16_SCALES) & 0xffff_ffff);
     }
     let n = x.n;
@@ -462,7 +466,7 @@ fn payload() -> [&'static [u8]; 3] {
     unsafe {
         [
             core::slice::from_raw_parts(x.off.as_ptr() as *const u8, (x.n + 1) * 4),
-            &(&*core::ptr::addr_of!(ROWS))[..x.n * stride(x.dim)],
+            &(&*core::ptr::addr_of!(ROWS.0))[..x.n * stride(x.dim)],
             &(&*core::ptr::addr_of!(TXT))[..x.text_n],
         ]
     }
@@ -530,7 +534,7 @@ pub fn load(path: &str, emb: u64, chunker: u32) -> Result<alloc::vec::Vec<u8>, &
     rd(&mut extra)?;
     unsafe {
         rd(core::slice::from_raw_parts_mut(x.off.as_mut_ptr() as *mut u8, (n + 1) * 4))?;
-        rd(&mut (&mut *core::ptr::addr_of_mut!(ROWS))[..n * st])?;
+        rd(&mut (&mut *core::ptr::addr_of_mut!(ROWS.0))[..n * st])?;
         rd(&mut (&mut *core::ptr::addr_of_mut!(TXT))[..tn])?;
     }
     (x.n, x.text_n) = (n, tn);
