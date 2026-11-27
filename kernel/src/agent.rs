@@ -469,7 +469,7 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
             if shell::confirm(q.as_str()) {
                 if c.name == "poweroff" { sys::poweroff() } else { sys::reboot() }
             }
-            let _ = write!(o, "cancelled: the user answered no, the machine stays on");
+            let _ = write!(o, "{} The machine stays on.", DECLINED);
         }
         // memory goes through agentd: the kernel validates, dedups and logs every change
         "recall" => crate::agentd::recall(arg(c, "query").unwrap_or(""), o),
@@ -494,7 +494,7 @@ fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
                 }
                 let _ = write!(fx, "{}forget {}", if fx.n > 0 { ", " } else { "" }, k);
             } else {
-                let _ = write!(o, "cancelled: the user answered no, the fact is kept");
+                let _ = write!(o, "{} The fact is kept.", DECLINED);
             }
         }
         "ls" | "cat" | "write_file" | "mkdir" | "rm" => {
@@ -565,12 +565,15 @@ fn fs_tool<const N: usize>(c: &Call, o: &mut SBuf<N>, fx: &mut SBuf<160>) -> Res
                 note("rm");
                 let _ = write!(o, "deleted {}", p);
             } else {
-                let _ = write!(o, "cancelled: the user answered no, {} is kept", p);
+                let _ = write!(o, "{} {} is kept.", DECLINED, p);
             }
         }
     }
     Ok(())
 }
+
+/// Tool result after the human answers no to a y/N (F7: the 4B said "Ho creato il file" after a softer wording).
+const DECLINED: &str = "NOT RUN: the user declined this call. Nothing was changed. Do not call it again; tell the user it was not done.";
 
 /// Tools that change the machine (M4.7a steered calls, T28 low-confidence calls).
 const FX: [&str; 10] = ["set_setting", "remember", "forget", "write_file", "mkdir", "rm", "poweroff", "reboot", "run_code", "run_wasm"];
@@ -739,7 +742,7 @@ pub fn ask(q: &str) {
                     } else if band == Some(Band::Low) && FX.contains(&c.name) && !ASKS.contains(&c.name)
                         && !shell::confirm("\n[confidence] the agent is not sure about this call. Run it?")
                     {
-                        let _ = write!(res, "error: not run: the agent was unsure about this call and the user did not confirm it. Ask the user what they want, or answer without the tool");
+                        let _ = write!(res, "{}", DECLINED);
                     } else {
                         exec(&c, res);
                     }
