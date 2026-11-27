@@ -936,6 +936,38 @@ pub fn pool_bytes() -> u64 {
     (st().n_chunks * CHUNK) as u64
 }
 
+/// M4.8a: free chunks that a loan to multi.rs must leave in the pool.
+const LEND_KEEP: usize = 256;
+
+/// M4.8a: lend k contiguous free chunks (the lowest free run: alloc takes chunks from the top) to multi.rs for an
+/// extra stream. They belong to no node, so they are never saved, hibernated or evicted; while lent they count as
+/// used. None when the pool is not there yet, has no such run, or would keep fewer than LEND_KEEP free chunks.
+pub fn lend(k: usize) -> Option<*mut u8> {
+    let s = st();
+    if s.pool.is_null() || k == 0 || free_chunks() < k + LEND_KEEP {
+        return None;
+    }
+    let free = |i: usize| s.used[i / 64] & 1 << (i % 64) == 0;
+    let mut i = 0;
+    while i + k <= s.n_chunks {
+        match (i..i + k).find(|&j| !free(j)) {
+            Some(j) => i = j + 1,
+            None => {
+                (i..i + k).for_each(|j| s.used[j / 64] |= 1 << (j % 64));
+                return Some(chunk(i as u16));
+            }
+        }
+    }
+    None
+}
+
+/// M4.8a: give back a loan of k chunks at p.
+pub fn take_back(p: *mut u8, k: usize) {
+    let s = st();
+    let i = (p as usize - s.pool as usize) / CHUNK;
+    (i..i + k).for_each(|j| s.used[j / 64] &= !(1 << (j % 64)));
+}
+
 /// /bench, /fill, /gen overwrite the cache from position 0.
 pub fn invalidate() {
     st().live = NIL;

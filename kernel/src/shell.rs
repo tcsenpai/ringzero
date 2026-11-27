@@ -145,7 +145,7 @@ const CMDS: &[Cmd] = &[
     c("facts", SLASH, &[], "saved facts (key = value, source, time)"),
     c("remember", SLASH, &[], "KEY VALUE  save a fact"),
     c("forget", SLASH, &[], "KEY  delete a fact (asks y/N)"),
-    c("consolidate", SLASH, &[], "summarize this session into an episode and facts now"),
+    c("consolidate", SLASH, &["&"], "[&]  summarize this session into an episode and facts now (&: on the background stream, next to the next answers)"),
     c("embed", SLASH, &["-q", "-v"], "[-q] [-v] TEXT  embed TEXT (-q: as a query, -v: print all values)"),
     c("index", SLASH, &["add", "stats", "clear", "dim"], "add TEXT | stats | clear (rebuild) | dim N  the memory index"),
     c("search", SLASH, &[], "QUERY  top 5 in the memory index (embedding + gated BM25)"),
@@ -155,6 +155,7 @@ const CMDS: &[Cmd] = &[
     c("gen", SLASH, &[], "<n> <text>  debug: greedy ids + logit margins"),
     c("prefill", SLASH, &["avx2", "vnni"], "[B] [avx2|vnni]  prompt block (1 = per token, 64 max) and matmul kernel: time the boot prefix + state hash"),
     c("spec", SLASH, &[], "[N]  debug: speculative verifier logits for N positions (16) vs one transformer_forward each, and their times"),
+    c("multi", SLASH, &[], "[N] [T]  N streams decoded together vs alone: aggregate tok/s, ids and logits the same (T tokens each, 64)"),
 ];
 
 fn pre_of(b: u8) -> u8 {
@@ -835,6 +836,11 @@ pub fn run() -> ! {
                 llm::prefill_bench(arg, agent::prefix_tokens());
                 agent::resume();
             }
+            "multi" => {
+                snap::invalidate(); // stream 0 is the agent's context, from position 0
+                crate::multi::bench(arg);
+                agent::resume();
+            }
             "spec" => {
                 snap::invalidate(); // the check runs from position 0
                 llm::spec_check(&agent::prefix_tokens()[..200], arg.parse::<usize>().unwrap_or(llm::SPEC_ROWS));
@@ -915,6 +921,7 @@ pub fn run() -> ! {
                     println!("[facts] kept");
                 }
             }
+            "consolidate" if arg == "&" => crate::agentd::consolidate_bg(),
             "consolidate" => crate::agentd::consolidate_now(),
             "embed" => embed_cmd(arg),
             "index" => index_cmd(arg),

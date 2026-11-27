@@ -123,7 +123,8 @@
         hibernates. ringzero's own data lives in <code>/var/lib/ringzero</code>.</p></li>
     <li><h3>Fast where it matters</h3>
       <p>The prompt is read in blocks (about 230 tokens/s on the 2B). Text copied from the conversation is written
-        about 2.5x faster, and tool calls about 1.8x faster, with the same output.</p></li>
+        about 2.5x faster, and tool calls about 1.8x faster, with the same output. The session summary decodes as
+        a second stream in the same engine passes as the chat, so typing does not stop it.</p></li>
   </ul>
 </section>
 

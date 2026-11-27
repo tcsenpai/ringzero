@@ -49,7 +49,8 @@ flowchart TB
         SH["shell.rs<br/>text -> agent, !machine, /session commands,<br/>Tab completion, suggestions, history, Ctrl-C"]
         AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
-        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32),<br/>M4.8b: prompt-lookup drafts, one verify pass,<br/>DeltaNet state copy for rollback"]
+        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32),<br/>M4.8b: prompt-lookup drafts, one verify pass,<br/>DeltaNet state copy for rollback,<br/>M4.8a: pass_bg: the background row rides along"]
+        MUL["multi.rs: multi-stream decode (M4.8a)<br/>3 extra streams (4096 positions, own KV + DeltaNet),<br/>memory lent by the snapshot pool while open,<br/>fork the agent's context, step(rows of any stream),<br/>background stream for consolidation, /multi"]
         SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay (batched), eviction,<br/>boot snapshot cache (/var/lib/ringzero/bootsnap.bin, 35 MiB),<br/>hibernation image: tree + pool chunks, state hash"]
         GRAM["gram.rs: tool-call grammar (M4.7a)<br/>byte automaton from the tool schemas (names, keys,<br/>enums, integers, required, closing tags),<br/>vocab trie: ids sorted by bytes + prefix lengths (1.2 MiB),<br/>check the pick; on a reject logits -> -inf, pick again;<br/>T39: draft(): the text the grammar implies up to the<br/>model's next choice, tokenized, as the speculative draft;<br/>T28: at a decision token (tool name, optional parameter,<br/>enum, integer) the margin p1 - p2 of the softmax over the<br/>allowed tokens, read from the pick's logits row"]
         HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff, disk to /sys/power/state<br/>-> /var/lib/ringzero/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
@@ -64,7 +65,7 @@ flowchart TB
         KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(RINGZERO_KV=f32: FP32, 768 MiB)"]
         EKV["embedder arena<br/>KV 28 layers x 1024 tokens FP16, 113 MiB"]
         MM["matmul.asm Q8_0 + Q4_0 (M7, W4A8)<br/>tagged weight pointer -> matmul_q4_0_range<br/>batch kernels (AVX2, AVX-VNNI): Q4 row<br/>unpacked once into q4_rowbuf[tid]"]
-        PF["prefill.asm (M4.8)<br/>transformer_prefill: B prompt tokens<br/>per weight pass, bit-exact;<br/>compute_logits 2 (M4.8b): logits of every row,<br/>one batched LM-head matmul"]
+        PF["prefill.asm (M4.8)<br/>transformer_prefill: B prompt tokens<br/>per weight pass, bit-exact;<br/>compute_logits 2 (M4.8b): logits of every row,<br/>one batched LM-head matmul;<br/>pf_ms (M4.8a): per-row stream table,<br/>rows of different streams in one pass"]
         MA["math.asm"]
         TOK["tokenizer.asm BPE"]
         WK["smp.asm<br/>tp_* dispatch + worker loop on APs 1..7"]
@@ -109,8 +110,12 @@ flowchart TB
     AGD -- "store rows, retain, search,<br/>save / load index.bin" --> IDX
     AGD -- "append, load (recover torn tail)" --> MST
     MST --> FS
-    AGD -- "consolidation: fwd_block (one prefill block)<br/>or fwd + pick_next per step, output to CAP only" --> LLM
-    AGD -- "rollback to the current point after<br/>consolidation or on input" --> SNAP
+    AGD -- "/consolidate: fwd_block (one prefill block)<br/>or fwd + pick_next per step, output to CAP only" --> LLM
+    AGD -- "/consolidate: rollback to the current point after<br/>it or on input" --> SNAP
+    AGD -- "idle consolidation (M4.8a): bg_start (fork),<br/>bg_run in idle slices, output ids" --> MUL
+    LLM -- "generate: the background row next to<br/>the foreground rows (pass_bg)" --> MUL
+    MUL -- "transformer_prefill with pf_ms rows" --> PF
+    MUL -- "lend / take_back: a slot's memory<br/>from free pool chunks" --> SNAP
     AG -- "boot: load_prefix or prefill + save_prefix<br/>(key: model, prefix ids, engine build)" --> SNAP
     SNAP -- "bootsnap.bin, hib/image.bin" --> FS
     LLM -- "after <tool_call>: fix(pick) per token,<br/>draft() before each verify (T39)" --> GRAM
@@ -264,14 +269,17 @@ sequenceDiagram
         D->>D: pick: 1 memory texts, 2 file chunks, 3 save index, 4 consolidate (after 60 s idle, +1 every 50 waited slices)
         alt embed
             D->>E: begin / resume until stop or done, store the row
-        else consolidate
+        else consolidate (idle, M4.8a: on the background stream)
+            D->>L: fork the current point into an extra stream, feed the fixed instruction, then decode greedily (no thinking), alone in idle slices and one token per foreground decode step
+            L-->>D: the output ids become EPISODE: ... / FACT: key = value (CAP only), the conversation is never touched
+        else /consolidate (or no stream fits)
             D->>L: on top of the current point: feed the fixed instruction, then generate (greedy, no thinking), one token per step
             L-->>D: EPISODE: ... / FACT: key = value (CAP only)
             D->>P: rollback: the current point back (R copy, ~0.7 ms)
             D->>D: validate facts (snake_case key, short value, grounded in what the user said, dedup), append to /var/lib/ringzero/mem
         end
     end
-    S->>D: preempt() on the first input byte: a consolidation in flight stops, the current point is restored
+    S->>D: preempt() on the first input byte: a consolidation on top of the current point stops and the point is restored, one on the background stream goes on
 ```
 
 Compaction (auto at 75% fill, or `/compact`):
@@ -466,6 +474,33 @@ integer), `margin` walks the vocab trie from the state before the pick and takes
 over the allowed tokens, grouped by outcome. The logits are only read. agent.rs prints the call's smallest margin as
 a `[confidence]` line and picks the band (`CONF_LO` = `make CONF_ASK`, default 0.80; `CONF_HI` = max(0.80, `CONF_LO`)): run, run and log, or y/N first for the tools
 that write (write_file, mkdir, set_setting, remember; T54). Results: docs/T28_RESULT.md.
+
+## Multi-stream decode (M4.8a)
+
+One decode step reads every weight once for one token. `transformer_prefill` takes an optional row table
+(`pf_ms`, 6 x u64 per row: position, K cache, V cache, DeltaNet state, conv history, max_seq): before a row's
+attention or DeltaNet step the five g_ctx stream fields are pointed at that row's stream and restored on return,
+so rows of different conversations share each batched matmul (the weights are read once for all of them) while
+attention, the DeltaNet recurrence and the conv history run per row on their own stream. Rows of one stream behave
+exactly as the batched prefill. The matmuls repeat the per-token arithmetic, so every stream's logits are
+bit-identical to decoding it alone (`/multi [N] [T]` checks the ids and every step's logits).
+
+```
+streams: 0 = the agent's context (g_ctx buffers, 32768 positions, snapshots, hibernation)
+         1..3 = multi.rs slots (4096 positions, own KV + DeltaNet state, memory lent by the snapshot pool
+                while open: snap::lend / take_back, a contiguous run of free chunks; never saved)
+generate step with a background row:  rows [fg pending.., fg next, (draft..)] + [bg token]  -> one pass
+                                      fg logits rows -> pick as before;  bg row -> argmax -> next bg token
+```
+
+The one user is agentd's idle consolidation: `bg_start` forks the agent's context at the current point into slot 1
+(KV rows 0..pos per plane and the DeltaNet state copied), queues the fixed instruction and decodes greedily.
+`bg_run` advances it alone in idle slices (instruction in blocks of 32 rows, then one row per pass), and
+`llm::pass_bg` appends its row to every foreground decode pass (a plain step or a speculative verify), so input at
+the prompt does not stop it. The output ids go through the same capture as before and give the same text.
+`/consolidate &` starts the same at once and returns to the prompt. `/consolidate`, and a conversation longer
+than the slot, keep the M4.5 path on top of the current point.
+Results: docs/M48A_RESULT.md.
 
 ## Memory
 

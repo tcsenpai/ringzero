@@ -34,6 +34,16 @@ overwritten later. 4B q4: quoting answers decode at 2.0-2.5x (20.8 -> 53.2 tok/s
 chat and tool calls within the run-to-run noise. `!set spec on|off|N`, `/spec [N]` checks the verifier against
 the per-token path. Results: [docs/M48B_RESULT.md](docs/M48B_RESULT.md).
 
+Multi-stream decode (M4.8a): rows of up to 4 conversations go through one engine pass, each at its own position
+on its own KV cache and DeltaNet state, so the weights are read once for all of them (`transformer_prefill` with
+a per-row stream table). Stream 0 is the agent's context; up to 3 extra streams of 4096 positions are opened only
+while used, with memory lent by the snapshot pool (67 MiB each on the 2B, 179 MiB on the 4B; at least 256 MiB of
+the pool stay free) and given back after; they are never saved. Every stream's ids and logits are bit-identical to decoding it alone. 8 vCPU: 2 streams give 1.76-1.85x the tok/s of one
+on the 4B q4 and 1.89-1.93x on the 2B q8, 4 streams 2.58-2.81x and 2.96-3.26x (on the 4B a Q4_0 kernel for 1-4
+rows, `matmul_q4v_range`, keeps the weights packed). The user is agentd: an idle consolidation runs on a copy
+of the conversation in an extra stream, alone in idle slices and one token next to every foreground decode step,
+so typing a question does not stop it. `/multi [N] [T]` measures it. Results: [docs/M48A_RESULT.md](docs/M48A_RESULT.md).
+
 Grammar drafts (T39): inside a tool call the speculative draft comes first from the M4.7a grammar: from its state
 the kernel writes the text the call format implies up to the model's next choice (the rest of a tool or parameter
 name once only one fits, `>`, `\n`, `<parameter=` while a required parameter is missing, `</parameter>`,
@@ -149,8 +159,9 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
 - Idle work runs in one priority queue at the prompt (embed memory texts, embed file chunks, save the index,
   consolidate), in slices that any keystroke stops between engine steps. Consolidation (after 60 s idle, or
   `/consolidate`) has the 2B summarize the session into an episode and propose facts; the kernel validates them
-  (snake_case key, short value, grounded in what the user said, dedup) and the user's conversation is restored
-  to its snapshot point after.
+  (snake_case key, short value, grounded in what the user said, dedup). The idle one runs on a copy of the
+  conversation in an extra stream (M4.8a) and goes on next to the answer when the user types; `/consolidate` (and
+  a conversation longer than 4096 positions) runs on top of the snapshot point, which is restored after.
 Results: [docs/M45_RESULT.md](docs/M45_RESULT.md).
 
 Built-in manual (T22): [docs/MANUAL.md](docs/MANUAL.md) is a manual written for the model (30 short sections, one
@@ -365,6 +376,8 @@ agentd at the prompt:
 /facts                   # saved facts: key = value (source, time)
 /remember KEY VALUE      # save a fact yourself; /forget KEY deletes one (asks y/N)
 /consolidate             # episode + facts from this session now (Ctrl-C stops and restores the conversation)
+/consolidate &           # M4.8a: the same on the background stream: back to the prompt at once, it decodes
+                         # next to the next answers (the idle one runs this way too: typing does not stop it)
 !set consolidate 30      # idle seconds before an automatic consolidation (0 = only /consolidate)
 !set slot 0              # turn the memory slot off (default 200 tokens)
 /index clear             # throw the index away and re-embed every file and memory record in idle time
@@ -377,6 +390,7 @@ Tool-call grammar and hibernation:
 !set confidence off      # T28: no [confidence] line and no low-confidence question (default on)
 !set spec off            # one token per pass (default on: prompt-lookup drafts, verified in one pass; N = longest draft)
 /spec 9                  # verifier check: 9 positions per token vs one verify pass (bit-identical logits, times)
+/multi 2                 # M4.8a: 2 streams x 64 tokens alone, then together: aggregate tok/s, ids + logits same
 /hibernate               # save the conversation + snapshot tree now (!poweroff does it too)
 /prefill 32              # time the boot prefix prefill (block 32; /prefill 1 = per token), print the state hash
 /hibernate status        # is there an image; /hibernate discard deletes it and !poweroff skips it (fresh next boot)
@@ -471,6 +485,7 @@ Memory index, from the shell:
 | `kernel/src/sysfs.rs`, `devfs.rs` | /sys (class/block, bus/pci/devices, devices/system/cpu, power/state) and /dev (null, zero, random, urandom, tty, console, vda) (T55) |
 | `kernel/src/layout.rs` | /var/lib/ringzero paths, the migration of a 0.1 disk, /etc/hostname and the virtual /etc files, /tmp (T55) |
 | `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log, merge-legacy; record stores in /var/lib/ringzero/mem (M4.5, T55) |
+| `kernel/src/multi.rs` | multi-stream decode (M4.8a): extra stream slots, fork, one pass over rows of several streams, the background stream for consolidation, `/multi` |
 | `kernel/src/gram.rs` | tool-call grammar: byte automaton from the tool schemas, vocab trie, logit mask (M4.7a) |
 | `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
 | `kernel/src/wasm.rs` | WASI runtime (M5b): `!wasm`/`!run`, `run_wasm`, wasmi engine per run, fuel slices (budget, Ctrl-C), WASI preview1 host functions over fs.rs; the wasm memory slot is in `mem.rs` |
@@ -478,7 +493,7 @@ Memory index, from the shell:
 | `tools/wasm/c/`, `tools/demo/`, `tools/m8test.py` | M8: setjmp/longjmp over Binaryen's Asyncify (`setjmp.h`, `rzsjlj.c`) and libc stubs (`nosys.c`) for the C programs; the `/demo` inputs of docs/DEMOS.md; a boot test that types steps when a regex matches (REPLs, the editor) |
 | `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
-| `engine/` | vendored NASM engine (transformer.asm has marked ringzero changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
+| `engine/` | vendored NASM engine (transformer.asm has marked ringzero changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8; per-row stream table, M4.8a) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
 | `tools/manvec.py` | T38 pass 1: boots an ISO headless, `/man dump`, checks and writes `build/manvec.bin` (the manual's vectors linked into the kernel) |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot; `"CMD ^C3"` sends Ctrl-C 3 s after CMD) |

@@ -105,7 +105,7 @@ Asked as: how do I see what the memory system decided, cosa ha deciso la memoria
 
 ## Memory slot and consolidation
 Asked as: memory slot, consolidare, consolidation, riassunto della sessione, turn off memory
-The first message of every conversation gets a memory slot (`[memory]` lines): saved facts and notes recalled for that message, at most 200 tokens; `!set slot 0` turns it off. After 60 s idle with new turns the agent summarizes the session into an episode and facts (consolidation); `/consolidate` does it now, `!set consolidate N` sets the idle seconds (0 = only by hand).
+The first message of every conversation gets a memory slot (`[memory]` lines): saved facts and notes recalled for that message, at most 200 tokens; `!set slot 0` turns it off. After 60 s idle with new turns the agent summarizes the session into an episode and facts (consolidation); `/consolidate` does it now, `!set consolidate N` sets the idle seconds (0 = only by hand). The idle consolidation runs on a second stream, a copy of the conversation, so typing a new question does not stop it: it goes on next to the answer.
 
 ## Memory index and search
 Asked as: how do I search my notes, cercare nei file, search memory, indice, find a file by meaning
@@ -121,7 +121,7 @@ Every tool call prints a `[confidence]` line: the smallest margin (0 to 1) betwe
 
 ## Speed and benchmarks
 Asked as: how fast is it, quanto e veloce, benchmark, tokens per second, speculative decoding
-`/bench` runs a 64-token decode benchmark (the conversation is restored after). `/prefill` times the boot prompt prefill. Every answer ends with a `[decode]` line with its tokens per second. `!set spec off` turns speculative decoding off (it speeds up answers that copy text from the conversation), `!set spec N` sets the longest draft.
+`/bench` runs a 64-token decode benchmark (the conversation is restored after). `/prefill` times the boot prompt prefill. Every answer ends with a `[decode]` line with its tokens per second. `!set spec off` turns speculative decoding off (it speeds up answers that copy text from the conversation), `!set spec N` sets the longest draft. `/multi` decodes up to 4 streams together and alone and prints both speeds (one pass reads the weights once for all of them).
 
 ## What ringzero is
 Asked as: what is ringzero, cos'e ringzero, which model, quale modello, chi sei

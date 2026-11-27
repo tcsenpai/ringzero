@@ -87,6 +87,11 @@ fn rate(n: u64, us: u64) -> (u64, u64) {
 /// T54: the agent's answer round after the tool round limit: <tool_call> cannot be picked.
 pub static mut NO_TOOLS: bool = false;
 
+/// Argmax of BUF_LOGITS (`/multi`: the sampler settings and the T54 mask do not apply).
+pub fn pick_greedy() -> u64 {
+    unsafe { argmax_f32(ctx(CTX_BUF_LOGITS) as *const f32, ctx(CTX_SAMPLE_N)) }
+}
+
 pub fn pick_next() -> u64 {
     let logits = ctx(CTX_BUF_LOGITS) as *const f32;
     let n = ctx(CTX_SAMPLE_N);
@@ -644,6 +649,8 @@ pub enum Stop {
 
 /// Logits rows of one verify (draft + 1).
 pub const SPEC_ROWS: usize = 16;
+/// Logits rows allocated (pf_lg_ptr): a verify plus one row per other stream (M4.8a).
+pub const LG_ROWS: usize = SPEC_ROWS + crate::multi::MAX_STREAMS - 1;
 /// Emitted tokens not fed yet, and so the largest verify pass (<= PREFILL_MAX_B).
 const TODO_MAX: usize = 48;
 pub static mut SPEC_ON: bool = true;
@@ -681,7 +688,7 @@ fn spec_init() {
         return;
     }
     let stride = (ctx(CTX_VOCAB_SIZE) * 4 + 63) & !63;
-    let lg = crate::mem::sys_mmap_anon(stride * SPEC_ROWS as u64);
+    let lg = crate::mem::sys_mmap_anon(stride * LG_ROWS as u64);
     let bak = crate::mem::sys_mmap_anon(ctx(CTX_DN_ZERO_BYTES));
     if (lg as i64) <= 0 || (bak as i64) <= 0 {
         crate::klog!(b'W', "model: speculative decoding off (arena full)");
@@ -689,7 +696,7 @@ fn spec_init() {
     }
     unsafe { (pf_lg_ptr, pf_lg_stride, DN_BAK, SPEC_OK) = (lg as u64, stride, bak, true) };
     crate::klog!(b'I', "model: speculative decoding (prompt lookup): {} logits rows {} KiB, DeltaNet state copy {} KiB",
-        SPEC_ROWS, stride * SPEC_ROWS as u64 >> 10, ctx(CTX_DN_ZERO_BYTES) >> 10);
+        LG_ROWS, stride * LG_ROWS as u64 >> 10, ctx(CTX_DN_ZERO_BYTES) >> 10);
 }
 
 pub fn spec_ok() -> bool {
@@ -702,6 +709,11 @@ fn dn_copy(save: bool) {
     unsafe {
         if save { core::ptr::copy_nonoverlapping(live, bak, n) } else { core::ptr::copy_nonoverlapping(bak, live, n) }
     }
+}
+
+/// Logits row r of the last compute_logits = 2 pass.
+pub fn lg_row(r: usize) -> *const f32 {
+    unsafe { (pf_lg_ptr + r as u64 * pf_lg_stride) as *const f32 }
 }
 
 /// Logits row r of the last verify -> BUF_LOGITS (what pick_next and the grammar read).
@@ -723,6 +735,31 @@ fn fwd_verify(t: &[u32], pos: u64, lg0: usize) {
         pf_lg0 = lg0 as u64;
         transformer_prefill(t.as_ptr(), t.len() as u64, pos, 2);
     }
+}
+
+/// M4.8a: a generate() pass over t at pos (recorded in REC) with the background stream's row appended when one is
+/// running (multi::bg_row): the weights are read once for both. lg = Some(r): logits of t's rows r.. in the logits
+/// rows (a verify), None: logits of t's last row in BUF_LOGITS. Every row's logits are bit-identical to a pass
+/// without the extra row (multi.rs), so the foreground's tokens do not change. false = no background row (the
+/// caller runs its own pass, the M4.8b code unchanged).
+fn pass_bg(t: &[u32], pos: u64, lg: Option<usize>) -> bool {
+    let Some((bs, bt, bp, want)) = crate::multi::bg_row() else { return false };
+    let n = t.len();
+    let mut rows = [(0usize, 0u32, 0u64); TODO_MAX + 1];
+    for (j, &x) in t.iter().enumerate() {
+        if let Some(r) = rec().get_mut(pos as usize + j) {
+            *r = x;
+        }
+        rows[j] = (0, x, pos + j as u64);
+    }
+    rows[n] = (bs, bt, bp);
+    let lg0 = lg.unwrap_or(n - 1);
+    crate::multi::step(&rows[..n + 1], Some(lg0));
+    if lg.is_none() {
+        logits_row(0);
+    }
+    crate::multi::bg_advance(want.then_some(n - lg0), true);
+    true
 }
 
 /// Shortest context match that drafts (tokens), and the longest one measured.
@@ -845,7 +882,9 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         }
         cool = cool.saturating_sub(1);
         if k == 0 {
-            if nt == 1 { fwd(todo[0], *pos, 1) } else { fwd_block(&todo[..nt], *pos, true) }
+            if !pass_bg(&todo[..nt], *pos, None) {
+                if nt == 1 { fwd(todo[0], *pos, 1) } else { fwd_block(&todo[..nt], *pos, true) }
+            }
             *pos += nt as u64;
             nt = 0;
             next = pick_fixed();
@@ -854,7 +893,9 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         let t0 = smp::rdtsc();
         blk[..nt].copy_from_slice(&todo[..nt]);
         dn_copy(true);
-        fwd_verify(&blk[..nt + k], *pos, nt - 1);
+        if !pass_bg(&blk[..nt + k], *pos, Some(nt - 1)) {
+            fwd_verify(&blk[..nt + k], *pos, nt - 1);
+        }
         let x = st();
         (x.verifies, x.drafted, x.verify_us) = (x.verifies + 1, x.drafted + k as u32, x.verify_us + smp::tsc_to_us(smp::rdtsc() - t0));
         let mut r = 0; // drafts accepted
