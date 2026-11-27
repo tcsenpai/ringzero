@@ -7,7 +7,7 @@ All diagrams of this page as one PDF: [ARCHITECTURE_DIAGRAMS.pdf](ARCHITECTURE_D
 ringzero presents itself as a Unix: the models already know Linux, so the OS follows Linux/Unix conventions
 wherever they fit (everything is a file: /proc, /sys as sysfs, /dev, /etc; familiar paths, command names and
 outputs). New features expose state as files first and add a special tool only when a file cannot do the job.
-ringzero's own data lives outside the Linux paths (/var/lib/ringzero, migration from /sys planned).
+ringzero's own data lives outside the Linux paths (/var/lib/ringzero, migration from /sys planned). Exact Linux formats are not required: familiar paths and names matter, content only needs to be clear, because the model interprets the output.
 
 ## Diagram
 
