@@ -69,7 +69,11 @@ Asked as: how do I change the keyboard layout, come cambio layout tastiera, tast
 
 ## Settings
 Asked as: how do I change a setting, come cambio le impostazioni, settings list, configurazione
-`!set KEY VALUE` changes a setting: temperature (0 = greedy), cores (cores used for inference), keyboard (us or it), think (on or off), compact (percent of context before compaction), snappool (MiB), consolidate (idle seconds, 0 = off), slot (memory slot tokens, 0 = off), constrain (on or off: tool-call grammar), spec (on, off or N from 1 to 15: speculative decoding), gramdraft (on or off), confidence (on or off), seed (sampler RNG), color (on or off: console colors). On/off settings take on, off, 1, 0, true or false; anything else is refused with an error and the setting keeps its value. A hibernation image keeps temperature, think, constrain, compact and color; the others go back to their defaults at boot.
+`!set KEY VALUE` changes a setting: temperature (0 = greedy), cores (cores used for inference), keyboard (us or it), think (on or off), compact (percent of context before compaction), snappool (MiB), consolidate (idle seconds, 0 = off), slot (memory slot tokens, 0 = off), constrain (on or off: tool-call grammar), spec (on, off or N from 1 to 15: speculative decoding), gramdraft (on or off), confidence (on or off), seed (sampler RNG), color (on or off: console colors), rounds (tool rounds per question, 1 to 20). On/off settings take on, off, 1, 0, true or false; anything else is refused with an error and the setting keeps its value. A hibernation image keeps temperature, think, constrain, compact, color and rounds; the others go back to their defaults at boot.
+
+## Tool round limit
+Asked as: the agent stopped calling tools, quanti tool puo usare, round limit, limite di chiamate, the agent gave up
+The agent can call up to 10 tools for one question. When the limit is reached the shell prints `[agent] tool round limit (10) reached, answering without tools` and the model answers once more with tool calls blocked, using what it found so far, so every question ends with an answer. `!set rounds N` sets the limit from 1 to 20 (`!set rounds 4` for short turns); the value is kept by hibernation. The default is set when the system is built (`make iso ROUNDS=N`).
 
 ## Temperature and thinking
 Asked as: how do I make answers deterministic, temperatura, more creative answers, thinking mode, ragionamento

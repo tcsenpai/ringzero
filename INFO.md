@@ -9,7 +9,10 @@ into the kernel as objects.
 Status: **M4.7 constrained tool calls + hibernation** (with M5 MicroPython and M5b WASI; edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
-uptime, settings, poweroff/reboot with confirmation) in its native tool format. `!cmd` runs a machine
+uptime, settings, poweroff/reboot with confirmation) in its native tool format, up to 10 tool rounds per question
+(`!set rounds N`, 1..20, `make iso ROUNDS=N`); after the last one the model answers once more with the
+`<tool_call>` token blocked, so every question ends with an answer (`[agent] tool round limit (N) reached,
+answering without tools`). `!cmd` runs a machine
 command (`!mem`, `!cores 4`, `!log 10`, `!kbd it`, `!set temperature 0.7`, `!poweroff`), `/cmd` a session
 command (`/help`, `/clear`, `/ctx`, `/compact`, `/history`, `/bench`). Tab completes commands and their
 arguments, a bare `/` or `!` lists them, up/down recall history. The context is 32768 tokens with an FP16
@@ -326,12 +329,13 @@ default are in [openspec/specs/settings/spec.md](openspec/specs/settings/spec.md
 !set snappool 512        # MiB the snapshot pool may use, 64..pool size (default the whole pool)
 !set seed 7              # sampler RNG state, positive integer (default 42; stored with every snapshot point)
 !set color off           # role colors on serial and the framebuffer on|off (default on)
+!set rounds 5            # tool rounds per question, 1..20 (default 10, make iso ROUNDS=N), then an answer without tools
 ```
 
 On/off settings (think, constrain, confidence, gramdraft, color) take on/1/true or off/0/false; any other value is
 refused with `error: <key> must be on or off` and the setting keeps its value. `!set spec` takes on, off or a
 longest draft from 1 to 15 and refuses anything else. An unknown key prints the list of every key. Saved in the
-hibernation image: temperature, think, constrain, compact, color (and the snapshot pool cap with the tree).
+hibernation image: temperature, think, constrain, compact, color, rounds (and the snapshot pool cap with the tree).
 
 Console colors (T46, palette in [assets/branding/README.md](assets/branding/README.md)): the prompt is bold red,
 `[tool]` lines gold (ANSI yellow), `[memory]`, `[grammar]`, `[confidence]` and the `[prefill]`/`[decode]` statistics
@@ -350,6 +354,7 @@ make model EMBED_HF_DIR=/path/to/hf/qwen3-embedding-0.6b   # same for the embedd
 make iso                 # kernel + Limine (fetched, pinned tag) + model -> build/ringzero.iso
 RINGZERO_KV=f32 make iso     # FP32 KV cache instead of FP16 (comparison build, 768 MiB of KV)
 make iso CONF_ASK=25         # T28: ask y/N below a 0.25 confidence margin instead of 0.80 (0..100)
+make iso ROUNDS=6            # T54: tool rounds per question before the answer without tools (1..20, default 10)
 make run-bios            # QEMU/KVM, q35, 6 GiB (GUEST_MEM=6G), 8 CPUs, serial on stdio (Ctrl-C to quit)
 make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window

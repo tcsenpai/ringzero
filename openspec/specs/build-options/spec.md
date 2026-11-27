@@ -1,7 +1,7 @@
 # build-options Specification
 
 ## Purpose
-The build-time options of ringzero: Makefile variables (MODEL, QUANT, EMBED, GUEST_MEM, MANUAL_VECTORS, CONF_ASK, DISK_MB and the run targets' limits) and the RINGZERO_* environment variables the kernel build reads, with their accepted values and defaults.
+The build-time options of ringzero: Makefile variables (MODEL, QUANT, EMBED, GUEST_MEM, MANUAL_VECTORS, CONF_ASK, ROUNDS, DISK_MB and the run targets' limits) and the RINGZERO_* environment variables the kernel build reads, with their accepted values and defaults.
 
 ## Requirements
 
@@ -50,8 +50,8 @@ Source: Makefile target model, target kernel; kernel/build.rs main
 - **THEN** no headless pass runs and `/man check` reports `not built in (MANUAL_VECTORS=0)`
 
 ### Requirement: CONF_ASK
-`CONF_ASK` SHALL set, through RINGZERO_CONF_ASK, the percent below which a low-confidence call of a tool that changes the machine asks first: an integer clamped to 0..100, 80 when unset or empty; a value with a character that is not a digit SHALL fail the kernel build. A change of the value SHALL rebuild the kernel.
-Source: Makefile target kernel; kernel/src/agent.rs fs_tool, conf_ask; kernel/build.rs main
+`CONF_ASK` SHALL set, through RINGZERO_CONF_ASK, the percent below which a low-confidence call of a tool that writes asks first: an integer clamped to 0..100, 80 when unset or empty; a value with a character that is not a digit SHALL fail the kernel build. A change of the value SHALL rebuild the kernel.
+Source: Makefile target kernel; kernel/src/agent.rs CONF_LO, env_num; kernel/build.rs main
 
 #### Scenario: Default
 - **WHEN** the user runs `make iso`
@@ -63,7 +63,7 @@ Source: Makefile target kernel; kernel/src/agent.rs fs_tool, conf_ask; kernel/bu
 
 #### Scenario: Not a number
 - **WHEN** the user runs `make iso CONF_ASK=0.8`
-- **THEN** the kernel build fails with `RINGZERO_CONF_ASK: a percent integer, 0..100`
+- **THEN** the kernel build fails with `RINGZERO_CONF_ASK / RINGZERO_ROUNDS: an integer (percent 0..100 / rounds 1..20)`
 
 ### Requirement: Data disk
 `make disk` SHALL create build/disk.img as a whole-volume FAT32 of DISK_MB MiB (512 by default) labelled RINGZERO, and SHALL never overwrite an existing image.
@@ -114,9 +114,21 @@ Source: Makefile VNC_PASS, target run-remote
 - **THEN** the client asks for a password and `ringzero` opens the framebuffer
 
 ### Requirement: Build variables rebuild the kernel
-kernel/build.rs SHALL declare rerun-if-env-changed for every RINGZERO_* variable the kernel reads at build time (KV, EDITION, MANVEC, CONF_ASK, HEAP_MIB, WASM_MIB, UPY_HEAP_MIB), so changing one of them alone rebuilds the kernel.
+kernel/build.rs SHALL declare rerun-if-env-changed for every RINGZERO_* variable the kernel reads at build time (KV, EDITION, MANVEC, CONF_ASK, ROUNDS, HEAP_MIB, WASM_MIB, UPY_HEAP_MIB), so changing one of them alone rebuilds the kernel.
 Source: kernel/build.rs main, upy
 
 #### Scenario: Heap changed alone
 - **WHEN** only RINGZERO_HEAP_MIB changes between two builds
 - **THEN** cargo reruns the build script and compiles the kernel again
+
+### Requirement: ROUNDS
+`ROUNDS` SHALL set, through RINGZERO_ROUNDS, the default tool rounds per question: an integer clamped to 1..20, 10 when unset or empty; a value with a character that is not a digit SHALL fail the kernel build. A change of the value SHALL rebuild the kernel. `!set rounds` changes it at run time.
+Source: Makefile target kernel; kernel/src/agent.rs ROUNDS, env_num; kernel/build.rs main
+
+#### Scenario: Default
+- **WHEN** the user runs `make iso`
+- **THEN** the agent allows 10 tool rounds per question
+
+#### Scenario: Clamp
+- **WHEN** the user runs `make iso ROUNDS=0`
+- **THEN** the agent allows 1 tool round per question

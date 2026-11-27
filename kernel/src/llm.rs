@@ -84,10 +84,16 @@ fn rate(n: u64, us: u64) -> (u64, u64) {
 }
 
 /// Next token from the logits of the last forward call (greedy, or top-p at TEMP_BITS).
+/// T54: the agent's answer round after the tool round limit: <tool_call> cannot be picked.
+pub static mut NO_TOOLS: bool = false;
+
 pub fn pick_next() -> u64 {
     let logits = ctx(CTX_BUF_LOGITS) as *const f32;
     let n = ctx(CTX_SAMPLE_N);
     unsafe {
+        if NO_TOOLS && TOK_TOOL_CALL < n {
+            *(logits as *mut f32).add(TOK_TOOL_CALL as usize) = -1.0e30; // finite: the asm softmax and argmax see no inf
+        }
         if TEMP_BITS == 0 {
             argmax_f32(logits, n)
         } else {

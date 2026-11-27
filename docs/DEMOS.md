@@ -171,5 +171,5 @@ extract the version field from /data.json with jq
 
 `create a sqlite db /shopping.db with a table products ... and tell me the most expensive product` (without "use
 sqlite3") sent the 4B to MicroPython's `run_code` first, which has no `sqlite3` module, and it did not recover
-within the 4 tool rounds. After a tool result the answer is sometimes in Italian even for an English request (3 of
+within the 4 tool rounds of that build (10 since T54, with an answer without tools after the last one). After a tool result the answer is sometimes in Italian even for an English request (3 of
 these 10). The 2B results, with the Italian wordings of the M8 run, are in [M8_RESULT.md](M8_RESULT.md).

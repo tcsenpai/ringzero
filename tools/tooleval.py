@@ -13,6 +13,7 @@ right tool, and (spike set) whether the arguments match the spike's rules (docs/
 SLOT=N (env) sets `!set slot N` instead of 0 and keeps `/agentd log 12` (the slot's candidates) per prompt.
 T28: a [confidence] y/N question (a low-margin call of a tool that changes the machine) is answered y, so the eval
 runs the same calls as without it; every other y/N is answered n. CONF=on|off (env) sends `!set confidence ...`.
+T54: `round_limit` counts the turns that hit the tool round limit and answered without tools.
 SETS: comma list of spike, inos, it (default spike,inos). `it`: 10 short Italian knowledge / reasoning questions
 (docs/MODEL_CHOICE.md); `auto` is a substring pre-check of the answer, the verdict is by hand."""
 import json, os, re, socket, sys, time
@@ -152,6 +153,7 @@ def score(r):
         "masked": sum(int(m) for m in re.findall(r"(\d+) masked", " ".join(gl))),
         "conf": re.findall(r"^\[confidence\] min.*$", o, re.M),
         "conf_ask": len(re.findall(r"^\[confidence\] the agent is not sure.*\[y/N\] y$", o, re.M)),
+        "round_limit": len(re.findall(r"^\[agent\] tool round limit", o, re.M)),  # T54: answered without tools
     }
 
 
@@ -184,6 +186,7 @@ def main():
                    "no_tool_ok": sum(1 for r, x in zip(rs, sc) if not r["expect"] and not x["calls"]),
                    "auto_ok": sum(bool(x["auto_ok"]) for x in sc),
                    "conf_lines": sum(len(x["conf"]) for x in sc), "conf_asked_y": sum(x["conf_ask"] for x in sc),
+                   "round_limit": sum(x["round_limit"] for x in sc),
                    "conf_low_mid": [c for x in sc for c in x["conf"] if not c.endswith("-> run")],
                    "call_round_decode_tok_s": round(ntok / (ms / 1000), 2) if ms else None}
     print(json.dumps(summ, indent=1))

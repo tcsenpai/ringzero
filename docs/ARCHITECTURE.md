@@ -203,7 +203,7 @@ sequenceDiagram
     A->>L: <tool_response> turn, feed, generate
     L-->>U: "La memoria libera è di 2057 MiB."
     A->>A: snap commit: save point no. N (rows of the turn + DeltaNet state, ~21 MiB, 1-8 ms), Ctrl-C instead restores the previous point (~0.6 ms)
-    Note over A: up to 4 tool rounds per user turn, poweroff/reboot ask y/N at the shell first
+    Note over A: up to ROUNDS tool rounds per user turn (10, !set rounds), then one answer round with the tool_call token blocked; poweroff/reboot ask y/N at the shell first
 ```
 
 Memory slot at the start of a conversation (agentd context compiler; also on the first turn after a compaction):

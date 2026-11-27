@@ -9,7 +9,7 @@ use crate::{agent, fs, gram, klog, llm, println, smp, snap};
 use alloc::vec::Vec;
 
 const PATH: &str = "/sys/hib/image.bin";
-const XVER: u8 = 2;
+const XVER: u8 = 3;
 static mut READY: bool = false;
 /// `/hibernate discard`: the next poweroff does not write an image either (a plain `/hibernate` clears it).
 static mut SKIP: bool = false;
@@ -19,7 +19,7 @@ fn key() -> u64 {
 }
 
 /// Agent settings and transcript: version, temperature bits, think, constrain, compaction percent,
-/// compactions so far, color (v2, T46), transcript.
+/// compactions so far, color (v2, T46), tool rounds (v3, T54), transcript.
 fn extra() -> Vec<u8> {
     let mut e = alloc::vec![XVER];
     unsafe {
@@ -28,15 +28,17 @@ fn extra() -> Vec<u8> {
         e.extend_from_slice(&agent::N_COMPACT.to_le_bytes());
     }
     e.push(crate::console::COLOR.load(core::sync::atomic::Ordering::Relaxed) as u8);
+    e.push(unsafe { agent::ROUNDS } as u8);
     e.extend_from_slice(agent::hist_text().as_bytes());
     e
 }
 
-/// Also reads a v1 image (no color byte: color stays on).
+/// Also reads v1 (no color byte: color stays on) and v2 images (no rounds byte: the build default stays).
 fn apply(e: &[u8]) {
     let t = match e.first() {
         Some(1) => 16,
-        Some(&XVER) => 17,
+        Some(2) => 17,
+        Some(&XVER) => 18,
         _ => return,
     };
     if e.len() < t {
@@ -49,8 +51,11 @@ fn apply(e: &[u8]) {
         agent::COMPACT_PCT = (e[7] as u64).clamp(1, 95);
         agent::N_COMPACT = u64::from_le_bytes(e[8..16].try_into().unwrap());
     }
-    if t == 17 {
+    if t >= 17 {
         crate::console::COLOR.store(e[16] != 0, core::sync::atomic::Ordering::Relaxed);
+    }
+    if t >= 18 {
+        unsafe { agent::ROUNDS = (e[17] as usize).clamp(1, agent::ROUNDS_MAX) };
     }
     agent::hist_restore(core::str::from_utf8(&e[t..]).unwrap_or(""));
 }

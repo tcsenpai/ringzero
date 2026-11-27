@@ -100,7 +100,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "confidence", "seed", "color"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "confidence", "seed", "color", "rounds"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -109,7 +109,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), confidence (on|off: margin of a tool call's decision tokens, low ones ask first), seed (sampler RNG), color (on|off: role colors on both consoles)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), confidence (on|off: margin of a tool call's decision tokens, low ones ask first), seed (sampler RNG), color (on|off: role colors on both consoles), rounds (tool rounds per question, 1..20)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
@@ -542,6 +542,17 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             }
             _ => {
                 let _ = write!(o, "error: consolidate must be idle seconds (0 = off)");
+                false
+            }
+        },
+        "rounds" => match val.parse::<usize>() {
+            Ok(n) if (1..=agent::ROUNDS_MAX).contains(&n) => {
+                unsafe { agent::ROUNDS = n };
+                let _ = write!(o, "rounds = {} (tool calls per question, then the agent answers without tools)", n);
+                true
+            }
+            _ => {
+                let _ = write!(o, "error: rounds must be an integer from 1 to {}", agent::ROUNDS_MAX);
                 false
             }
         },

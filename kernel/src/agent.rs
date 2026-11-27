@@ -1,7 +1,7 @@
 // The system agent: Qwen3.5 native tool calling in ring 0. The system prompt + tool list is prefilled
 // once at boot and saved as snapshot point #0 (snap.rs); each turn streams the answer, parses a tool
 // call if the model makes one, validates it against the tool schema, runs it, feeds the result back
-// as a <tool_response> turn and loops (at most MAX_ROUNDS tool rounds per user turn).
+// as a <tool_response> turn and loops (at most ROUNDS tool rounds per user turn, then one answer without tools).
 // Context management (M2.5): when the fill crosses COMPACT_PCT (or on /compact) the model writes a short
 // summary, the boot snapshot is restored (it ends just before the system turn's <|im_end|>), the summary
 // is appended to the system prompt and the last exchanges are prefilled again (DeltaNet state cannot be
@@ -70,7 +70,14 @@ pub(crate) const SPECS: [(&str, &[(&str, Ty, bool)]); 18] = [
 const TEMPLATE_TOOLS_HEAD: &str = "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>";
 const TEMPLATE_TOOLS_TAIL: &str = "\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>";
 
-const MAX_ROUNDS: usize = 4;
+/// T54: tool rounds per user turn (`!set rounds N`, 1..ROUNDS_MAX, `make iso ROUNDS=N`, default 10). After the
+/// last one the model answers once more with the <tool_call> token blocked (the beta's limit of 4 ended turns
+/// without an answer).
+pub static mut ROUNDS: usize = env_num(option_env!("RINGZERO_ROUNDS"), 10, ROUNDS_MAX as u32) as usize;
+pub const ROUNDS_MAX: usize = 20;
+const _: () = assert!(env_num(None, 10, 20) == 10 && env_num(Some("0"), 10, 20) == 1 && env_num(Some("99"), 10, 20) == 20);
+/// Appended to the last tool result: the next round cannot call a tool.
+const NO_MORE_TOOLS: &str = "(No more tools in this turn: answer now with what you have; if you could not find out, say so.)";
 const MAX_ANSWER: u64 = 512;
 /// Tool results longer than this are cut, with a marker the model can see.
 const RES_CAP: usize = 8192;
@@ -587,25 +594,27 @@ const ASK_LOW: [&str; 4] = ["write_file", "mkdir", "set_setting", "remember"];
 /// CONF_LO run and log, below CONF_LO ask first (ASK_LOW) or run with a notice (the other tools). Beta default (user,
 /// 2026-11-27): ask below 0.80 (held-out: 5 of 8 wrong calls asked, 12 of 90 right ones); `make iso CONF_ASK=25` is
 /// the tune-split pick. CONF_HI = max(0.80, CONF_LO), so the logged middle band is empty at the default.
-pub const CONF_LO: f32 = conf_ask(option_env!("RINGZERO_CONF_ASK")) as f32 / 100.0;
+pub const CONF_LO: f32 = env_num(option_env!("RINGZERO_CONF_ASK"), 80, 100) as f32 / 100.0;
 pub const CONF_HI: f32 = if CONF_LO > 0.80 { CONF_LO } else { 0.80 };
 
-/// RINGZERO_CONF_ASK: percent integer, clamped to 0..100; unset or empty = 80.
-const fn conf_ask(s: Option<&str>) -> u32 {
+/// A build-time integer (RINGZERO_CONF_ASK percent 0..100, RINGZERO_ROUNDS 1..20): unset or empty = def, clamped
+/// to max (and to at least 1 when def > 0 and max < 100, the rounds); a character that is not a digit fails the build.
+const fn env_num(s: Option<&str>, def: u32, max: u32) -> u32 {
     let b = match s {
         Some(s) if !s.is_empty() => s.as_bytes(),
-        _ => return 80,
+        _ => return def,
     };
     let (mut i, mut v) = (0, 0u32);
     while i < b.len() {
-        assert!(b[i].is_ascii_digit(), "RINGZERO_CONF_ASK: a percent integer, 0..100");
-        v = if v > 100 { 101 } else { v * 10 + (b[i] - b'0') as u32 };
+        assert!(b[i].is_ascii_digit(), "RINGZERO_CONF_ASK / RINGZERO_ROUNDS: an integer (percent 0..100 / rounds 1..20)");
+        v = if v > max { max + 1 } else { v * 10 + (b[i] - b'0') as u32 };
         i += 1;
     }
-    if v > 100 { 100 } else { v }
+    let v = if v > max { max } else { v };
+    if max < 100 && v == 0 { 1 } else { v }
 }
-const _: () = assert!(conf_ask(None) == 80 && conf_ask(Some("")) == 80 && conf_ask(Some("0")) == 0
-    && conf_ask(Some("25")) == 25 && conf_ask(Some("100")) == 100 && conf_ask(Some("2500")) == 100);
+const _: () = assert!(env_num(None, 80, 100) == 80 && env_num(Some(""), 80, 100) == 80 && env_num(Some("0"), 80, 100) == 0
+    && env_num(Some("25"), 80, 100) == 25 && env_num(Some("100"), 80, 100) == 100 && env_num(Some("2500"), 80, 100) == 100);
 
 #[derive(Clone, Copy, PartialEq)]
 enum Band {
@@ -685,7 +694,9 @@ pub fn ask(q: &str) {
     // F7: after a "no" in this turn, every later call that changes the machine asks first (the 4B retried a declined
     // mkdir until a confident call ran it without a question)
     let mut declined = false;
-    for round in 0..=MAX_ROUNDS {
+    let rounds = unsafe { ROUNDS };
+    for round in 0..=rounds {
+        let last = round == rounds; // T54: the answer round, <tool_call> blocked
         let n = llm::encode(&t.b[..t.n], toks());
         let mut pos = pos_now;
         if pos + n as u64 + 64 >= max_seq {
@@ -700,9 +711,10 @@ pub fn ask(q: &str) {
         let t0 = smp::rdtsc();
         let fed = llm::feed(&toks()[..n], &mut pos);
         let t1 = smp::rdtsc();
+        unsafe { llm::NO_TOOLS = last };
         let (stop, n_gen) = if fed { llm::generate(&mut pos, MAX_ANSWER) } else { (llm::Stop::Intr, 0) };
         let t2 = smp::rdtsc();
-        unsafe { CAPTURE = false };
+        unsafe { (CAPTURE, llm::NO_TOOLS) = (false, false) };
         let n_fed = if fed { n as u64 } else { pos - pos_now }; // Ctrl-C during the prefill: what was fed
         pos_now = pos;
         println!("");
@@ -726,8 +738,8 @@ pub fn ask(q: &str) {
                 answer = Some((off, off + ans.len()));
                 break;
             }
-            Some(_) if round == MAX_ROUNDS => {
-                println!("[agent] tool round limit ({}) reached", MAX_ROUNDS);
+            Some(_) if last => {
+                println!("[agent] tool call in the answer round, dropped"); // the token is blocked: not expected
                 break;
             }
             Some(Err(e)) => {
@@ -774,7 +786,13 @@ pub fn ask(q: &str) {
         }
         println!("{}[tool] -> {}{}", crate::console::sgr(crate::console::TOOL), res.as_str(), crate::console::sgr(crate::console::RESET));
         t.clear();
-        let _ = write!(t, "<|im_start|>user\n<tool_response>\n{}\n</tool_response>\n(Answer in the language of my message.)<|im_end|>\n{}", res.as_str(), gen_prompt);
+        let stop_tools = round + 1 == rounds;
+        if stop_tools {
+            println!("[agent] tool round limit ({}) reached, answering without tools", rounds);
+            crate::log::record(b'A', "tool round limit reached, answering without tools");
+        }
+        let _ = write!(t, "<|im_start|>user\n<tool_response>\n{}\n</tool_response>\n{}(Answer in the language of my message.)<|im_end|>\n{}",
+            res.as_str(), if stop_tools { NO_MORE_TOOLS } else { "" }, gen_prompt);
     }
     smp::park_phase(false);
     let fx = unsafe { (*core::ptr::addr_of!(FXT)).as_str() };
