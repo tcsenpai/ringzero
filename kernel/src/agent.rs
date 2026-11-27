@@ -15,10 +15,10 @@ use core::fmt::Write;
 
 const SYSTEM: &str = "You are the system agent of ringzero, an experimental operating system with its own Rust \
 kernel. Its file tree is Unix-like: /proc and /sys hold live system state (cat /proc/meminfo, /proc/cpuinfo, \
-/proc/uptime), /dev the devices, /etc the configuration, /tmp scratch files. You run inside the kernel (ring 0) and answer the user at the shell. Use the tools to read real data from this machine \
+/proc/uptime; the drivers in /proc/devices), /dev the device files, /etc the configuration, /tmp scratch files. You run inside the kernel (ring 0) and answer the user at the shell. Use the tools to read real data from this machine \
 or to act on it, and never invent numbers. Always reply in the language the user wrote their latest message in, \
 never in the language of tool output or memory notes, briefly, in plain text without markdown headers. run_code is \
-a MicroPython sandbox without files: use ls, cat and run_wasm for files and programs.";
+a MicroPython sandbox without files, for calculations: use ls, cat and run_wasm for files and programs.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
 // T55: the information tools answer with the file that holds the state (FILES); hiding them failed the tooleval gate
@@ -35,7 +35,7 @@ const TOOLS: [&str; 18] = [
     r#"{"type": "function", "function": {"name": "remember", "description": "Save a fact the user told you, kept across reboots.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "description": "snake_case, e.g. user_name"}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
     r#"{"type": "function", "function": {"name": "forget", "description": "Delete a saved fact (asks the user).", "parameters": {"type": "object", "properties": {"key": {"type": "string"}}, "required": ["key"]}}}"#,
     r#"{"type": "function", "function": {"name": "recall", "description": "Search saved facts, past conversations and files on the disk.", "parameters": {"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]}}}"#,
-    r#"{"type": "function", "function": {"name": "ls", "description": "List a directory. /proc and /sys hold live system state.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
+    r#"{"type": "function", "function": {"name": "ls", "description": "List a directory. /proc and /sys hold live system state, /proc/devices the drivers.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "cat", "description": "Read a text file, also under /proc, /sys and /etc.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "write_file", "description": "Create or replace a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}}"#,
     r#"{"type": "function", "function": {"name": "mkdir", "description": "Create a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
