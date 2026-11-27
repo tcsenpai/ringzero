@@ -30,6 +30,8 @@ ringzero[main]> count the lines of /demo/stats.py with wc
 - **It remembers you.** Facts you tell it ("my name is Anna") and summaries of past sessions are kept on the
   disk and come back after a reboot. The kernel, not the model, decides what goes into the model's context,
   so the memory stays small and on topic.
+- **It knows its own manual.** "come faccio a ibernare?" is answered from the built-in manual, which the
+  kernel indexes and puts in front of the question; `/man TOPIC` searches it directly.
 - **Undo for the AI.** Every turn is a snapshot of the model's state: `/undo`, `/redo`, `/retry`, named
   branches, save and load. Going back takes under a millisecond.
 - **Hibernate and resume.** Power off and the whole conversation, with its history tree, is written to disk.

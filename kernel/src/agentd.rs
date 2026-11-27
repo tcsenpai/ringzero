@@ -47,6 +47,12 @@ const CONS_MAX: u64 = 220;
 /// Idle seconds at the prompt before a session is consolidated (0 = only /consolidate). `!set consolidate N`.
 pub static mut CONS_IDLE_S: u64 = 60;
 const SLOT_HEAD: &str = "[memory from earlier conversations, kept by the kernel; use it to answer]\n";
+/// T22: the built-in manual, one index entry per `## ` section (docs/MANUAL.md, compiled into the kernel)
+const MANUAL: &str = include_str!("../../docs/MANUAL.md");
+const MAN: &str = "[manual: ";
+const MAN_HEAD: &str = "[from the ringzero manual, kept by the kernel; use it to answer]\n";
+/// a manual section's retrieval line (Italian and English wordings): embedded, not shown to the model
+const ASKED: &str = "Asked as:";
 /// Plain "FACT: key = value" lines. Two other wordings were measured and were worse with the 2B (format
 /// examples: swapped keys and values; remember tool calls: no EPISODE line), see docs/M45_RESULT.md.
 const CONS_ASK: &str = "[kernel] Memory consolidation (internal: the user does not see this reply). Write what is \
@@ -167,12 +173,14 @@ struct St {
     preempted: u64,
     said: Option<String>, // T35: the last user statement, indexed as [said] once its turn ends without acting
     acted: bool,          // that turn called a tool other than remember / forget / recall
+    howto: bool,          // T22: the current user message asks how to do something
 }
 
 static mut ST: St = St {
     on: false, facts: Vec::new(), memq: VecDeque::new(), cur: None, cons: None, saved_gen: 0, size: [0; 3],
     off: [0; 3], n_ep: 0, n_rec: [0; 3], session: String::new(), session_turns: 0, n_cons: 0, after_compact: false,
     last_input: 0, last: None, waited: 0, ms: [0; 4], preempted: 0, said: None, acted: false,
+    howto: false,
 };
 
 fn st() -> &'static mut St {
@@ -314,6 +322,7 @@ pub fn rebuild(why: &str) {
     s.off = [0; 3];
     replay(false, [0; 3]);
     scan_files();
+    queue_manual();
 }
 
 /// Boot, after the embedder is up: recover the stores, load the index (or rebuild it), scan the files.
@@ -321,6 +330,9 @@ pub fn init() {
     let s = st();
     if !fs::mounted() {
         crate::dlog!("no disk: memory stores and index persistence are off (RAM only)");
+        if embed::ready() {
+            queue_manual();
+        }
         return;
     }
     s.on = true;
@@ -357,6 +369,7 @@ pub fn init() {
     replay(true, s.off);
     if embed::ready() {
         scan_files();
+        queue_manual();
     } else {
         s.memq.clear();
     }
@@ -413,6 +426,57 @@ pub fn shutdown() {
     }
 }
 
+// ---- T22: the built-in manual ----
+
+/// The manual's sections as index texts, `[manual: TITLE] body` (the intro before the first `## ` is not indexed).
+pub fn manual() -> impl Iterator<Item = String> {
+    MANUAL.split("\n## ").skip(1).map(|sec| {
+        let (t, b) = sec.split_once('\n').unwrap_or((sec, ""));
+        format!("{}{}] {}", MAN, t.trim(), b.trim())
+    })
+}
+
+/// Boot and rebuild: an indexed section whose text is not in this kernel's manual any more is dropped, a
+/// section not in the index is queued (so a changed section is embedded again, the others are kept).
+fn queue_manual() {
+    let s = st();
+    let cur: Vec<String> = manual().collect();
+    let dropped = memidx::retain(|t| !t.starts_with(MAN) || cur.iter().any(|c| c == t));
+    s.memq.retain(|t| !t.starts_with(MAN));
+    let n = cur.len();
+    let mut q = 0;
+    for t in cur.into_iter().filter(|t| !memidx::contains(t)) {
+        s.memq.push_back(t);
+        q += 1;
+    }
+    crate::dlog!("manual: {} sections, {} already in the index, {} queued, {} old entries dropped", n, n - q, q, dropped);
+}
+
+/// `/man [TOPIC]`: the best two manual sections for TOPIC, in full; alone: the section titles.
+pub fn man(q: &str) {
+    if q.is_empty() {
+        let t: Vec<String> = manual().map(|t| String::from(&t[MAN.len()..t.find("] ").unwrap_or(MAN.len())])).collect();
+        crate::println!("manual sections ({}): {}", t.len(), t.join(", "));
+        crate::println!("/man TOPIC searches them, for example /man undo");
+        return;
+    }
+    if !embed::ready() {
+        crate::println!("[man] no embedder: the manual cannot be searched");
+        return;
+    }
+    let mut h = [memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb }; 32];
+    let n = hits(q, &mut h);
+    let mut k = 0;
+    for x in h[..n].iter().filter(|x| memidx::text(x.id).starts_with(MAN)).take(2) {
+        crate::println!("(score {:.2}) {}\n", x.cos, render(memidx::text(x.id), 0));
+        k += 1;
+    }
+    if k == 0 {
+        crate::println!("[man] nothing found for '{}'", q);
+    }
+    crate::dlog!("man '{}': {} sections", &q[..crate::agent::floor_char(q, 60)], k);
+}
+
 // ---- hooks from agent.rs ----
 
 /// User turns that go into the index as "[said]": statements, not questions (a question states no fact and
@@ -458,6 +522,7 @@ pub fn on_user(q: &str) {
     let s = st();
     append(0, b'U', q);
     said_begin(q, s.on && embed::ready());
+    s.howto = howto(q);
     s.session.push_str(q);
     s.session.push('\n');
     s.session_turns += 1;
@@ -589,6 +654,10 @@ fn render(t: &str, max: usize) -> String {
         ("the user said earlier: ", r)
     } else if let Some(r) = t.strip_prefix("[fact] ") {
         ("fact: ", r)
+    } else if let Some((sec, r)) = t.strip_prefix(MAN).and_then(|r| r.split_once("] ")) {
+        // a section is short and self-contained: shown whole (the token budget of the slot still applies)
+        let body: Vec<&str> = r.lines().filter(|l| !l.starts_with(ASKED)).collect();
+        return format!("ringzero manual, {}: {}", sec, body.join(" "));
     } else if let Some((n, r)) = t.strip_prefix("[episode ").and_then(|r| r.split_once("] ")) {
         return format!("earlier conversation {}: {}", n, &r[..crate::agent::floor_char(r, max)]);
     } else if let Some((p, r)) = t.strip_prefix('[').and_then(|r| r.split_once("] ")) {
@@ -618,10 +687,46 @@ fn hits(q: &str, h: &mut [memidx::Hit]) -> usize {
     memidx::search(q, h).map(|f| f.n).unwrap_or(0)
 }
 
-/// The recall tool: top 3 of facts, past conversations and files.
+const HIT0: memidx::Hit = memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb };
+
+/// One search, split (T22): the best `own.len()` entries that are not manual sections (facts, past turns,
+/// episodes, files: the manual must not crowd them out) and the best manual section.
+fn hits_split(q: &str, own: &mut [memidx::Hit]) -> (usize, Option<memidx::Hit>) {
+    let mut h = [HIT0; 24];
+    let n = hits(q, &mut h);
+    let (mut k, mut man) = (0, None);
+    for x in &h[..n] {
+        if memidx::text(x.id).starts_with(MAN) {
+            man = man.or(Some(*x));
+        } else if k < own.len() {
+            own[k] = *x;
+            k += 1;
+        }
+    }
+    (k, man)
+}
+
+/// T22: the message asks how to do something (Italian or English), so a manual section may answer it.
+/// "come" + a first-person verb opens it (come torno, come faccio, come cambio), "come mi chiamo" does not.
+pub fn howto(q: &str) -> bool {
+    const P: [&str; 16] = ["how do i ", "how can i ", "how to ", "how do you ", "how should i ", "how does ",
+        "what command", "which command", "is there a command", "quale comando", "che comando", "un comando per",
+        "in che modo", "come si fa", "come si usa", "come posso"];
+    let l = q.to_lowercase();
+    let w: Vec<&str> = l.split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).collect();
+    P.iter().any(|p| l.contains(p))
+        || w.windows(2).any(|p| p[0] == "come" && p[1].chars().count() >= 3 && p[1].ends_with('o') && p[1] != "sono")
+}
+
+/// The recall tool: top 3 of facts, past conversations and files, then the best manual section when the
+/// user's message (or the query) asks how to do something and it scores RECALL_MIN or more.
 pub fn recall<const N: usize>(q: &str, o: &mut SBuf<N>) {
-    let mut h = [memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb }; 3];
-    let n = if embed::ready() && memidx::len() > 0 { hits(q, &mut h) } else { 0 };
+    let mut h = [HIT0; 4];
+    let (mut n, man) = if embed::ready() && memidx::len() + st().memq.len() > 0 { hits_split(q, &mut h[..3]) } else { (0, None) };
+    if let Some(m) = man.filter(|m| m.cos >= RECALL_MIN && (st().howto || howto(q))) {
+        h[n] = m;
+        n += 1;
+    }
     for (i, x) in h[..n].iter().enumerate() {
         let _ = write!(o, "{}{}. (score {:.2}) {}", if i > 0 { "\n" } else { "" }, i + 1, x.cos, render(memidx::text(x.id), 300));
     }
@@ -630,6 +735,34 @@ pub fn recall<const N: usize>(q: &str, o: &mut SBuf<N>) {
     }
     crate::dlog!("recall '{}': {} hits{}", &q[..crate::agent::floor_char(q, 60)], n,
         h[..n].iter().map(|x| format!(" #{} {:.2}", x.id, x.cos)).collect::<String>());
+}
+
+/// T22: the manual line for a how-to message: the best section, if it scores RECALL_MIN or more. Logged.
+fn man_line(man: Option<memidx::Hit>) -> Option<String> {
+    let m = man?;
+    let line = format!("- {}\n", render(memidx::text(m.id), 0));
+    let drop = if m.cos < RECALL_MIN { Some("below the threshold") } else { None };
+    crate::dlog!("slot manual #{} cos {:.3} {}: {} | {}", m.id, m.cos, m.via.name(), drop.unwrap_or("kept"),
+        &line[2..crate::agent::floor_char(&line, 60)].trim_end());
+    drop.is_none().then_some(line)
+}
+
+/// T22: a how-to message later in a conversation (no memory slot there) gets the manual line alone.
+pub fn man_slot(q: &str, o: &mut String) {
+    if unsafe { SLOT_BUDGET } == 0 || !howto(q) || !embed::ready() {
+        return;
+    }
+    let t0 = smp::rdtsc();
+    let (_, man) = hits_split(q, &mut []);
+    let Some(line) = man_line(man) else { return };
+    if tokens(MAN_HEAD) + tokens(&line) > unsafe { SLOT_BUDGET } {
+        crate::dlog!("slot (how-to): manual line over the token budget, not added");
+        return;
+    }
+    o.push_str(MAN_HEAD);
+    o.push_str(&line);
+    o.push('\n');
+    crate::dlog!("slot (how-to): manual line = {} tok, built in {} ms", tokens(o), smp::tsc_to_us(smp::rdtsc() - t0) / 1000);
 }
 
 fn tokens(t: &str) -> usize {
@@ -662,8 +795,17 @@ pub fn slot(q: &str, why: &str, o: &mut String) {
     let mut rec = String::new();
     let mut nr = 0;
     if embed::ready() && memidx::len() + s.memq.len() > 0 {
-        let mut h = [memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb }; RECALL_K];
-        let n = hits(q, &mut h);
+        let mut h = [HIT0; RECALL_K];
+        let (n, man) = hits_split(q, &mut h);
+        // T22: a how-to message gets the best manual section first (one line, same token budget)
+        if let Some(line) = howto(q).then(|| man_line(man)).flatten() {
+            if tokens(SLOT_HEAD) + tokens(&body) + tokens(&line) <= unsafe { SLOT_BUDGET } {
+                body.push_str(&line);
+                let _ = write!(rec, " manual #{} {:.2}", man.map_or(0, |m| m.id), man.map_or(0.0, |m| m.cos));
+            } else {
+                crate::dlog!("slot: manual line over the token budget, not added");
+            }
+        }
         for x in &h[..n] {
             let t = memidx::text(x.id);
             let line = format!("- {}\n", render(t, 240));
@@ -1079,5 +1221,12 @@ pub fn selftest() -> bool {
     let r = render("[said] ciao", 100) == "the user said earlier: ciao" && render("[/a/b.txt] x\ny", 100) == "file /a/b.txt: x y";
     let sd = self::said("mi chiamo Cris e il mio numero preferito e 4711") && self::said("my sister lives in Turin")
         && !self::said("create notes.txt with hello") && !self::said("come mi chiamo?") && !self::said("imposta la lingua su italiano");
-    k && v && g && d && r && sd
+    let man: Vec<String> = manual().collect();
+    let m = man.len() >= 20 && man.iter().all(|t| t.len() <= fidx::CHUNK + 300 && t.contains("] ") && !t.ends_with("] "))
+        && render("[manual: T] Asked as: x\nbody", 0) == "ringzero manual, T: body";
+    let ht = ["come torno indietro di un turno?", "how do I run python?", "come faccio a ibernare?", "come cambio layout tastiera?",
+        "how can I list the programs in /bin?"].iter().all(|q| howto(q))
+        && !["come mi chiamo?", "come si chiama mia sorella e dove vive?", "how many cores do I have?", "hi, how are you?",
+        "quanto fa 2**100? usa python", "come stai?"].iter().any(|q| howto(q));
+    k && v && g && d && r && sd && m && ht
 }

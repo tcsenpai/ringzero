@@ -610,8 +610,10 @@ pub fn ask(q: &str) {
     let why = if fresh { Some("new conversation") } else if crate::agentd::take_after_compact() { Some("after compaction") } else { None };
     if let Some(w) = why {
         crate::agentd::slot(q, w, &mut slot);
-        slot.lines().skip(1).for_each(|l| println!("[memory] {}", l));
+    } else {
+        crate::agentd::man_slot(q, &mut slot); // T22: a how-to message mid-conversation gets the manual line
     }
+    slot.lines().skip(1).for_each(|l| println!("[memory] {}", l));
     crate::agentd::on_user(q);
     let _ = write!(t, "<|im_start|>user\n{}{}<|im_end|>\n{}", slot, q, gen_prompt);
     let mut intr = false;

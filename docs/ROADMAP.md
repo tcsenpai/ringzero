@@ -16,14 +16,14 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
 │               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
-│               │       │   │   └── ○ 🟠 Beta release gate [E1] [blocked by T22, T28, T38, T39]
+│               │       │   │   └── ○ 🟠 Beta release gate [E1] [blocked by T28, T38, T39]
 │               │       │   │       └── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T34]
 │               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
 │               │       ├── ✓ 🟠 M4.7b Hibernate the agent: snapshots to disk [E1]
 │               │       ├── ○ 🟠 Kernel event bus to the agent (deterministic perimeter) [E1]
-│               │       ├── ○ 🟠 Built-in OS manual in memory [E1]
+│               │       ├── ✓ 🟠 Built-in OS manual in memory [E1]
 │               │       │   ├── T34: Beta release gate (circular)
-│               │       │   └── ○ 🟢 Manual vectors baked into the kernel binary (build flag, default on) [E1] [blocked by T22]
+│               │       │   └── ○ 🟢 Manual vectors baked into the kernel binary (build flag, default on) [E1]
 │               │       │       ├── T34: Beta release gate (circular)
 │               │       │       └── ○ 🟠 Grammar as a speculative draft source [E1] [blocked by T38]
 │               │       │           └── T34: Beta release gate (circular)

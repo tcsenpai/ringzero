@@ -75,6 +75,21 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   to its snapshot point after.
 Results: [docs/M45_RESULT.md](docs/M45_RESULT.md).
 
+Built-in manual (T22): [docs/MANUAL.md](docs/MANUAL.md) is a manual written for the model (26 short sections, one
+topic each, English, each with an `Asked as:` line of Italian and English wordings that is embedded but not shown).
+It is compiled into the kernel (`include_str!`) and indexed one section per memory-index entry, `[manual: TITLE]
+...`, in idle time at the first boot (26 entries, about 20 s of idle embedding); the entries are saved with the
+index, and at every boot (and on `/index clear`) indexed sections that differ from the kernel's manual are dropped
+and missing ones queued, so editing one section re-embeds only that one. Manual sections are ranked apart from the
+user's memory: they never take one of the slot's recalled lines or one of `recall`'s top 3. A message that asks how
+to do something (`how do I`, `how can I`, `what command`, `come faccio`, `come posso`, `come` + a first-person
+verb such as `come torno`, ...) gets the best section as one slot line when it scores cos >= 0.55, within the same
+200-token budget, also in the middle of a conversation (then only that line, under its own header); the shell
+prints it as a `[memory] - ringzero manual, TITLE: ...` line. `recall` adds the best section after its top 3 when the
+user's message (or the query) is such a how-to question and the section scores cos >= 0.55. `/man TOPIC` prints the two best sections in full, `/man` the
+section titles. The system prompt and the boot prefix are unchanged. Results:
+[docs/T22_MANUAL_RESULT.md](docs/T22_MANUAL_RESULT.md).
+
 Python (M5): MicroPython 1.29.0 (`ports/embed`) is compiled freestanding into the kernel and runs in ring 0
 with an 8 MiB GC heap and its own 1 MiB stack from the engine arena (`RINGZERO_UPY_HEAP_MIB=16 make iso` for
 another heap size). `!py CODE` runs one line (an expression's value is echoed, like the REPL), `!py -f PATH`

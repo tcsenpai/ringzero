@@ -18,7 +18,8 @@ flowchart TB
         BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
         FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
         FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
-        AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35), facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
+        AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35;<br/>T22: a how-to message gets the best manual section, also mid-conversation),<br/>facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
+        MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept"]
         MST["mstore.rs: /sys/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
         CON["console.rs<br/>COM1 + framebuffer glyphs"]
@@ -79,8 +80,10 @@ flowchart TB
     AG -- "write_file, rm" --> FIDX
     SH -- "idle at the prompt: one slice;<br/>any input: preempt" --> AGD
     SH -- "/agentd /facts /remember /forget<br/>/consolidate, !set consolidate|slot" --> AGD
-    AG -- "memory slot for the first message,<br/>journal of turns + tool results,<br/>remember / forget (y/N) / recall tools" --> AGD
+    AG -- "memory slot for the first message,<br/>manual line for a how-to message,<br/>journal of turns + tool results,<br/>remember / forget (y/N) / recall tools" --> AGD
     CM -- "compaction done: slot on the next turn" --> AGD
+    SH -- "/man [TOPIC]" --> AGD
+    MAN -- "sections, queued when not in the index" --> AGD
     AGD -- "next_chunk / advance, boot scan<br/>(size + mtime vs the table)" --> FIDX
     AGD -- "embed::begin / resume (stop between forward calls)" --> EMB
     AGD -- "store rows, retain, search,<br/>save / load index.bin" --> IDX
@@ -208,7 +211,8 @@ sequenceDiagram
     A->>L: feed <|im_end|>\n (close the system turn)
     A->>D: slot(q)
     D->>D: facts, newest first, within 120 tok
-    D->>X: embed the queued memory texts, then search(q): top 4
+    D->>X: embed the queued memory texts, then search(q): top 24, split into manual sections and the rest (top 4)
+    D->>D: T22: if q asks how to do something (how do I, come faccio, come + first-person verb, ...): the best manual section with cos >= 0.55, one line, within 200 tok
     X-->>D: hits ([said] ..., [episode N] ..., [/path] ...), of the top 4 keep cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars, not q, at most 3, within 200 tok (each candidate logged)
     D-->>A: "[memory from earlier conversations, ...]\n- user_name: Cris\n- the user said earlier: ...\n\n" (logged: ids, cos, tokens, ms)
     A->>D: on_user(q): journal 'U' record, "[said] q" queued when the turn ends (statements with a first-person word, and only if no tool but remember / forget / recall ran)
@@ -279,7 +283,12 @@ Legend:
   grounded (every number and at least half of the words of 3+ characters appear in what the user said since the
   last consolidation), dedup by key. The context compiler builds a slot of at most 200 tokens (facts newest first
   within 120, then recalled notes) in front of the first message of a conversation and of the first turn after a
-  compaction. Consolidation (after 60 s idle or `/consolidate`) runs the 2B greedy and without thinking on top of
+  compaction. T22: the manual (docs/MANUAL.md, compiled into the kernel) is indexed one section per entry as
+  `[manual: TITLE] ...`; at boot and on a rebuild, indexed sections that are not in the kernel's manual any more
+  are dropped and missing ones are queued, so only a changed section is embedded again. Manual sections are
+  ranked apart from the user's own memory (they never take one of its slot lines or recall hits); a message that
+  asks how to do something gets the best section (cos >= 0.55) as one slot line, mid-conversation too, and
+  `recall` adds it after its top 3 for a how-to message. Consolidation (after 60 s idle or `/consolidate`) runs the 2B greedy and without thinking on top of
   the current snapshot point, captures `EPISODE:` / `FACT:` lines, then restores the point. Every decision goes to
   the kernel log (level D) and the `/agentd log` ring (128 lines).
 - **Boot snapshot cache** (snap.rs `save_prefix` / `load_prefix`, agent.rs): `/sys/bootsnap.bin` holds the
