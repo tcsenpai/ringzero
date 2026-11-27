@@ -14,7 +14,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │   └── ✓ 🟠 M4.5 agentd: deterministic context and memory subsystem [E1]
 │               │       ├── ✓ 🟠 M4.8 base: batched prefill in the engine [E1]
 │               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
-│               │       │   ├── ○ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
+│               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
 │               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
 │               │       ├── ✓ 🟠 M4.7b Hibernate the agent: snapshots to disk [E1]
 │               │       ├── ○ 🟠 Kernel event bus to the agent (deterministic perimeter) [E1]

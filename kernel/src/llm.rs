@@ -624,8 +624,8 @@ pub enum Stop {
 
 // ---- M4.8b: speculative decoding by prompt lookup ----
 //
-// Draft: the latest earlier place in the context (REC + the emitted tokens not fed yet) that ends with the same 3
-// tokens (else 2) as the context now; the tokens that followed it are the draft. Verify: the pending tokens plus
+// Draft: the earlier place in the context (REC + the emitted tokens not fed yet) that agrees longest (3 to 32 tokens)
+// with the end of the context now; the tokens that followed it are the draft, at most match length - 1. Verify: the pending tokens plus
 // the draft in one transformer_prefill pass with logits for every row (compute_logits = 2, one batched LM-head
 // matmul), then each row is picked exactly as the per-token loop picks (sampler, grammar fix, RNG order) and the
 // draft is accepted while it matches. Every row's logits are bit-identical to a transformer_forward at that
@@ -713,34 +713,42 @@ fn fwd_verify(t: &[u32], pos: u64, lg0: usize) {
     }
 }
 
-/// Prompt lookup over REC[..pos] ++ todo: the latest earlier match of the last 3 tokens (else of the last 2), and
-/// the tokens after it, at most out.len(). Returns how many were written.
-fn lookup(pos: usize, todo: &[u32], out: &mut [u32]) -> usize {
+/// Shortest context match that drafts (tokens), and the longest one measured.
+const MATCH_MIN: usize = 3;
+const MATCH_MAX: usize = 32;
+
+/// Prompt lookup over REC[lo..pos] ++ todo: the earlier place where the context agrees longest with the end of the
+/// context now (MATCH_MIN..MATCH_MAX tokens, the latest one on a tie), and the tokens that followed it: at most
+/// out.len() and at most the match length - 1, so a short (chance) match drafts little. Returns how many were written.
+fn lookup(lo: usize, pos: usize, todo: &[u32], out: &mut [u32]) -> usize {
     let rec = rec();
     let len = pos + todo.len();
-    if len < 3 || out.is_empty() {
+    if len < lo + MATCH_MIN || out.is_empty() {
         return 0;
     }
     let at = |i: usize| if i < pos { rec[i] } else { todo[i - pos] };
-    let (l1, l2, l3) = (at(len - 1), at(len - 2), at(len - 3));
-    let mut best = 0;
-    let mut e = len - 1; // a match ends at e (exclusive): at(e-2), at(e-1) == the last two
-    while e >= 2 {
+    let (l1, l2) = (at(len - 1), at(len - 2));
+    let (mut best, mut best_l) = (0, 0);
+    let mut e = len - 1; // a match ends at e (exclusive)
+    while e >= lo + 2 {
         if at(e - 1) == l1 && at(e - 2) == l2 {
-            if e >= 3 && at(e - 3) == l3 {
-                best = e;
-                break;
+            let mut l = 2;
+            while l < MATCH_MAX && l < e - lo && at(e - 1 - l) == at(len - 1 - l) {
+                l += 1;
             }
-            if best == 0 {
-                best = e;
+            if l > best_l {
+                (best, best_l) = (e, l);
+                if l == MATCH_MAX {
+                    break;
+                }
             }
         }
         e -= 1;
     }
-    if best == 0 {
+    if best_l < MATCH_MIN {
         return 0;
     }
-    let k = out.len().min(len - best);
+    let k = out.len().min(len - best).min(best_l - 1);
     for (j, o) in out[..k].iter_mut().enumerate() {
         *o = at(best + j);
     }
@@ -797,7 +805,11 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
     let mut blk = [0u32; TODO_MAX];
     // shortcut: draft length and back-off are simple heuristics (grow by 2 on a full accept, shrink by 1 otherwise;
     // after a verify with nothing accepted no drafting for 2, 4, .. 32 tokens), tuned on docs/M48B_RESULT.md
+    // (a stricter gate, 4-token matches and 8..64, was not better there)
     let (mut k_cur, mut cool, mut fails) = (kmax, 0u32, 0u32);
+    // the conversation only: drafts from the boot prefix (tool JSON, the example call of the template) were mostly
+    // rejected inside tool calls (docs/M48B_RESULT.md)
+    let lo = (crate::snap::root_pos() as usize).min(*pos as usize);
     let stop = 'gen: loop {
         if let Some(s) = emit(next, *pos + nt as u64, &mut n, max_tok) {
             if nt > 0 {
@@ -811,7 +823,7 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         let mut k = 0;
         if spec && cool == 0 && *pos + (nt + k_cur) as u64 + 4 < max_seq {
             let room = k_cur.min(TODO_MAX - nt);
-            k = lookup(*pos as usize, &todo[..nt], &mut blk[nt..nt + room]);
+            k = lookup(lo, *pos as usize, &todo[..nt], &mut blk[nt..nt + room]);
         }
         cool = cool.saturating_sub(1);
         if k == 0 {
@@ -899,7 +911,9 @@ pub fn spec_check(toks: &[u32], rows: usize) {
     };
     smp::park_phase(true);
     forward(&toks[..m], 0, false);
+    let ts = smp::rdtsc();
     dn_copy(true);
+    let ts = smp::rdtsc() - ts;
     let mut want = [0u64; SPEC_ROWS];
     let mut am = [0u64; SPEC_ROWS];
     let t0 = smp::rdtsc();
@@ -909,6 +923,7 @@ pub fn spec_check(toks: &[u32], rows: usize) {
     }
     let t1 = smp::rdtsc();
     let (h1, _) = state_hash((m + n) as u64);
+    let tc = smp::rdtsc();
     dn_copy(false);
     let t2 = smp::rdtsc();
     unsafe {
@@ -925,7 +940,8 @@ pub fn spec_check(toks: &[u32], rows: usize) {
         same_am += (unsafe { argmax_f32(ctx(CTX_BUF_LOGITS) as *const f32, ctx(CTX_SAMPLE_N)) } == am[i]) as usize;
     }
     smp::park_phase(false);
-    println!("[spec] {} positions after {} tokens: logits bit-identical {}/{}, argmax {}/{}, kv+deltanet {:#018x} vs {:#018x} ({}); {} x transformer_forward {} ms, one verify pass {} ms",
+    println!("[spec] {} positions after {} tokens: logits bit-identical {}/{}, argmax {}/{}, kv+deltanet {:#018x} vs {:#018x} ({}); {} x transformer_forward {} ms, one verify pass {} ms; DeltaNet state copy {} KiB: save {} us, restore {} us",
         n, m, same, n, same_am, n, h1, h2, if h1 == h2 { "same" } else { "DIFFER" },
-        n, smp::tsc_to_us(t1 - t0) / 1000, smp::tsc_to_us(t3 - t2) / 1000);
+        n, smp::tsc_to_us(t1 - t0) / 1000, smp::tsc_to_us(t3 - t2) / 1000,
+        ctx(CTX_DN_ZERO_BYTES) >> 10, smp::tsc_to_us(ts), smp::tsc_to_us(t2 - tc));
 }

@@ -22,6 +22,15 @@ state (`/prefill [B] [avx2|vnni]` times the boot prefix and prints the state has
 prefix, agent turns, memory slot, tool results, compaction, consolidation and snapshot replay all use it; decode is
 unchanged. Results: [docs/BATCHED_PREFILL_RESULT.md](docs/BATCHED_PREFILL_RESULT.md).
 
+Speculative decoding (M4.8b): when the answer repeats text that is already in the conversation (a file it read,
+a tool result, code it edits), the kernel drafts the next tokens by looking up the end of the context in the
+earlier context and checks the draft in one batched pass with logits for every position. Each position is picked
+as in the per-token loop (sampler, tool-call grammar), so the output is the same token for token, greedy or
+sampled; on a partial accept the DeltaNet state is copied back (50.3 MiB on the 4B) and the KV rows are simply
+overwritten later. 4B q4: quoting answers decode at 2.0-2.5x (20.8 -> 53.2 tok/s copying a 1.5 KB file), normal
+chat and tool calls within the run-to-run noise. `!set spec on|off|N`, `/spec [N]` checks the verifier against
+the per-token path. Results: [docs/M48B_RESULT.md](docs/M48B_RESULT.md).
+
 Embedder: Qwen3-Embedding-0.6B runs on the same asm engine by swapping the engine context (`g_ctx`) between
 whole forward calls, so the 2B's state is never touched. `/embed [-q] TEXT` prints a vector (dim 1024, about
 6 ms per token, 0.61 s per 100 tokens; cosine >= 0.9986 against the HF fp32 model), `/index add TEXT` stores a
@@ -240,6 +249,8 @@ Tool-call grammar and hibernation:
 
 ```
 !set constrain off       # A/B: the grammar only checks tool calls (default on: it constrains them)
+!set spec off            # one token per pass (default on: prompt-lookup drafts, verified in one pass; N = longest draft)
+/spec 9                  # verifier check: 9 positions per token vs one verify pass (bit-identical logits, times)
 /hibernate               # save the conversation + snapshot tree now (!poweroff does it too)
 /prefill 32              # time the boot prefix prefill (block 32; /prefill 1 = per token), print the state hash
 /hibernate status        # is there an image; /hibernate discard deletes it and !poweroff skips it (fresh next boot)

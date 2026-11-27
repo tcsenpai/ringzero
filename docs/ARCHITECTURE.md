@@ -28,7 +28,7 @@ flowchart TB
         SH["shell.rs<br/>text -> agent, !machine, /session commands,<br/>Tab completion, suggestions, history, Ctrl-C"]
         AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
-        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32)"]
+        LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32),<br/>M4.8b: prompt-lookup drafts, one verify pass,<br/>DeltaNet state copy for rollback"]
         SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay (batched), eviction,<br/>boot snapshot cache (/sys/bootsnap.bin, 33 MiB),<br/>hibernation image: tree + pool chunks, state hash"]
         GRAM["gram.rs: tool-call grammar (M4.7a)<br/>byte automaton from the tool schemas (names, keys,<br/>enums, integers, required, closing tags),<br/>vocab trie: ids sorted by bytes + prefix lengths (1.2 MiB),<br/>check the pick; on a reject logits -> -inf, pick again"]
         HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff -> /sys/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
@@ -43,7 +43,7 @@ flowchart TB
         KV["KV cache (6 full-attn layers)<br/>FP16 via F16C, 32768 tokens, 384 MiB<br/>(RINGZERO_KV=f32: FP32, 768 MiB)"]
         EKV["embedder arena<br/>KV 28 layers x 1024 tokens FP16, 113 MiB"]
         MM["matmul.asm Q8_0 + Q4_0 (M7, W4A8)<br/>tagged weight pointer -> matmul_q4_0_range<br/>batch kernels (AVX2, AVX-VNNI): Q4 row<br/>unpacked once into q4_rowbuf[tid]"]
-        PF["prefill.asm (M4.8)<br/>transformer_prefill: B prompt tokens<br/>per weight pass, bit-exact"]
+        PF["prefill.asm (M4.8)<br/>transformer_prefill: B prompt tokens<br/>per weight pass, bit-exact;<br/>compute_logits 2 (M4.8b): logits of every row,<br/>one batched LM-head matmul"]
         MA["math.asm"]
         TOK["tokenizer.asm BPE"]
         WK["smp.asm<br/>tp_* dispatch + worker loop on APs 1..7"]
@@ -129,6 +129,8 @@ flowchart TB
     AG -- "y/N confirm" --> SH
     AG --> LLM --> ENG --> TR
     ENG -- "prompt blocks" --> PF
+    LLM -- "verify: pending tokens + draft" --> PF
+    SH -- "!set spec on|off|N" --> LLM
     PF -- "tp_matmul_q8_0_batch" --> WK
     PF -- "per token: rope_heads, tp_gqa_attn,<br/>tp_deltanet, g_dn_job" --> TR
     PF -- "vcvtps2ph K/V rows" --> KV
@@ -384,6 +386,29 @@ the snapshot pool. Batch matmul kernels (engine/matmul.asm, job kind `tp_K = 2` 
 int32 per lane, so the same floats), picked by CPUID at `prefill_init`. Both leave the model state
 bit-identical to the per-token path (docs/BATCHED_PREFILL_RESULT.md).
 
+## Speculative decoding (M4.8b)
+
+`llm::generate` streams the answer of an agent turn. With `!set spec on` (default) each step looks up the end
+of the context (REC after the boot prefix + the emitted tokens not fed yet) in the earlier context; the longest
+earlier match (3 to 32 tokens) gives a draft of up to `match - 1` tokens (8 at most by default). The pending
+tokens and the draft go through one `transformer_prefill(.., compute_logits = 2)`: logits for every row
+from `pf_lg0` on, the LM head as one batched matmul into 16 rows from the arena. Each row is copied to
+BUF_LOGITS and picked as the per-token loop would (sampler, `gram::fix` inside a tool call, stop checks); the
+draft is accepted while it matches.
+
+```
+emit(next) -> lookup -> no draft: transformer_forward(next)            (as before)
+                     -> draft d1..dk: copy DeltaNet state (50.3 MiB, 4B)
+                                      transformer_prefill([pending.., next, d1..dk], logits per row)
+                                      row i: pick -> == d(i+1)? emit, next row : stop
+                                      all accepted: keep state | else: copy DeltaNet state back,
+                                      accepted tokens become pending (fed in front of the next pass)
+```
+
+KV rows of rejected positions are left in the cache and overwritten later (attention reads 0..pos). Every
+row's logits are bit-identical to `transformer_forward` (`/spec [N]` checks it), so the emitted ids are the same
+as with `!set spec off`, greedy or sampled. Results: docs/M48B_RESULT.md.
+
 ## Memory
 
 - Kernel image: higher half, 3 PT_LOAD segments (RX text, R rodata, RW data+bss). The engine's
@@ -435,7 +460,8 @@ Rust kernel (ring 0, soft-float)          NASM engine (ring 0, AVX2/FMA/F16C)
   embed.rs: model_init (2nd), g_ctx swap,
             matmul_set_fp16 --------------->  transformer_forward on the embedder context
   memidx.rs: tp_matmul_q8_0 ------------->  index rows x query (engine/smp.asm, all cores)
-  llm.rs: prefill_init, transformer_prefill ->  prompt blocks (engine/prefill.asm, M4.8)
+  llm.rs: prefill_init, transformer_prefill ->  prompt blocks (engine/prefill.asm, M4.8),
+          transformer_prefill(.., 2)  ------->  speculative verify, logits per row (M4.8b)
   sys_mmap_anon / sys_munmap   <-- imports -- transformer.asm   (mem.rs)
   sys_write_all / str_len      <-- imports -- tokenizer.asm     (engine.rs)
   tp_matmul_q8_0 / tp_gqa_attn /
