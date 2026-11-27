@@ -38,7 +38,7 @@ while time.time() - t0 < 900 and p.poll() is None:
     try:
         d = ser.recv(65536)
         if not d: break
-        buf += d; last_rx = time.time()
+        buf = re.sub(rb"\x1b\[[0-9;]*m", b"", buf + d); last_rx = time.time()  # T46: role colors stripped
     except socket.timeout: pass
     while b"\n" in buf:
         l, buf = buf.split(b"\n", 1)

@@ -324,12 +324,22 @@ default are in [openspec/specs/settings/spec.md](openspec/specs/settings/spec.md
 !set compact 60          # context fill percent that triggers a compaction, 1..95 (default 75)
 !set snappool 512        # MiB the snapshot pool may use, 64..pool size (default the whole pool)
 !set seed 7              # sampler RNG state, positive integer (default 42; stored with every snapshot point)
+!set color off           # role colors on serial and the framebuffer on|off (default on)
 ```
 
-On/off settings (think, constrain, confidence, gramdraft) take on/1/true or off/0/false; any other value is
+On/off settings (think, constrain, confidence, gramdraft, color) take on/1/true or off/0/false; any other value is
 refused with `error: <key> must be on or off` and the setting keeps its value. `!set spec` takes on, off or a
 longest draft from 1 to 15 and refuses anything else. An unknown key prints the list of every key. Saved in the
-hibernation image: temperature, think, constrain, compact (and the snapshot pool cap with the tree).
+hibernation image: temperature, think, constrain, compact, color (and the snapshot pool cap with the tree).
+
+Console colors (T46, palette in [assets/branding/README.md](assets/branding/README.md)): the prompt is bold red,
+`[tool]` lines gold (ANSI yellow), `[memory]`, `[grammar]`, `[confidence]` and the `[prefill]`/`[decode]` statistics
+gray, y/N questions and errors bright red; user input and answers keep the default color. Serial gets ANSI SGR codes;
+the framebuffer parses SGR itself (0, 1 bold glyphs, 2 dim, 22, 30-37, 39, 90-97, 38;5;N, 38;2;R;G;B; other escapes
+are skipped), so WASI programs' own colors (`!run jq -C . /demo/data.json`) show on VNC too. `!set color off` gives
+plain text (programs' own escapes still pass). The serial test drivers in tools/ strip SGR codes before matching.
+The boot banner (R0 die, name, version 0.1.0-beta from kernel/Cargo.toml, edition, models, machine) uses the same
+colors.
 
 More:
 

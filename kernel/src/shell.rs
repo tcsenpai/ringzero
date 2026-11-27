@@ -100,7 +100,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "confidence", "seed"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "confidence", "seed", "color"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -109,7 +109,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), confidence (on|off: margin of a tool call's decision tokens, low ones ask first), seed (sampler RNG)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), confidence (on|off: margin of a tool call's decision tokens, low ones ask first), seed (sampler RNG), color (on|off: role colors on both consoles)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
@@ -201,8 +201,13 @@ fn erase(buf: &[u8]) {
     }
 }
 
+/// The prompt in its role color (T46).
+fn show_prompt(prompt: &str) {
+    print!("\n{}{}{}", console::sgr(console::PROMPT), prompt, console::sgr(console::RESET));
+}
+
 fn redraw(prompt: &str, buf: &[u8]) {
-    print!("\n{}", prompt);
+    show_prompt(prompt);
     console::write_bytes(buf);
 }
 
@@ -386,7 +391,7 @@ pub fn readline(buf: &mut [u8], prompt: Option<&str>) -> usize {
 
 /// Ask the human at the shell. Only an explicit y/yes confirms.
 pub fn confirm(question: &str) -> bool {
-    print!("{} [y/N] ", question);
+    print!("{}{} [y/N]{} ", console::sgr(console::ERR), question, console::sgr(console::RESET));
     let mut b = [0u8; 16];
     let n = readline(&mut b, None);
     let a = core::str::from_utf8(&b[..n]).unwrap_or("").trim();
@@ -407,7 +412,7 @@ fn onoff(v: &str) -> Option<bool> {
 /// Settings shared by the `!set`/`!kbd`/`!cores`/`/temp`/`/think` commands and the agent's set_setting tool.
 pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> bool {
     let ok = match key {
-        "think" | "constrain" | "confidence" | "gramdraft" if onoff(val).is_none() => {
+        "think" | "constrain" | "confidence" | "gramdraft" | "color" if onoff(val).is_none() => {
             let _ = write!(o, "error: {} must be on or off", key);
             false
         }
@@ -500,6 +505,12 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             let on = onoff(val) == Some(true);
             unsafe { llm::THINK = on as u64 };
             let _ = write!(o, "think = {}", if on { "on" } else { "off" });
+            true
+        }
+        "color" => {
+            let on = onoff(val) == Some(true);
+            console::COLOR.store(on, Relaxed);
+            let _ = write!(o, "color = {}", if on { "on (role colors on serial and the framebuffer)" } else { "off (plain text)" });
             true
         }
         "snappool" => match val.parse::<usize>() {
@@ -713,8 +724,13 @@ fn fs_cmd(name: &str, arg: &str) {
         Ok(())
     })();
     if let Err(e) = r {
-        println!("[fs] {}: {}", name, e);
+        err(&alloc::format!("[fs] {}: {}", name, e));
     }
+}
+
+/// An error line in its role color (T46).
+pub fn err(msg: &str) {
+    println!("{}{}{}", console::sgr(console::ERR), msg, console::sgr(console::RESET));
 }
 
 fn show(f: fn(&mut SBuf<1024>)) {
@@ -729,7 +745,7 @@ pub fn run() -> ! {
     loop {
         let mut prompt = SBuf::<64>::new();
         snap::prompt(&mut prompt);
-        print!("\n{}", prompt.as_str());
+        show_prompt(prompt.as_str());
         let line = unsafe { &mut *core::ptr::addr_of_mut!(LINE) };
         let n = readline(line, Some(prompt.as_str()));
         let s = core::str::from_utf8(&line[..n]).unwrap_or("").trim();
@@ -762,7 +778,7 @@ pub fn run() -> ! {
             match find(other, cmd) {
                 Some(_) => println!("'{}' is a {} command: try {}{}", cmd, if other == BANG { "machine" } else { "session" },
                     if other == BANG { '!' } else { '/' }, cmd),
-                None => println!("unknown command '{}'. Type /help, or type without {} to ask the agent.", s, &s[..1]),
+                None => err(&alloc::format!("unknown command '{}'. Type /help, or type without {} to ask the agent.", s, &s[..1])),
             }
             continue;
         };
@@ -779,8 +795,7 @@ pub fn run() -> ! {
             "uptime" => show(sys::uptime),
             "cores" => {
                 if !arg.is_empty() {
-                    set_setting("cores", arg, &mut o);
-                    println!("{}", o.as_str());
+                    if set_setting("cores", arg, &mut o) { println!("{}", o.as_str()) } else { err(o.as_str()) }
                 }
                 show(sys::cores);
             }
@@ -837,9 +852,10 @@ pub fn run() -> ! {
                 };
                 if c.name == "kbd" && v.is_empty() {
                     println!("keyboard layout {} (available: us, it)", kbd::layout());
-                } else {
-                    set_setting(k, v, &mut o);
+                } else if set_setting(k, v, &mut o) {
                     println!("{}", o.as_str());
+                } else {
+                    err(o.as_str());
                 }
             }
             "park" => {

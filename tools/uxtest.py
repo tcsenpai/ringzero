@@ -5,6 +5,7 @@ redraw the prompt mid-line, so a plain read-until-prompt would desync). 'y:'/'n:
 [y/N] prompt. Saves the transcript (\\r removed, \\x08 shown as <BS>) to OUT."""
 import os, re, socket, sys, time
 PROMPT = re.compile(rb"ringzero(?:\[[^\]\n]*\])?> $")  # ringzero> or ringzero[branch~N]> 
+SGR = re.compile(rb"\x1b\[[0-9;]*m")  # T46: the shell's role colors, stripped before matching
 host, port, out, steps = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4:]
 QUIET = float(os.environ.get("QUIET", "1.5"))
 s = socket.create_connection((host, port)); s.settimeout(0.1)
@@ -13,7 +14,7 @@ def drain(timeout=3600, ans=None):
     while time.time() - t < timeout:
         try:
             d = s.recv(65536)
-            if d: buf += d; last = time.time()
+            if d: buf = SGR.sub(b"", buf + d); last = time.time()
         except socket.timeout: pass
         if ans and buf.endswith(b"[y/N] "): s.sendall(ans.encode() + b"\r"); ans = None
         if PROMPT.search(buf) and time.time() - last > QUIET: return buf

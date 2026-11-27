@@ -49,8 +49,8 @@ while p.poll() is None and i < len(steps):
         d = b""
     raw.write(d)
     raw.flush()
-    seen += d
-    line += d
+    seen = re.sub(rb"\x1b\[[0-9;]*m", b"", seen + d)  # T46: role colors stripped (raw keeps them)
+    line = re.sub(rb"\x1b\[[0-9;]*m", b"", line + d)
     while b"\n" in line:
         l, line = line.split(b"\n", 1)
         tlog.write(f"[{time.time() - t0:7.2f}s] {l.decode(errors='replace').rstrip()}\n")

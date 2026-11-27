@@ -822,7 +822,7 @@ pub fn finish(ended: bool) {
     let _ = write!(l, "{} masked ({} forced), mask {} us avg {} us max, check {} ns/tok -> {}",
         x.masked, x.forced, us(x.mask_cyc) / x.masked.max(1) as u64, us(x.mask_max),
         us(x.check_cyc * 1000) / x.toks.max(1) as u64, if !valid { if ended { "INVALID call" } else { "unfinished call" } } else if x.steer { "valid call, steered" } else { "valid call" });
-    println!("{}", l.as_str());
+    println!("{}{}{}", crate::console::sgr(crate::console::DIM), l.as_str(), crate::console::sgr(crate::console::RESET));
     crate::log::record(b'A', l.as_str());
     *s() = S0;
 }

@@ -63,6 +63,7 @@ IT = [
 ]
 PROMPT = re.compile(rb"ringzero(?:\[[^\]\n]*\])?> ")
 YN = b"[y/N] "
+SGR = re.compile(rb"\x1b\[[0-9;]*m")  # T46: the shell's role colors, stripped before matching
 
 
 def drive(host, port, mode, prompts, first=False):
@@ -87,7 +88,7 @@ def drive(host, port, mode, prompts, first=False):
             if m:
                 seen, buf = buf[:m.start()], buf[m.end():]
                 return seen.decode(errors="replace")
-            try: buf += s.recv(65536)
+            try: buf = SGR.sub(b"", buf + s.recv(65536))
             except socket.timeout: pass
         return buf.decode(errors="replace") + "\n<<timeout>>"
 

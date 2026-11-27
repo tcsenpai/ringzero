@@ -173,7 +173,8 @@
     <h2>How it is built</h2>
     <p>A small Rust <code>no_std</code> kernel booted by Limine, with the inference engine written in assembly
       (<a href="https://github.com/alesha-pro/llm.asm">llm.asm</a> by alesha-pro, extended for Qwen3.5) linked in as
-      objects. Drivers: virtio-blk, FAT32, serial, PS/2, framebuffer.</p>
+      objects. Drivers: virtio-blk, FAT32, serial, PS/2, framebuffer. Serial and framebuffer show the same ANSI
+      colors (<code>!set color off</code> for plain text).</p>
     <ul class="links">
       <li><a href="https://github.com/tcsenpai/ringzero/blob/main/docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>: the architecture diagram</li>
       <li><a href="https://github.com/tcsenpai/ringzero/blob/main/docs/ARCHITECTURE_DIAGRAMS.pdf">ARCHITECTURE_DIAGRAMS.pdf</a>: all diagrams as one PDF</li>

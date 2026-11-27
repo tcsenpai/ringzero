@@ -69,7 +69,7 @@ Asked as: how do I change the keyboard layout, come cambio layout tastiera, tast
 
 ## Settings
 Asked as: how do I change a setting, come cambio le impostazioni, settings list, configurazione
-`!set KEY VALUE` changes a setting: temperature (0 = greedy), cores (cores used for inference), keyboard (us or it), think (on or off), compact (percent of context before compaction), snappool (MiB), consolidate (idle seconds, 0 = off), slot (memory slot tokens, 0 = off), constrain (on or off: tool-call grammar), spec (on, off or N from 1 to 15: speculative decoding), gramdraft (on or off), confidence (on or off), seed (sampler RNG). On/off settings take on, off, 1, 0, true or false; anything else is refused with an error and the setting keeps its value. A hibernation image keeps temperature, think, constrain and compact; the others go back to their defaults at boot.
+`!set KEY VALUE` changes a setting: temperature (0 = greedy), cores (cores used for inference), keyboard (us or it), think (on or off), compact (percent of context before compaction), snappool (MiB), consolidate (idle seconds, 0 = off), slot (memory slot tokens, 0 = off), constrain (on or off: tool-call grammar), spec (on, off or N from 1 to 15: speculative decoding), gramdraft (on or off), confidence (on or off), seed (sampler RNG), color (on or off: console colors). On/off settings take on, off, 1, 0, true or false; anything else is refused with an error and the setting keeps its value. A hibernation image keeps temperature, think, constrain, compact and color; the others go back to their defaults at boot.
 
 ## Temperature and thinking
 Asked as: how do I make answers deterministic, temperatura, more creative answers, thinking mode, ragionamento

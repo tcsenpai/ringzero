@@ -109,7 +109,7 @@ Needs an x86-64 CPU with AVX2, FMA and F16C (most desktop and laptop CPUs since 
 A small Rust `no_std` kernel booted by Limine, with the inference engine written in assembly
 ([llm.asm](https://github.com/alesha-pro/llm.asm) by alesha-pro, extended for Qwen3.5) linked in as objects.
 The models are Qwen3.5 (chat and tools) and Qwen3-Embedding-0.6B (memory). Drivers: virtio-blk, FAT32,
-serial, PS/2, framebuffer.
+serial, PS/2, framebuffer. Serial and framebuffer show the same ANSI colors (`!set color off` for plain text).
 
 - [INFO.md](INFO.md): every command, the measurements, the source layout, the licenses
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the architecture diagram

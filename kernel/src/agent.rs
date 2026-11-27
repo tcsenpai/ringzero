@@ -629,7 +629,7 @@ fn conf_line(name: &str) -> Option<Band> {
         let _ = write!(l, " {:.2}", m);
     }
     let _ = write!(l, ", {} us -> {}", smp::tsc_to_us(c.cyc), act);
-    println!("{}", l.as_str());
+    println!("{}{}{}", crate::console::sgr(crate::console::DIM), l.as_str(), crate::console::sgr(crate::console::RESET));
     crate::log::record(b'A', l.as_str());
     Some(band)
 }
@@ -675,7 +675,7 @@ pub fn ask(q: &str) {
     } else {
         crate::agentd::man_slot(q, &mut slot); // T22: a how-to message mid-conversation gets the manual line
     }
-    slot.lines().skip(1).for_each(|l| println!("[memory] {}", l));
+    slot.lines().skip(1).for_each(|l| println!("{}[memory] {}{}", crate::console::sgr(crate::console::DIM), l, crate::console::sgr(crate::console::RESET)));
     crate::agentd::on_user(q);
     let _ = write!(t, "<|im_start|>user\n{}{}<|im_end|>\n{}", slot, q, gen_prompt);
     let mut intr = false;
@@ -729,14 +729,14 @@ pub fn ask(q: &str) {
             }
             Some(Err(e)) => {
                 let _ = write!(res, "error: malformed tool call ({})", e);
-                println!("[tool] malformed call: {}", e);
+                println!("{}[tool] malformed call: {}{}", crate::console::sgr(crate::console::TOOL), e, crate::console::sgr(crate::console::RESET));
             }
             Some(Ok(c)) => {
-                print!("[tool] {}(", c.name);
+                print!("{}[tool] {}(", crate::console::sgr(crate::console::TOOL), c.name);
                 for (i, (k, v)) in c.args[..c.n].iter().enumerate() {
                     print!("{}{}={}", if i > 0 { ", " } else { "" }, k, v);
                 }
-                println!(")");
+                println!("){}", crate::console::sgr(crate::console::RESET));
                 let band = conf_line(c.name);
                 if validate(&c, res).is_some() {
                     // M4.7a: a value the grammar had to choose is a guess; tools that change the machine do not run it
@@ -768,7 +768,7 @@ pub fn ask(q: &str) {
                 crate::log::record(b'A', l.as_str());
             }
         }
-        println!("[tool] -> {}", res.as_str());
+        println!("{}[tool] -> {}{}", crate::console::sgr(crate::console::TOOL), res.as_str(), crate::console::sgr(crate::console::RESET));
         t.clear();
         let _ = write!(t, "<|im_start|>user\n<tool_response>\n{}\n</tool_response><|im_end|>\n{}", res.as_str(), gen_prompt);
     }
