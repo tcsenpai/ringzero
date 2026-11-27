@@ -17,13 +17,15 @@ Both editions include Qwen3-Embedding-0.6B for the memory index and the built-in
 
 `make beta` builds all three into `build/beta` with a `SHA256SUMS` file. Two builds from clean (kernel, MicroPython
 package, manual vectors and `build/beta` deleted before each; 90 s each with the models, the Limine and MicroPython
-checkouts and the WASI programs already on the box) gave the same bytes:
+checkouts and the WASI programs already on the box) gave the same bytes. The sums below are from one build of the
+release commit (the two-build check ran on the commit before it, which changed only the memory index):
 
 | File | Bytes | SHA-256 |
 |---|---:|---|
-| `ringzero-beta-4b-q4.iso` | 4,027,889,664 | `9b85c36ec2d7235ee59480f132be4a777dad1a9aee30b33f19d2e8b40c6b9fe3` |
-| `ringzero-beta-2b-q8.iso` | 2,681,882,624 | `08cd415a2c18992691c2e706b20c72e55585b3b1a3b9790601031e45ee3568ff` |
-| `disk.img` | 536,870,912 | `336b7e096727d448d000074189981e0701e23feb856fb2184655034c9b45f2e1` |
+| `ringzero-beta-4b-q4.iso` | 4,027,932,672 | `b70802822326302dc8e2ac41674f6ccf7269a0f00e3a75b03f6041207d535530` |
+| `ringzero-beta-2b-q8.iso` | 2,681,925,632 | `ae71d45a14c54bdc620ae5a186e8671eafdb899454ab46894dfa44270c123692` |
+| `disk.img` | 536,870,912 | `02ab165f926a3a9d961d0cec2b632232b9281b66e57fd3564f82d0efb0f8fd73` |
+| `ringzero-beta-disk.img.xz` (`xz -9` of `disk.img`, for download) | 13,526,312 | `8c96f9e2a8cef153cc5407d8cc8b731f1fc618edccf45970ddd4941df3b9b40b` |
 
 What makes it reproducible: `SOURCE_DATE_EPOCH` (default: the time of the last commit) is exported by `make beta`
 and fixes the file dates xorriso writes (`--set_all_file_dates`), MicroPython's build date, the FAT volume id and
@@ -46,7 +48,7 @@ Measured on the Linux build box (Ryzen AI 9 HX 370, QEMU 10.2 with KVM, 8 vCPUs)
 | one step below | 6G: `model_init failed (-4)` at boot, no prompt | 3G: `model_init failed (-4)` |
 | QEMU process size on the host (RSS, after the test) | 5.9 GB at 7G, 6.8 GB at 8G | 4.0 GB at 4G, 4.8 GB at 5G |
 | host RAM free to start it | guest RAM + about 1 GiB (`make run-*` asks for 10 GiB free for an 8G guest) | guest RAM + about 1 GiB (8 GiB for 6G) |
-| ISO size | 4,027,889,664 bytes (3.75 GiB) | 2,681,882,624 bytes (2.50 GiB) |
+| ISO size | 4,027,932,672 bytes (3.75 GiB) | 2,681,925,632 bytes (2.50 GiB) |
 
 - **CPU**: x86-64 with AVX2, FMA, F16C and XSAVE, passed to the guest (`-cpu host`). Without any one of them the
   kernel stops at boot with `PANIC ... engine needs AVX2+FMA+F16C+XSAVE` (tested by removing each flag with
