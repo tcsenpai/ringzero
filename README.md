@@ -83,8 +83,9 @@ Then, at the `ringzero[main]>` prompt:
 
 ```
 my name is Anna and my favourite number is 4711
-!write /notes/todo.txt buy milk
-what do I need to buy?
+!write /notes/pet.txt my dog is called Pixel and he loves carrots
+/clear
+what is my dog called?
 create a table in /shop.db with sqlite, add three products with prices, and tell me the most expensive
 !run python3
 /undo

@@ -280,9 +280,10 @@ make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[mai
 make run-local           # or: the same VM in a QEMU window on the box's desktop (own disk build/disk-local.img)
 ```
 
-Try at the prompt: `!write /notes/todo.txt buy milk`, `!cat /notes/todo.txt`, `!ls /`, then ask
-"create a file /notes/idea.txt that says hello" or "what do I need to buy?" (after a few seconds of idle the file
-is in the memory index). Tell it "my name is Anna and my favourite number is 4711", run `/consolidate`, then
+Try at the prompt: `!write /notes/pet.txt my dog is called Pixel and he loves carrots`, `!cat /notes/pet.txt`, `!ls /`, then ask
+"create a file /notes/idea.txt that says hello", or after a few seconds of idle (the file is then in the memory
+index) `/clear` and "what is my dog called?". Very short notes (under 20 characters, like "buy milk") are not
+recalled yet (follow-up F8). Tell it "my name is Anna and my favourite number is 4711", run `/consolidate`, then
 `/facts`; `!poweroff`, boot again and ask "what is my name?": the facts and the memory index are still there, and
 the second boot loads the prompt state from the disk cache, and resumes the conversation from the
 hibernation image (`/snap` shows the same state hash before the poweroff and after the boot). Python: `!py 17*23`,
