@@ -170,7 +170,7 @@ fn find(pre: u8, name: &str) -> Option<&'static Cmd> {
 }
 
 fn help() {
-    println!("Type a message to talk to the system agent (Qwen3.5-2B in ring 0, with tools; Qwen3-Embedding-0.6B for /embed,");
+    println!("Type a message to talk to the system agent (Qwen3.5 in ring 0, with tools; Qwen3-Embedding-0.6B for /embed,");
     println!("/index, /search and its recall tool). Ctrl-C stops the agent. agentd keeps facts, episodes and a journal on");
     println!("the disk (/sys/mem) and puts saved facts in front of the first message of every conversation.");
     for (pre, label) in [(BANG, "!  machine commands"), (SLASH, "/  session commands")] {
