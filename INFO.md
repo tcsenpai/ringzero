@@ -85,7 +85,8 @@ program, e.g. head -c 16 /dev/urandom`), so an endless /dev/zero never reaches a
 skips /var/lib/ringzero, /tmp, /lib and the virtual trees. The agent's `meminfo`, `cpuinfo`, `uptime` and
 `list_cores` tools answer with /proc/meminfo, /proc/cpuinfo, /proc/uptime and /sys/devices/system/cpu, and their
 descriptions name the file (taking them out of the prompt failed the T55 tooleval gate); the system prompt says the
-tree is Unix-like, and the `ls` and `cat` descriptions name /proc, /sys and /etc.
+tree is Unix-like and names /proc/devices for the drivers, the `ls` and `cat` descriptions name /proc, /sys
+(`ls`: /proc/devices the drivers) and /etc, and run_code is described as the sandbox for calculations.
 
 Disk layout migration (T55). ringzero 0.1 kept its data in FAT `/sys` (`/sys/mem`, `/sys/hib/image.bin`,
 `/sys/bootsnap.bin`). The first boot of a newer kernel moves it, before agentd, the agent and hibernation touch

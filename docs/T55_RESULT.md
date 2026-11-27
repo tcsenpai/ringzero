@@ -196,10 +196,47 @@ lose prompts that read a file and then explore (`leggi /notes/todo.txt` on a dis
 s)`; "che driver abbiamo?" lists /bin. With the aliases hidden the same 2B looped on `run_wasm uptime` and `run_wasm
 ls` until the round limit (10 calls each).
 
+## Follow-up: the drivers wording
+
+Prompt text changed after the run above (the "as built" column there is the build before this change):
+- system prompt: `(cat /proc/meminfo, /proc/cpuinfo, /proc/uptime; the drivers in /proc/devices), /dev the device
+  files` instead of `(cat /proc/meminfo, /proc/cpuinfo, /proc/uptime), /dev the devices`;
+- ls: `List a directory. /proc and /sys hold live system state, /proc/devices the drivers.`;
+- system prompt: `run_code is a MicroPython sandbox without files, for calculations: ...` (`, for calculations`
+  added, aimed at "2**100").
+
+Same M45 protocol, same scoring (4B q4, 8G):
+
+| | main | previous T55 build | **T55 now** |
+|---|---|---|---|
+| prompt + tools | 1571 tokens | 1635 tokens | **1652 tokens** |
+| spike: correct / first call right / args exact | 24/30, 22, 9 | 24/30, 22, 9 | **24/30, 22, 9** |
+| in-OS (32): correct / first call right | 28, 25 | 25, 23 | **26, 24** |
+| of them the 8 info prompts: correct | 5/8 | 4/8 | **5/8** |
+| calls (spike + in-OS) | 51 + 36 | 47 + 38 | 42 + 36 |
+| malformed / schema errors / grammar lines not valid | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 1 |
+| turns at the round limit (spike + in-OS) | 2 + 1 | 1 + 1 | 1 + 1 |
+| 4B cold prefill, boot cache | 18.292 s, 99 MiB | 18.653 s, 101 MiB | 20.070 s, 101 MiB |
+| 2B cold prefill, boot cache | 6.791 s, 37 MiB | 7.387 s, 38 MiB | 7.408 s, 38 MiB |
+
+- "che driver abbiamo?": `cat /proc/devices`, answered from the block and filesystem lines (as on main).
+- "quanto fa 2**100? usa python": still `run_wasm(path=/bin/python3, args=print(2**100))` first (python3 then
+  fails on the argument as a file name), then the right answer. The memory slot is the same as on main, so the
+  cause is the prefix text: the pick was already close on main (margin 0.61 for run_code over run_wasm) and is
+  0.26 to 0.30 the other way with the T55 prompt; `, for calculations` did not flip it.
+- The grammar line not valid: one `write_file` in "esegui questo modulo wasm: ..." reached 460 tokens and ended as
+  `unfinished call`.
+- Remaining first-call difference against main: the "2**100" prompt only. Correct-count differences: "2**100"
+  (two calls) and `leggi /notes/todo.txt` (cat, then ls /notes, on a disk without /notes).
+
+2B, by hand: "quanto uptime?" calls `uptime()` and answers from `27.07 seconds (0 h 0 min 27 s)`; "che driver
+abbiamo?" now runs `ls /proc/devices` (through run_wasm) and answers "Non ho driver." (the file was listed, not
+read).
+
 ## Limits
 
-- "che driver abbiamo?" now goes to /dev (4B) or /bin (2B) instead of /proc/devices: the word driver maps to /dev
-  for the model. The ls description could name /proc/devices; not done (it needs another tooleval run).
+- "che driver abbiamo?" on the 2B lists /proc/devices instead of reading it and answers wrong; the 4B reads it.
+- "quanto fa 2**100? usa python" picks the python3 program before run_code on the 4B (see above).
 - The hostname is logged after the disk mounts, not shown in the banner (the banner is printed before the disk is
   up).
 - `/agentd merge-legacy` matches records by kind, time and text: a record an older kernel wrote with the same time
