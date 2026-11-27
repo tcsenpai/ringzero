@@ -18,6 +18,12 @@
 ;                                        compute_logits: 0 none, 1 the last token -> BUF_LOGITS, 2 (M4.8b, the
 ;                                        speculative verifier) every token from row pf_lg0 on -> pf_lg_ptr rows
 ;                                        (stride pf_lg_stride bytes), with one batched LM-head matmul
+;   pf_ms (M4.8a, multi-stream decode): 0, or a table of n rows {pos, k_cache, v_cache, dn_state, dn_conv,
+;                                        max_seq} (6 x u64). Row b then runs at its own position on its own
+;                                        stream state: before the row's attention or DeltaNet step those five
+;                                        g_ctx fields are pointed at the row's stream (restored on return), so
+;                                        rows of different conversations share one pass and every weight read.
+;                                        pos0 is ignored and nothing is cleared at position 0 (the caller does).
 
 bits 64
 default rel
@@ -61,6 +67,7 @@ global pf_tsc_all
 global pf_lg_ptr
 global pf_lg_stride
 global pf_lg0
+global pf_ms
 
 section .text
 
@@ -219,6 +226,26 @@ prefill_init:
     add     [rel pf_tsc_mm], rax
 %endmacro
 
+; M4.8a: row %1 of the pf_ms table -> g_ctx stream fields (no-op when pf_ms = 0); clobbers rax, rcx
+%macro MS_ROW 1
+    mov     rax, [rel pf_ms]
+    test    rax, rax
+    jz      %%off
+    imul    rcx, %1, 48
+    add     rax, rcx
+    mov     rcx, [rax + 8]
+    mov     [rbx + CTX_BUF_K_CACHE], rcx
+    mov     rcx, [rax + 16]
+    mov     [rbx + CTX_BUF_V_CACHE], rcx
+    mov     rcx, [rax + 24]
+    mov     [rbx + CTX_BUF_DN_STATE], rcx
+    mov     rcx, [rax + 32]
+    mov     [rbx + CTX_BUF_DN_CONV], rcx
+    mov     rcx, [rax + 40]
+    mov     [rbx + CTX_MAX_SEQ], rcx
+%%off:
+%endmacro
+
 ; stack locals of transformer_prefill
 %define L_TOKS   0
 %define L_N      8
@@ -264,6 +291,19 @@ transformer_prefill:
     mov     [rsp + L_SAVEQ], rax
     mov     rax, [rbx + CTX_BUF_ATT_OUT]
     mov     [rsp + L_SAVEA], rax
+    ; M4.8a: the stream fields the pf_ms rows overwrite
+    mov     rax, [rbx + CTX_BUF_K_CACHE]
+    mov     [rel pf_sv_kc], rax
+    mov     rax, [rbx + CTX_BUF_V_CACHE]
+    mov     [rel pf_sv_vc], rax
+    mov     rax, [rbx + CTX_BUF_DN_STATE]
+    mov     [rel pf_sv_dns], rax
+    mov     rax, [rbx + CTX_BUF_DN_CONV]
+    mov     [rel pf_sv_dnc], rax
+    mov     rax, [rbx + CTX_MAX_SEQ]
+    mov     [rel pf_sv_ms], rax
+    cmp     qword [rel pf_ms], 0
+    jne     .no_zero
 
     ; start of a sequence: clear the DeltaNet state + conv history (as transformer_forward)
     test    rdx, rdx
@@ -385,6 +425,7 @@ transformer_prefill:
 .dn_tok_lp:
     cmp     r12, [rsp + L_N]
     jae     .dn_tok_done
+    MS_ROW  r12
     ; a[h] = W_a[h] . xb_b -> MISC[0..], b[h] = W_b[h] . xb_b -> MISC[128..]
     mov     r14, [rsp + SLOT(11)]
     mov     r15, [rsp + SLOT(10)]
@@ -460,20 +501,25 @@ transformer_prefill:
     mov     r11, [rbx + CTX_DIM]
     BMM     [rsp + SLOT(2)], [rel pf_xb], pf_sx, [rel pf_proj], pf_sproj, r10, r11
 
-    ; layer_kv_base = full_ord * max_seq * kv_dim * elt
-    mov     rax, [rsp + L_FULL]
-    inc     qword [rsp + L_FULL]
-    imul    rax, [rbx + CTX_MAX_SEQ]
-    imul    rax, [rbx + CTX_KV_DIM]
-    shl     rax, KV_SHIFT
-    mov     [rsp + L_KVBASE], rax
-
     xor     r12d, r12d
 .fa_tok_lp:
     cmp     r12, [rsp + L_N]
     jae     .fa_tok_done
+    MS_ROW  r12
+    ; layer_kv_base = full_ord * max_seq * kv_dim * elt (per row: M4.8a streams have their own max_seq)
+    mov     rax, [rsp + L_FULL]
+    imul    rax, [rbx + CTX_MAX_SEQ]
+    imul    rax, [rbx + CTX_KV_DIM]
+    shl     rax, KV_SHIFT
+    mov     [rsp + L_KVBASE], rax
     mov     rax, [rsp + L_POS0]
     add     rax, r12
+    mov     rcx, [rel pf_ms]
+    test    rcx, rcx
+    jz      .pos_ok
+    imul    rax, r12, 48
+    mov     rax, [rcx + rax]
+.pos_ok:
     mov     [rsp + L_POS], rax
     ROW     rbp, r12, pf_proj, pf_sproj ; q_b (k, v, gate follow)
 
@@ -586,6 +632,7 @@ transformer_prefill:
     inc     r12
     jmp     .fa_tok_lp
 .fa_tok_done:
+    inc     qword [rsp + L_FULL]
     ; xb_b = o_proj @ att_b
     mov     r11, [rbx + CTX_DIM]
     mov     r13, [rbx + CTX_Q_DIM]
@@ -649,6 +696,16 @@ transformer_prefill:
     jmp     .layer_lp
 
 .layers_done:
+    mov     rax, [rel pf_sv_kc]
+    mov     [rbx + CTX_BUF_K_CACHE], rax
+    mov     rax, [rel pf_sv_vc]
+    mov     [rbx + CTX_BUF_V_CACHE], rax
+    mov     rax, [rel pf_sv_dns]
+    mov     [rbx + CTX_BUF_DN_STATE], rax
+    mov     rax, [rel pf_sv_dnc]
+    mov     [rbx + CTX_BUF_DN_CONV], rax
+    mov     rax, [rel pf_sv_ms]
+    mov     [rbx + CTX_MAX_SEQ], rax
     mov     rax, [rsp + L_SAVEQ]
     mov     [rbx + CTX_BUF_Q], rax
     mov     rax, [rsp + L_SAVEA]
@@ -747,4 +804,10 @@ pf_tsc_all: resq 1                      ; TSC in transformer_prefill
 pf_lg_ptr:    resq 1                    ; M4.8b: logits rows of compute_logits = 2 (llm.rs allocates them)
 pf_lg_stride: resq 1                    ; bytes between two rows
 pf_lg0:       resq 1                    ; first block row that gets logits
+pf_ms:        resq 1                    ; M4.8a: 0, or the per-row stream table (header)
+pf_sv_kc:     resq 1                    ; g_ctx stream fields saved at entry
+pf_sv_vc:     resq 1
+pf_sv_dns:    resq 1
+pf_sv_dnc:    resq 1
+pf_sv_ms:     resq 1
 %endif

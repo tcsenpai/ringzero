@@ -51,6 +51,7 @@ default rel
 
 %define Q8_MAX_K 16384
 %define Q4_ROWBUF (Q8_MAX_K + Q8_MAX_K / 16)  ; ringzero (M7)
+%define Q4V_MAXB 4                          ; ringzero (M4.8a): batch rows at most for matmul_q4v_range
 
 section .text
 
@@ -800,7 +801,174 @@ align 16
 ; The float part (scales, 4 accumulators, reduction) is the same instruction sequence, so the outputs
 ; stay bit-identical. 4 vector ALU ops per 32 MACs per token instead of 7.
 ; ----------------------------------------------------------------------------
+; ----------------------------------------------------------------------------
+; ringzero (M4.8a): Q4_0 W, AVX-VNNI, bmm_b <= Q4V_MAXB (the multi-stream decode passes). Called from
+; matmul_q8_0_batch_vnni with its arguments (r0, r1, tid). The weights stay packed: each 32-byte group of nibbles
+; is expanded to bytes q = 0..15 once per token pair, and vpdpbusd(-8 * sum(x), q, x) gives per int32 lane
+; sum((q - 8) * x) over the same 4-byte groups, the exact integer of the AVX2 path (|q - 8| <= 8, no int16
+; saturation there). x stays signed for these calls and quantize_batch_q8_0 writes -8 * sum(x) per group into
+; q4v_xc. The float part per token is the per-token Q4 kernel's sequence (scale product, the 4 accumulators by
+; block index mod 4, the same reduction), so every output is bit-identical. No unpacked row and no -128 * sum(w)
+; pass per row: those cost more than the dot products at 1-4 rows.
+; ----------------------------------------------------------------------------
+; Q4V_BLK2 nib, xoff, perm0, perm1, acc0, acc1, ntok, acc0 t1, acc1 t1: 2 of the 4 blocks, nibbles at [rax + r13 + nib]
+%macro Q4V_BLK2 9
+    vmovdqu    xmm10, [rax + r13 + %1]
+    vmovdqu    xmm11, [rax + r13 + %1 + 16]
+    vpsrlw     xmm15, xmm10, 4
+    vinserti128 ymm10, ymm10, xmm15, 1
+    vpsrlw     xmm15, xmm11, 4
+    vinserti128 ymm11, ymm11, xmm15, 1
+    vpand      ymm10, ymm10, ymm14
+    vpand      ymm11, ymm11, ymm14
+    vmovdqa    ymm12, [r12 + rbx + %2]
+    {vex} vpdpbusd ymm12, ymm10, [r11 + rbx + %2]
+    vcvtdq2ps  ymm12, ymm12
+    vpermilps  ymm13, ymm8, %3
+    vfmadd231ps ymm%5, ymm12, ymm13
+    vmovdqa    ymm12, [r12 + rbx + %2 + 32]
+    {vex} vpdpbusd ymm12, ymm11, [r11 + rbx + %2 + 32]
+    vcvtdq2ps  ymm12, ymm12
+    vpermilps  ymm13, ymm8, %4
+    vfmadd231ps ymm%6, ymm12, ymm13
+%if %7 == 2
+    vmovdqa    ymm12, [rdx + rbx + %2]
+    {vex} vpdpbusd ymm12, ymm10, [rcx + rbx + %2]
+    vcvtdq2ps  ymm12, ymm12
+    vpermilps  ymm13, ymm9, %3
+    vfmadd231ps ymm%8, ymm12, ymm13
+    vmovdqa    ymm12, [rdx + rbx + %2 + 32]
+    {vex} vpdpbusd ymm12, ymm11, [rcx + rbx + %2 + 32]
+    vcvtdq2ps  ymm12, ymm12
+    vpermilps  ymm13, ymm9, %4
+    vfmadd231ps ymm%9, ymm12, ymm13
+%endif
+%endmacro
+
+; Q4V_TOK ntok: one row against 1 or 2 tokens (x0 r11 / xs0 rbp / xc0 r12, x1 rcx / xs1 r10 / xc1 rdx)
+%macro Q4V_TOK 1
+    vxorps  ymm0, ymm0, ymm0
+    vxorps  ymm1, ymm1, ymm1
+    vxorps  ymm2, ymm2, ymm2
+    vxorps  ymm3, ymm3, ymm3
+    vxorps  ymm4, ymm4, ymm4
+    vxorps  ymm5, ymm5, ymm5
+    vxorps  ymm6, ymm6, ymm6
+    vxorps  ymm7, ymm7, ymm7
+    xor     ebx, ebx                    ; x offset: 0, 128, ...
+    xor     r9d, r9d                    ; fp16 scale offset: 0, 8, ... (xs = r9*2)
+    xor     r13d, r13d                  ; nibble offset: 0, 64, ...
+%%blk4:
+    Q8_PREFETCH [r8 + r13]
+    vmovq      xmm12, qword [r8 + r9]
+    vcvtph2ps  xmm12, xmm12
+    vmulps     xmm8, xmm12, [rbp + r9*2]
+    vinsertf128 ymm8, ymm8, xmm8, 1
+%if %1 == 2
+    vmulps     xmm9, xmm12, [r10 + r9*2]
+    vinsertf128 ymm9, ymm9, xmm9, 1
+%endif
+    Q4V_BLK2 0, 0, 0x00, 0x55, 0, 1, %1, 4, 5
+    Q4V_BLK2 32, 64, 0xAA, 0xFF, 2, 3, %1, 6, 7
+    add     rbx, 128
+    add     r13, 64
+    add     r9, 8
+    cmp     rbx, r15
+    jb      %%blk4
+%endmacro
+
+; reduce the accumulators a, b, c, d of one token into xmm a (the per-token kernel's sequence)
+%macro Q4V_RED 4
+    vaddps  ymm%1, ymm%1, ymm%2
+    vaddps  ymm%3, ymm%3, ymm%4
+    vaddps  ymm%1, ymm%1, ymm%3
+    vhaddps ymm%1, ymm%1, ymm%1
+    vhaddps ymm%1, ymm%1, ymm%1
+    vextractf128 xmm%2, ymm%1, 1
+    vaddss  xmm%1, xmm%1, xmm%2
+%endmacro
+
+matmul_q4v_range:
+    push    rbx
+    push    rbp
+    push    r12
+    push    r13
+    push    r14
+    push    r15
+    sub     rsp, 24                     ; [rsp] rows_left, [rsp + 8] token
+    mov     r8, rdi                     ; r0
+    sub     rsi, rdi
+    jle     .exit
+    mov     [rsp], rsi
+    mov     r15, [rel bmm_k]
+    BMM_ROW0                            ; r14 = row_stride (K/2 + K/16), rax = w_cur
+    mov     rdi, [rel bmm_out]
+    lea     rdi, [rdi + r8*4]           ; &out[token 0][r0]
+    vpbroadcastb ymm14, [rel q4_m0f]
+.row:
+    mov     r8, r15
+    shr     r8, 1
+    add     r8, rax                     ; fp16 scales follow the K/2 nibble bytes
+    mov     qword [rsp + 8], 0
+.pair:
+    mov     rsi, [rsp + 8]
+    cmp     rsi, [rel bmm_b]
+    jae     .row_done
+    mov     r11, rsi
+    imul    r11, r15
+    lea     r12, [rel q4v_xc]
+    add     r12, r11                    ; xc0 (stride K bytes)
+    add     r11, [rel bmm_xq]           ; x0 (stride K bytes)
+    mov     rbp, rsi
+    imul    rbp, r15
+    shr     rbp, 3
+    add     rbp, [rel bmm_xs]           ; xs0 (stride K/8 bytes)
+    lea     rcx, [r11 + r15]            ; x1
+    lea     rdx, [r12 + r15]            ; xc1
+    mov     r10, r15
+    shr     r10, 3
+    add     r10, rbp                    ; xs1
+    imul    rsi, [rel bmm_ostride]      ; out offset of token t
+    lea     rsi, [rdi + rsi]
+    mov     r9, [rsp + 8]
+    add     r9, 2
+    cmp     r9, [rel bmm_b]
+    ja      .one
+    Q4V_TOK 2
+    Q4V_RED 0, 1, 2, 3
+    Q4V_RED 4, 5, 6, 7
+    vmovss  [rsi], xmm0
+    add     rsi, [rel bmm_ostride]
+    vmovss  [rsi], xmm4
+    add     qword [rsp + 8], 2
+    jmp     .pair
+.one:
+    Q4V_TOK 1
+    Q4V_RED 0, 1, 2, 3
+    vmovss  [rsi], xmm0
+    add     qword [rsp + 8], 1
+    jmp     .pair
+.row_done:
+    add     rdi, 4
+    add     rax, r14
+    dec     qword [rsp]
+    jnz     .row
+.exit:
+    add     rsp, 24
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     rbp
+    pop     rbx
+    ret
+
 matmul_q8_0_batch_vnni:
+    test    byte [rel bmm_w], 1           ; ringzero (M4.8a): Q4_0 W at 1..Q4V_MAXB rows
+    jz      .q8w
+    cmp     qword [rel bmm_b], Q4V_MAXB
+    jbe     matmul_q4v_range
+.q8w:
     push    rbx
     push    rbp
     push    r12
@@ -968,6 +1136,28 @@ quantize_batch_q8_0:
     call    quantize_x_q8_0_to
     cmp     dword [rel bmm_vnni], 0
     je      .no_flip
+    test    byte [rel bmm_w], 1         ; ringzero (M4.8a): matmul_q4v_range keeps x signed and reads
+    jz      .flip0                      ; -8 * sum(x) per 4-byte group from q4v_xc (row b at b * K)
+    cmp     qword [rel bmm_b], Q4V_MAXB
+    ja      .flip0
+    mov     rax, r12
+    sub     rax, [rel bmm_xq]
+    lea     rcx, [rel q4v_xc]
+    add     rcx, rax
+    vpbroadcastb ymm0, [rel q4v_one]
+    vpxor   ymm2, ymm2, ymm2
+    xor     eax, eax
+.xc:
+    vpxor   ymm1, ymm1, ymm1
+    {vex} vpdpbusd ymm1, ymm0, [r12 + rax] ; sum of the 4 signed x of each group (1 * x)
+    vpslld  ymm1, ymm1, 3
+    vpsubd  ymm1, ymm2, ymm1
+    vmovdqa [rcx + rax], ymm1
+    add     rax, 32
+    cmp     rax, r15
+    jb      .xc
+    jmp     .no_flip
+.flip0:
     vpbroadcastb ymm0, [rel q8_b80]     ; VNNI kernel: store x + 128 (u8)
     xor     eax, eax
 .flip:
@@ -1335,6 +1525,7 @@ q8_min_i8:    db -127
 q8_b80:       db 0x80                   ; ringzero
 q4_m0f:       db 0x0F                   ; ringzero (M7)
 q4_b8:        db 8                      ; ringzero (M7)
+q4v_one:      db 1                      ; ringzero (M4.8a)
 %endif
 
 section .bss
@@ -1359,4 +1550,6 @@ bmm_vnni:     resd 1                    ; 1: AVX-VNNI batch kernel (prefill_init
 ; ringzero (M7): one Q8_0-layout row per SMP worker for the batch kernels' Q4_0 unpack (K + K/16 bytes, K <= Q8_MAX_K)
 alignb 64
 q4_rowbuf:    resb 64 * Q4_ROWBUF
+alignb 64
+q4v_xc:       resb Q4V_MAXB * Q8_MAX_K  ; ringzero (M4.8a): -8 * sum(x) per 4-byte group, int32, row b at b * K
 %endif
