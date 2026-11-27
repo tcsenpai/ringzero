@@ -22,10 +22,10 @@ release commit (the two-build check ran on the commit before it, which changed o
 
 | File | Bytes | SHA-256 |
 |---|---:|---|
-| `ringzero-beta-4b-q4.iso` | 4,027,932,672 | `b70802822326302dc8e2ac41674f6ccf7269a0f00e3a75b03f6041207d535530` |
-| `ringzero-beta-2b-q8.iso` | 2,681,925,632 | `ae71d45a14c54bdc620ae5a186e8671eafdb899454ab46894dfa44270c123692` |
-| `disk.img` | 536,870,912 | `02ab165f926a3a9d961d0cec2b632232b9281b66e57fd3564f82d0efb0f8fd73` |
-| `ringzero-beta-disk.img.xz` (`xz -9` of `disk.img`, for download) | 13,526,312 | `8c96f9e2a8cef153cc5407d8cc8b731f1fc618edccf45970ddd4941df3b9b40b` |
+| `ringzero-beta-4b-q4.iso` | 4,027,955,200 | `e9ee1430abb6a68430e62548d40887dd1ef4215828c760a1ece93b3e4d396d54` |
+| `ringzero-beta-2b-q8.iso` | 2,681,948,160 | `f069eb10fc6fed8164f853c9aff7140e347c1af9cb38544547d561e90f5d53a8` |
+| `disk.img` | 536,870,912 | `a8ea97408859e988f5e1f8c8a678eca63beb1bb14f762fcb844762df08a10ad0` |
+| `ringzero-beta-disk.img.xz` (`xz -9` of `disk.img`, for download) | 13,526,316 | `6f93d1d949ab7e15b44d6e3e8e3da387eded0ff368d024147fe0e9d9fea966f0` |
 
 What makes it reproducible: `SOURCE_DATE_EPOCH` (default: the time of the last commit) is exported by `make beta`
 and fixes the file dates xorriso writes (`--set_all_file_dates`), MicroPython's build date, the FAT volume id and
@@ -48,7 +48,7 @@ Measured on the Linux build box (Ryzen AI 9 HX 370, QEMU 10.2 with KVM, 8 vCPUs)
 | one step below | 6G: `model_init failed (-4)` at boot, no prompt | 3G: `model_init failed (-4)` |
 | QEMU process size on the host (RSS, after the test) | 5.9 GB at 7G, 6.8 GB at 8G | 4.0 GB at 4G, 4.8 GB at 5G |
 | host RAM free to start it | guest RAM + about 1 GiB (`make run-*` asks for 10 GiB free for an 8G guest) | guest RAM + about 1 GiB (8 GiB for 6G) |
-| ISO size | 4,027,932,672 bytes (3.75 GiB) | 2,681,925,632 bytes (2.50 GiB) |
+| ISO size | 4,027,955,200 bytes (3.75 GiB) | 2,681,948,160 bytes (2.50 GiB) |
 
 - **CPU**: x86-64 with AVX2, FMA, F16C and XSAVE, passed to the guest (`-cpu host`). Without any one of them the
   kernel stops at boot with `PANIC ... engine needs AVX2+FMA+F16C+XSAVE` (tested by removing each flag with
