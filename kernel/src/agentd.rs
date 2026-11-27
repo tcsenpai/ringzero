@@ -11,8 +11,11 @@
 //  - context compiler: at the start of a conversation and after a compaction, a slot of at most SLOT_BUDGET
 //    tokens (facts, then notes recalled for the user's first message) is put in front of that message
 //  - consolidation: the 2B (greedy, non-thinking, fixed instruction) summarizes the session into an episode
-//    and proposes facts; the kernel validates, dedups and stores them. It runs on top of the current
-//    snapshot point and restores that point after, so the user's conversation is untouched.
+//    and proposes facts; the kernel validates, dedups and stores them. M4.8a: in idle time it runs on a second
+//    stream (multi.rs): a copy of the conversation at the current point, decoded alone in idle slices and one token
+//    per foreground decode step in the same engine pass, so input at the prompt does not stop it. /consolidate,
+//    and a conversation that does not fit in the extra stream, run on top of the current snapshot point and
+//    restore that point after (the M4.5 path). Either way the user's conversation is untouched.
 use crate::engine::{CAP, CAPTURE, ECHO};
 use crate::log::SBuf;
 use crate::mstore::{self, EPISODES, FACTS, JOURNAL};
@@ -152,6 +155,10 @@ struct Cons {
     t0: u64,
     temp: u32,
     why: &'static str,
+    bg: bool,      // M4.8a: on the background stream (multi::bg), not on top of the current point
+    turns0: u32,   // session turns and session text this consolidation covers (newer ones stay for the next)
+    sess0: usize,
+    ids: u64,      // FNV-1a of the output ids (M4.5 path)
 }
 
 struct St {
@@ -1019,7 +1026,7 @@ pub fn idle(stop: &mut dyn FnMut() -> bool) -> bool {
         Job::Save => save_index("idle"),
         Job::Cons => {
             if s.cons.is_none() {
-                if let Err(e) = cons_begin("idle") {
+                if let Err(e) = cons_begin("idle", true) {
                     crate::dlog!("consolidate: skipped ({}), the session's turns are dropped from the queue", e);
                     s.session_turns = 0;
                 }
@@ -1043,8 +1050,17 @@ pub fn idle(stop: &mut dyn FnMut() -> bool) -> bool {
 pub fn preempt() {
     let s = st();
     s.last_input = smp::rdtsc();
-    if s.cons.is_some() {
-        cons_abort("input at the prompt");
+    match &s.cons {
+        Some(c) if c.bg => {} // M4.8a: it rides along with the foreground's decode steps
+        Some(_) => cons_abort("input at the prompt"),
+        None => {}
+    }
+}
+
+/// M4.8a: `/multi` needs the extra streams: a background consolidation is stopped (retried later).
+pub fn stop_bg(why: &str) {
+    if st().cons.as_ref().is_some_and(|c| c.bg) {
+        cons_abort(why);
     }
 }
 
@@ -1109,7 +1125,7 @@ fn embed_slice(stop: &mut dyn FnMut() -> bool, mem_only: bool) {
 
 // ---- consolidation ----
 
-fn cons_begin(why: &'static str) -> Result<(), &'static str> {
+fn cons_begin(why: &'static str, bg: bool) -> Result<(), &'static str> {
     let s = st();
     if s.session_turns == 0 {
         return Err("no new turns since the last consolidation");
@@ -1129,9 +1145,22 @@ fn cons_begin(why: &'static str) -> Result<(), &'static str> {
     if p + n as u64 + CONS_MAX + 8 >= llm::ctx_max_seq() {
         return Err("no room left in the context");
     }
+    let (turns0, sess0) = (s.session_turns, s.session.len());
+    if bg {
+        // greedy on its own stream: the foreground's temperature and RNG are not touched
+        match crate::multi::bg_start(p, toks.clone(), CONS_MAX) {
+            Ok(()) => {
+                s.cons = Some(Cons { toks, i: 0, pos: p, n_gen: 0, next: 0, t0: smp::rdtsc(), temp: 0, why, bg: true, turns0, sess0, ids: 0 });
+                crate::dlog!("consolidate: start ({}) on the background stream, a copy of the current point (ctx {}), {} new turns, instruction {} tok",
+                    why, p, s.session_turns, n);
+                return Ok(());
+            }
+            Err(e) => crate::dlog!("consolidate: background stream not used ({}), on top of the current point", e),
+        }
+    }
     let temp = unsafe { core::mem::replace(&mut *core::ptr::addr_of_mut!(llm::TEMP_BITS), 0) }; // greedy: same session, same result
     unsafe { (*core::ptr::addr_of_mut!(CAP)).clear() };
-    s.cons = Some(Cons { toks, i: 0, pos: p, n_gen: 0, next: 0, t0: smp::rdtsc(), temp, why });
+    s.cons = Some(Cons { toks, i: 0, pos: p, n_gen: 0, next: 0, t0: smp::rdtsc(), temp, why, bg: false, turns0, sess0, ids: 0xcbf2_9ce4_8422_2325 });
     crate::dlog!("consolidate: start ({}) on top of the current point (ctx {}), {} new turns, instruction {} tok", why, p, s.session_turns, n);
     Ok(())
 }
@@ -1139,6 +1168,13 @@ fn cons_begin(why: &'static str) -> Result<(), &'static str> {
 /// Engine steps until done or stop(). Output goes to CAP only (not on the screen).
 fn cons_run(stop: &mut dyn FnMut() -> bool) {
     let s = st();
+    if s.cons.as_ref().is_some_and(|c| c.bg) {
+        crate::multi::bg_run(stop);
+        if crate::multi::bg().is_some_and(|b| b.done) {
+            cons_finish();
+        }
+        return;
+    }
     let max_seq = llm::ctx_max_seq();
     unsafe {
         CAPTURE = true;
@@ -1164,6 +1200,7 @@ fn cons_run(stop: &mut dyn FnMut() -> bool) {
             break;
         }
         unsafe { crate::engine::tok_write_stdout(c.next) };
+        c.ids = (c.ids ^ c.next).wrapping_mul(0x100_0000_01b3);
         llm::fwd(c.next as u32, c.pos, 1);
         c.pos += 1;
         c.n_gen += 1;
@@ -1180,6 +1217,10 @@ fn cons_run(stop: &mut dyn FnMut() -> bool) {
 
 /// Back to the user's point: the rows above it were scratch, R comes back from the point (snap.rs).
 fn cons_restore(c: &Cons) -> u64 {
+    if c.bg {
+        crate::multi::bg_take(); // the copy is dropped; the conversation was never touched
+        return 0;
+    }
     let t0 = smp::rdtsc();
     snap::rollback();
     unsafe { llm::TEMP_BITS = c.temp };
@@ -1200,13 +1241,34 @@ fn cons_abort(why: &str) {
 
 fn cons_finish() {
     let s = st();
-    let Some(c) = s.cons.take() else { return };
+    let Some(mut c) = s.cons.take() else { return };
+    let mut ids = 0xcbf2_9ce4_8422_2325u64; // FNV-1a of the output ids: the same session gives the same ids on both paths
+    let mut rode = None;
+    if let Some(b) = c.bg.then(crate::multi::bg_take).flatten() {
+        // the output tokens through the same capture as the M4.5 path (at the prompt: no agent turn is capturing)
+        unsafe {
+            (*core::ptr::addr_of_mut!(CAP)).clear();
+            (CAPTURE, ECHO) = (true, false);
+            b.out.iter().for_each(|&t| crate::engine::tok_write_stdout(t as u64));
+            (CAPTURE, ECHO) = (false, true);
+        }
+        b.out.iter().for_each(|&t| ids = (ids ^ t as u64).wrapping_mul(0x100_0000_01b3));
+        c.n_gen = b.out.len() as u64;
+        rode = Some((b.rode, b.alone));
+    } else {
+        ids = c.ids; // the M4.5 path captured its output while it decoded
+    }
     let us = cons_restore(&c);
     let out = String::from(unsafe { (*core::ptr::addr_of!(CAP)).as_str() });
     let ms = smp::tsc_to_us(smp::rdtsc() - c.t0) / 1000;
     s.n_cons += 1;
-    crate::dlog!("consolidate #{} ({}): {} tok in {} ms, current point restored (ctx {}) in {} us", s.n_cons, c.why, c.n_gen, ms,
-        snap::pos(), us);
+    if let Some((r, a)) = rode {
+        crate::dlog!("consolidate #{} ({}): {} tok in {} ms on the background stream ({} steps next to the foreground's, {} alone), ids {:#x}",
+            s.n_cons, c.why, c.n_gen, ms, r, a, ids);
+    } else {
+        crate::dlog!("consolidate #{} ({}): {} tok in {} ms, current point restored (ctx {}) in {} us, ids {:#x}", s.n_cons, c.why, c.n_gen, ms,
+            snap::pos(), us, ids);
+    }
     for l in out.lines().map(str::trim).filter(|l| !l.is_empty()) {
         crate::dlog!("consolidate #{}: model wrote: {}", s.n_cons, &l[..crate::agent::floor_char(l, 140)]);
     }
@@ -1236,9 +1298,32 @@ fn cons_finish() {
         crate::dlog!("consolidate #{}: no EPISODE line in the output, no episode saved", s.n_cons);
     }
     crate::dlog!("consolidate #{}: {} facts accepted or already known, {} rejected; session reset", s.n_cons, ok, bad);
-    s.session.clear();
-    s.session_turns = 0;
+    // what the user said after the start stays for the next consolidation (M4.8a: the foreground went on)
+    let k = c.sess0.min(s.session.len());
+    s.session.drain(..k);
+    s.session_turns = s.session_turns.saturating_sub(c.turns0);
     s.waited = 0;
+}
+
+/// M4.8a `/consolidate &`: start it on the background stream now and return to the prompt; it decodes next to the
+/// next answers and in idle slices (the idle one starts the same way after `!set consolidate` seconds).
+pub fn consolidate_bg() {
+    let s = st();
+    if s.cons.is_some() {
+        crate::println!("[agentd] a consolidation is already running");
+        return;
+    }
+    match cons_begin("/consolidate &", true) {
+        Ok(()) if s.cons.as_ref().is_some_and(|c| c.bg) => crate::println!("[agentd] consolidating on the background stream"),
+        Ok(()) => {
+            cons_abort("no background stream"); // the M4.5 path would hold the context: not in the background
+            crate::println!("[agentd] no background stream now (see /agentd log), use /consolidate");
+        }
+        Err(e) => {
+            crate::dlog!("consolidate: skipped ({})", e);
+            crate::println!("[agentd] nothing to consolidate: {}", e);
+        }
+    }
 }
 
 /// `/consolidate`: run it now in the foreground (Ctrl-C stops it and restores the point).
@@ -1248,7 +1333,7 @@ pub fn consolidate_now() {
         cons_abort("/consolidate");
     }
     let n0 = (s.facts.len(), s.n_ep);
-    if let Err(e) = cons_begin("/consolidate") {
+    if let Err(e) = cons_begin("/consolidate", false) {
         crate::dlog!("consolidate: skipped ({})", e);
         crate::println!("[agentd] nothing to consolidate: {}", e);
         return;

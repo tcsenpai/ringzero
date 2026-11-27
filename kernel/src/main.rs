@@ -22,6 +22,7 @@ mod layout; // T55 /var/lib/ringzero, /etc, /tmp
 mod idt;
 mod kbd;
 mod llm;
+mod multi; // M4.8a multi-stream decode
 mod log;
 mod mem;
 mod memidx;

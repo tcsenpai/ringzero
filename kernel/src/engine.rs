@@ -25,6 +25,8 @@ unsafe extern "C" {
     pub static mut pf_lg_ptr: u64;
     pub static mut pf_lg_stride: u64;
     pub static mut pf_lg0: u64;
+    /// M4.8a: 0, or a per-row stream table for transformer_prefill (multi.rs Row)
+    pub static mut pf_ms: u64;
     pub fn tok_encode_bpe(text: *const u8, len: u64, out: *mut u32, max: u64) -> u64;
     pub fn tok_build_chat_prompt(prompt: *const u8, out: *mut u32, max: u64, raw: u64, think: u64) -> u64;
     pub fn tok_write_stdout(token: u64);
