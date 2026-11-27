@@ -16,13 +16,13 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
 │               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
-│               │       │   │   └── ✓ 🟠 Beta release gate [E1] [blocked by T46]
+│               │       │   │   └── ✓ 🟠 Beta release gate [E1]
 │               │       │   │       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T51]
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1]
 │               │       │   │       ├── ○ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1]
 │               │       │   │       ├── ○ 🟢 Decision model (user note, post-beta) [E1]
 │               │       │   │       ├── ○ 🟢 Engine kernels for other model architectures (e.g. Gemma) [E1]
-│               │       │   │       └── ○ 🔴 Beta release (today, 2026-11-27) [E1] [blocked by T46]
+│               │       │   │       └── ○ 🔴 Beta release (today, 2026-11-27) [E1]
 │               │       │   │           ├── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
 │               │       │   │           └── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1] [blocked by T51]
 │               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
@@ -47,7 +47,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🟠 GitHub Pages site from the branding kit [E1]
 ✓ 🟠 Branding: boot banner overhaul, logo palette, VNC password ringzero [E1]
 │   ├── T34: Beta release gate (circular)
-│   ├── ○ 🟠 Shell colors by role (serial + framebuffer), !set color [E1]
+│   ├── ✓ 🟠 Shell colors by role (serial + framebuffer), !set color [E1]
 │   │   ├── T34: Beta release gate (circular)
 │   │   └── T51: Beta release (today, 2026-11-27) (circular)
 │   └── T51: Beta release (today, 2026-11-27) (circular)
