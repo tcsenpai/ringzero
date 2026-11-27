@@ -1,0 +1,2249 @@
+{
+ "prompts": [
+  {
+   "set": "chat",
+   "q": "che cos'e un kernel? spiegalo in 5 frasi",
+   "prompt_tokens": 1596,
+   "gen_tokens": 100,
+   "gen_s": 38.8,
+   "text": "Un kernel è il programma fondamentale che gestisce le risorse di un computer e fa da ponte tra il sistema operativo e l'hardware. Si occupa di gestire la memoria, i processi, i dispositivi di input/output e il sistema di file. Senza un kernel, il computer non potrebbe eseguire applicazioni o gestire più programmi contemporaneamente. Nel tuo caso, ringzero è un kernel scritto in Rust che gestisce questa macchina. È il cuore del sistema operativo, responsabile di tutte le operazioni di basso livello.<|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     60,
+     99
+    ],
+    "post/he": [
+     0,
+     99
+    ],
+    "pre/eh": [
+     62,
+     99
+    ],
+    "pre/he": [
+     0,
+     99
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 61,
+     "tokens": 99,
+     "accepted": 39,
+     "partial": 22,
+     "tried": [
+      61
+     ],
+     "ok": [
+      39
+     ]
+    },
+    "post/n2": {
+     "steps": 51,
+     "tokens": 99,
+     "accepted": 48,
+     "partial": 33,
+     "tried": [
+      51,
+      30
+     ],
+     "ok": [
+      30,
+      18
+     ]
+    },
+    "post/n3": {
+     "steps": 46,
+     "tokens": 99,
+     "accepted": 54,
+     "partial": 38,
+     "tried": [
+      46,
+      29,
+      17
+     ],
+     "ok": [
+      29,
+      17,
+      8
+     ]
+    },
+    "pre/n1": {
+     "steps": 61,
+     "tokens": 99,
+     "accepted": 39,
+     "partial": 22,
+     "tried": [
+      61
+     ],
+     "ok": [
+      39
+     ]
+    },
+    "pre/n2": {
+     "steps": 51,
+     "tokens": 99,
+     "accepted": 48,
+     "partial": 33,
+     "tried": [
+      51,
+      30
+     ],
+     "ok": [
+      30,
+      18
+     ]
+    },
+    "pre/n3": {
+     "steps": 45,
+     "tokens": 99,
+     "accepted": 55,
+     "partial": 36,
+     "tried": [
+      45,
+      29,
+      17
+     ],
+     "ok": [
+      29,
+      17,
+      9
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "Explain how a CPU cache works in 3 concise sentences.",
+   "prompt_tokens": 1596,
+   "gen_tokens": 85,
+   "gen_s": 35.0,
+   "text": "A CPU cache is a small, ultra-fast memory located between the CPU and main RAM that stores frequently accessed data to reduce access latency. When the CPU needs data, it first checks the cache; if found, it retrieves it instantly, but if not, it fetches it from slower main memory. This hierarchy allows the CPU to operate at high speeds without waiting for the much slower RAM to supply every piece of data.<|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     64,
+     84
+    ],
+    "post/he": [
+     1,
+     84
+    ],
+    "pre/eh": [
+     59,
+     84
+    ],
+    "pre/he": [
+     1,
+     84
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 47,
+     "tokens": 84,
+     "accepted": 37,
+     "partial": 10,
+     "tried": [
+      47
+     ],
+     "ok": [
+      37
+     ]
+    },
+    "post/n2": {
+     "steps": 38,
+     "tokens": 84,
+     "accepted": 47,
+     "partial": 22,
+     "tried": [
+      38,
+      31
+     ],
+     "ok": [
+      32,
+      15
+     ]
+    },
+    "post/n3": {
+     "steps": 34,
+     "tokens": 84,
+     "accepted": 50,
+     "partial": 27,
+     "tried": [
+      34,
+      29,
+      14
+     ],
+     "ok": [
+      29,
+      14,
+      7
+     ]
+    },
+    "pre/n1": {
+     "steps": 47,
+     "tokens": 84,
+     "accepted": 37,
+     "partial": 10,
+     "tried": [
+      47
+     ],
+     "ok": [
+      37
+     ]
+    },
+    "pre/n2": {
+     "steps": 39,
+     "tokens": 84,
+     "accepted": 46,
+     "partial": 24,
+     "tried": [
+      39,
+      31
+     ],
+     "ok": [
+      32,
+      14
+     ]
+    },
+    "pre/n3": {
+     "steps": 35,
+     "tokens": 84,
+     "accepted": 49,
+     "partial": 28,
+     "tried": [
+      35,
+      29,
+      13
+     ],
+     "ok": [
+      29,
+      13,
+      7
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "scrivi una breve poesia sul mare",
+   "prompt_tokens": 1590,
+   "gen_tokens": 73,
+   "gen_s": 31.8,
+   "text": "Il mare è un respiro eterno,\nonde che si infrangono sulla sabbia dorata.\nUn blu infinito che abbraccia il cielo,\ndove il vento canta storie antiche.\n\nLe onde si baciano,\nun ritmo che non si mai ferma.\nIl mare è libertà,\nè pace per l'anima stanca.<|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     45,
+     72
+    ],
+    "post/he": [
+     0,
+     72
+    ],
+    "pre/eh": [
+     40,
+     72
+    ],
+    "pre/he": [
+     0,
+     72
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 45,
+     "tokens": 72,
+     "accepted": 28,
+     "partial": 17,
+     "tried": [
+      45
+     ],
+     "ok": [
+      28
+     ]
+    },
+    "post/n2": {
+     "steps": 36,
+     "tokens": 72,
+     "accepted": 36,
+     "partial": 22,
+     "tried": [
+      36,
+      22
+     ],
+     "ok": [
+      22,
+      14
+     ]
+    },
+    "post/n3": {
+     "steps": 34,
+     "tokens": 72,
+     "accepted": 39,
+     "partial": 29,
+     "tried": [
+      34,
+      21,
+      13
+     ],
+     "ok": [
+      21,
+      13,
+      5
+     ]
+    },
+    "pre/n1": {
+     "steps": 45,
+     "tokens": 72,
+     "accepted": 28,
+     "partial": 17,
+     "tried": [
+      45
+     ],
+     "ok": [
+      28
+     ]
+    },
+    "pre/n2": {
+     "steps": 35,
+     "tokens": 72,
+     "accepted": 37,
+     "partial": 20,
+     "tried": [
+      35,
+      22
+     ],
+     "ok": [
+      22,
+      15
+     ]
+    },
+    "pre/n3": {
+     "steps": 33,
+     "tokens": 72,
+     "accepted": 40,
+     "partial": 28,
+     "tried": [
+      33,
+      21,
+      14
+     ],
+     "ok": [
+      21,
+      14,
+      5
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "what are the pros and cons of microkernels?",
+   "prompt_tokens": 1594,
+   "gen_tokens": 128,
+   "gen_s": 44.3,
+   "text": "Microkernels are a type of operating system architecture where only essential kernel functions (like inter-process communication, memory management, and scheduling) run in kernel space, while other services (like file systems, network stacks, and device drivers) run as user-space processes.\n\n**Pros:**\n- **Modularity**: Services are isolated in user space, making them easier to develop, test, and replace\n- **Flexibility**: Services can be moved between machines or restarted without rebooting the system\n- **Security**: If one service crashes or is compromised, it doesn't necessarily affect the entire system\n- **Scalability**: Services",
+   "step1_acc": {
+    "post/eh": [
+     101,
+     127
+    ],
+    "post/he": [
+     0,
+     127
+    ],
+    "pre/eh": [
+     95,
+     127
+    ],
+    "pre/he": [
+     0,
+     127
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 70,
+     "tokens": 127,
+     "accepted": 57,
+     "partial": 13,
+     "tried": [
+      70
+     ],
+     "ok": [
+      57
+     ]
+    },
+    "post/n2": {
+     "steps": 57,
+     "tokens": 127,
+     "accepted": 71,
+     "partial": 28,
+     "tried": [
+      57,
+      42
+     ],
+     "ok": [
+      42,
+      29
+     ]
+    },
+    "post/n3": {
+     "steps": 50,
+     "tokens": 127,
+     "accepted": 77,
+     "partial": 37,
+     "tried": [
+      50,
+      37,
+      27
+     ],
+     "ok": [
+      37,
+      27,
+      13
+     ]
+    },
+    "pre/n1": {
+     "steps": 70,
+     "tokens": 127,
+     "accepted": 57,
+     "partial": 13,
+     "tried": [
+      70
+     ],
+     "ok": [
+      57
+     ]
+    },
+    "pre/n2": {
+     "steps": 58,
+     "tokens": 127,
+     "accepted": 69,
+     "partial": 31,
+     "tried": [
+      58,
+      42
+     ],
+     "ok": [
+      42,
+      27
+     ]
+    },
+    "pre/n3": {
+     "steps": 49,
+     "tokens": 127,
+     "accepted": 78,
+     "partial": 35,
+     "tried": [
+      49,
+      37,
+      27
+     ],
+     "ok": [
+      37,
+      27,
+      14
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "Describe the difference between a process and a thread.",
+   "prompt_tokens": 1593,
+   "gen_tokens": 128,
+   "gen_s": 44.2,
+   "text": "A **process** is an independent program in execution with its own memory space, resources, and identity. Each process has:\n\n- Separate address space (code, data, heap, stack)\n- Independent file descriptors and open files\n- Its own process ID (PID)\n- Separate resources (memory, CPU time)\n- Protection from other processes\n\nA **thread** is a lightweight unit of execution within a process. Threads share:\n\n- The same memory space (code, data, heap)\n- The same file descriptors and open files\n- The same resources (memory, CPU time)\n- The same process",
+   "step1_acc": {
+    "post/eh": [
+     106,
+     127
+    ],
+    "post/he": [
+     0,
+     127
+    ],
+    "pre/eh": [
+     105,
+     127
+    ],
+    "pre/he": [
+     0,
+     127
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 69,
+     "tokens": 127,
+     "accepted": 59,
+     "partial": 10,
+     "tried": [
+      69
+     ],
+     "ok": [
+      59
+     ]
+    },
+    "post/n2": {
+     "steps": 52,
+     "tokens": 127,
+     "accepted": 76,
+     "partial": 19,
+     "tried": [
+      52,
+      43
+     ],
+     "ok": [
+      43,
+      33
+     ]
+    },
+    "post/n3": {
+     "steps": 43,
+     "tokens": 127,
+     "accepted": 85,
+     "partial": 23,
+     "tried": [
+      43,
+      36,
+      29
+     ],
+     "ok": [
+      36,
+      29,
+      20
+     ]
+    },
+    "pre/n1": {
+     "steps": 69,
+     "tokens": 127,
+     "accepted": 59,
+     "partial": 10,
+     "tried": [
+      69
+     ],
+     "ok": [
+      59
+     ]
+    },
+    "pre/n2": {
+     "steps": 53,
+     "tokens": 127,
+     "accepted": 74,
+     "partial": 22,
+     "tried": [
+      53,
+      43
+     ],
+     "ok": [
+      43,
+      31
+     ]
+    },
+    "pre/n3": {
+     "steps": 45,
+     "tokens": 127,
+     "accepted": 83,
+     "partial": 28,
+     "tried": [
+      45,
+      38,
+      28
+     ],
+     "ok": [
+      38,
+      28,
+      17
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "come funziona la memoria virtuale? rispondi in poche frasi",
+   "prompt_tokens": 1595,
+   "gen_tokens": 98,
+   "gen_s": 40.4,
+   "text": "La memoria virtuale è un meccanismo che permette al sistema operativo di utilizzare lo spazio su disco come estensione della memoria RAM. Quando la RAM si riempie, il sistema sposta i dati meno utilizzati in un'area speciale del disco chiamata \"swap\" o \"page file\", rendendoli accessibili come se fossero ancora nella memoria. Questo permette di eseguire applicazioni che richiedono più memoria di quella fisica disponibile, ma può rallentare il sistema quando si accede a dati nel disco.<|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     62,
+     97
+    ],
+    "post/he": [
+     0,
+     97
+    ],
+    "pre/eh": [
+     65,
+     97
+    ],
+    "pre/he": [
+     0,
+     97
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 59,
+     "tokens": 97,
+     "accepted": 38,
+     "partial": 21,
+     "tried": [
+      59
+     ],
+     "ok": [
+      38
+     ]
+    },
+    "post/n2": {
+     "steps": 53,
+     "tokens": 97,
+     "accepted": 45,
+     "partial": 42,
+     "tried": [
+      53,
+      34
+     ],
+     "ok": [
+      34,
+      11
+     ]
+    },
+    "post/n3": {
+     "steps": 48,
+     "tokens": 97,
+     "accepted": 50,
+     "partial": 39,
+     "tried": [
+      48,
+      31,
+      10
+     ],
+     "ok": [
+      31,
+      11,
+      8
+     ]
+    },
+    "pre/n1": {
+     "steps": 59,
+     "tokens": 97,
+     "accepted": 38,
+     "partial": 21,
+     "tried": [
+      59
+     ],
+     "ok": [
+      38
+     ]
+    },
+    "pre/n2": {
+     "steps": 52,
+     "tokens": 97,
+     "accepted": 46,
+     "partial": 41,
+     "tried": [
+      52,
+      35
+     ],
+     "ok": [
+      35,
+      11
+     ]
+    },
+    "pre/n3": {
+     "steps": 49,
+     "tokens": 97,
+     "accepted": 49,
+     "partial": 42,
+     "tried": [
+      49,
+      32,
+      10
+     ],
+     "ok": [
+      32,
+      11,
+      6
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "Give me three tips to write clean Rust code.",
+   "prompt_tokens": 1593,
+   "gen_tokens": 128,
+   "gen_s": 42.8,
+   "text": "1. **Use `Result` and `Option` liberally** - Instead of returning `()`, use `Result<T, E>` to express that an operation might fail, and `Option<T>` when a value might be absent. This makes error handling explicit and prevents panics from propagating silently.\n\n2. **Prefer `&self` over `self`** - When you don't need to mutate the instance, use `&self` instead of `self`. This allows you to write methods that can be called on immutable references, enabling more flexible and composable code.\n\n3. **Use `impl Trait",
+   "step1_acc": {
+    "post/eh": [
+     94,
+     127
+    ],
+    "post/he": [
+     1,
+     127
+    ],
+    "pre/eh": [
+     92,
+     127
+    ],
+    "pre/he": [
+     1,
+     127
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 71,
+     "tokens": 127,
+     "accepted": 56,
+     "partial": 15,
+     "tried": [
+      71
+     ],
+     "ok": [
+      56
+     ]
+    },
+    "post/n2": {
+     "steps": 60,
+     "tokens": 127,
+     "accepted": 67,
+     "partial": 38,
+     "tried": [
+      60,
+      45
+     ],
+     "ok": [
+      45,
+      22
+     ]
+    },
+    "post/n3": {
+     "steps": 55,
+     "tokens": 127,
+     "accepted": 72,
+     "partial": 44,
+     "tried": [
+      55,
+      43,
+      18
+     ],
+     "ok": [
+      43,
+      18,
+      11
+     ]
+    },
+    "pre/n1": {
+     "steps": 71,
+     "tokens": 127,
+     "accepted": 56,
+     "partial": 15,
+     "tried": [
+      71
+     ],
+     "ok": [
+      56
+     ]
+    },
+    "pre/n2": {
+     "steps": 61,
+     "tokens": 127,
+     "accepted": 66,
+     "partial": 40,
+     "tried": [
+      61,
+      45
+     ],
+     "ok": [
+      45,
+      21
+     ]
+    },
+    "pre/n3": {
+     "steps": 54,
+     "tokens": 127,
+     "accepted": 73,
+     "partial": 41,
+     "tried": [
+      54,
+      41,
+      19
+     ],
+     "ok": [
+      41,
+      19,
+      13
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "raccontami una breve storia su un gatto curioso",
+   "prompt_tokens": 1594,
+   "gen_tokens": 128,
+   "gen_s": 43.4,
+   "text": "Miaow! Ecco una breve storia su un gatto curioso:\n\n**Mia, il Gatto Indistruttibile**\n\nMia era un gatto di tre anni con occhi verdi come smeraldi e un naso rosa che sembrava sempre in cerca di avventure. Ogni mattina, prima ancora che il sole sorse, Mia si svegliava con un ronzio nel suo cervello.\n\nUn giorno, mentre stava guardando fuori dalla finestra, vide un uccellino che si stava preparando a volare via. \"Non può andare via così facilmente!\" pensò Mia. Con un salto audace, si lanci",
+   "step1_acc": {
+    "post/eh": [
+     72,
+     127
+    ],
+    "post/he": [
+     0,
+     127
+    ],
+    "pre/eh": [
+     69,
+     127
+    ],
+    "pre/he": [
+     0,
+     127
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 84,
+     "tokens": 127,
+     "accepted": 43,
+     "partial": 41,
+     "tried": [
+      84
+     ],
+     "ok": [
+      43
+     ]
+    },
+    "post/n2": {
+     "steps": 71,
+     "tokens": 127,
+     "accepted": 56,
+     "partial": 50,
+     "tried": [
+      71,
+      35
+     ],
+     "ok": [
+      35,
+      21
+     ]
+    },
+    "post/n3": {
+     "steps": 65,
+     "tokens": 127,
+     "accepted": 62,
+     "partial": 58,
+     "tried": [
+      65,
+      34,
+      21
+     ],
+     "ok": [
+      34,
+      21,
+      7
+     ]
+    },
+    "pre/n1": {
+     "steps": 84,
+     "tokens": 127,
+     "accepted": 43,
+     "partial": 41,
+     "tried": [
+      84
+     ],
+     "ok": [
+      43
+     ]
+    },
+    "pre/n2": {
+     "steps": 71,
+     "tokens": 127,
+     "accepted": 56,
+     "partial": 51,
+     "tried": [
+      71,
+      36
+     ],
+     "ok": [
+      36,
+      20
+     ]
+    },
+    "pre/n3": {
+     "steps": 66,
+     "tokens": 127,
+     "accepted": 61,
+     "partial": 60,
+     "tried": [
+      66,
+      34,
+      21
+     ],
+     "ok": [
+      34,
+      21,
+      6
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "Why is the sky blue? Answer briefly.",
+   "prompt_tokens": 1592,
+   "gen_tokens": 29,
+   "gen_s": 21.5,
+   "text": "Because of Rayleigh scattering. Sunlight is scattered by air molecules, and shorter wavelengths (blue) scatter more than longer ones (red).<|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     23,
+     28
+    ],
+    "post/he": [
+     0,
+     28
+    ],
+    "pre/eh": [
+     21,
+     28
+    ],
+    "pre/he": [
+     0,
+     28
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 16,
+     "tokens": 28,
+     "accepted": 13,
+     "partial": 3,
+     "tried": [
+      16
+     ],
+     "ok": [
+      13
+     ]
+    },
+    "post/n2": {
+     "steps": 14,
+     "tokens": 28,
+     "accepted": 15,
+     "partial": 8,
+     "tried": [
+      14,
+      9
+     ],
+     "ok": [
+      10,
+      5
+     ]
+    },
+    "post/n3": {
+     "steps": 13,
+     "tokens": 28,
+     "accepted": 16,
+     "partial": 10,
+     "tried": [
+      13,
+      8,
+      5
+     ],
+     "ok": [
+      9,
+      5,
+      2
+     ]
+    },
+    "pre/n1": {
+     "steps": 16,
+     "tokens": 28,
+     "accepted": 13,
+     "partial": 3,
+     "tried": [
+      16
+     ],
+     "ok": [
+      13
+     ]
+    },
+    "pre/n2": {
+     "steps": 13,
+     "tokens": 28,
+     "accepted": 15,
+     "partial": 7,
+     "tried": [
+      13,
+      9
+     ],
+     "ok": [
+      9,
+      6
+     ]
+    },
+    "pre/n3": {
+     "steps": 12,
+     "tokens": 28,
+     "accepted": 17,
+     "partial": 9,
+     "tried": [
+      12,
+      8,
+      6
+     ],
+     "ok": [
+      8,
+      6,
+      3
+     ]
+    }
+   }
+  },
+  {
+   "set": "chat",
+   "q": "quali sono i vantaggi di un sistema operativo scritto in Rust?",
+   "prompt_tokens": 1596,
+   "gen_tokens": 128,
+   "gen_s": 42.6,
+   "text": "I vantaggi di un sistema operativo scritto in Rust includono:\n\n- **Sicurezza di memoria**: Rust ha un sistema di proprietà e borrow checker che previene errori di memoria come buffer overflow, use-after-free e data race a compile-time.\n\n- **Null pointer safety**: Rust non permette pointer null, eliminando una classe intera di errori comuni.\n\n- **Performance**: Rust mantiene le prestazioni del C/C++ senza la gestione manuale della memoria.\n\n- **Zero-cost abstractions**: Le astrazioni di Rust non introducono overhead a runtime.\n\n- **Memory safety without garbage collection**: Gestisce la memoria in modo sicuro",
+   "step1_acc": {
+    "post/eh": [
+     87,
+     127
+    ],
+    "post/he": [
+     0,
+     127
+    ],
+    "pre/eh": [
+     84,
+     127
+    ],
+    "pre/he": [
+     0,
+     127
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 74,
+     "tokens": 127,
+     "accepted": 53,
+     "partial": 21,
+     "tried": [
+      74
+     ],
+     "ok": [
+      53
+     ]
+    },
+    "post/n2": {
+     "steps": 64,
+     "tokens": 127,
+     "accepted": 64,
+     "partial": 41,
+     "tried": [
+      64,
+      41
+     ],
+     "ok": [
+      41,
+      23
+     ]
+    },
+    "post/n3": {
+     "steps": 56,
+     "tokens": 127,
+     "accepted": 72,
+     "partial": 42,
+     "tried": [
+      56,
+      37,
+      21
+     ],
+     "ok": [
+      37,
+      22,
+      13
+     ]
+    },
+    "pre/n1": {
+     "steps": 74,
+     "tokens": 127,
+     "accepted": 53,
+     "partial": 21,
+     "tried": [
+      74
+     ],
+     "ok": [
+      53
+     ]
+    },
+    "pre/n2": {
+     "steps": 63,
+     "tokens": 127,
+     "accepted": 65,
+     "partial": 40,
+     "tried": [
+      63,
+      42
+     ],
+     "ok": [
+      42,
+      23
+     ]
+    },
+    "pre/n3": {
+     "steps": 56,
+     "tokens": 127,
+     "accepted": 72,
+     "partial": 42,
+     "tried": [
+      56,
+      39,
+      19
+     ],
+     "ok": [
+      39,
+      20,
+      13
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "ricordati che il mio colore preferito e il verde",
+   "prompt_tokens": 1594,
+   "gen_tokens": 40,
+   "gen_s": 25.3,
+   "text": "<tool_call>\n<function=remember>\n<parameter=key>\ncolore_preferito\n</parameter>\n<parameter=value>\nverde\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     39,
+     39
+    ],
+    "post/he": [
+     0,
+     39
+    ],
+    "pre/eh": [
+     38,
+     39
+    ],
+    "pre/he": [
+     0,
+     39
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 20,
+     "tokens": 39,
+     "accepted": 20,
+     "partial": 0,
+     "tried": [
+      20
+     ],
+     "ok": [
+      20
+     ]
+    },
+    "post/n2": {
+     "steps": 13,
+     "tokens": 39,
+     "accepted": 26,
+     "partial": 0,
+     "tried": [
+      13,
+      13
+     ],
+     "ok": [
+      13,
+      13
+     ]
+    },
+    "post/n3": {
+     "steps": 10,
+     "tokens": 39,
+     "accepted": 29,
+     "partial": 1,
+     "tried": [
+      10,
+      10,
+      10
+     ],
+     "ok": [
+      10,
+      10,
+      9
+     ]
+    },
+    "pre/n1": {
+     "steps": 20,
+     "tokens": 39,
+     "accepted": 20,
+     "partial": 0,
+     "tried": [
+      20
+     ],
+     "ok": [
+      20
+     ]
+    },
+    "pre/n2": {
+     "steps": 13,
+     "tokens": 39,
+     "accepted": 26,
+     "partial": 0,
+     "tried": [
+      13,
+      13
+     ],
+     "ok": [
+      13,
+      13
+     ]
+    },
+    "pre/n3": {
+     "steps": 10,
+     "tokens": 39,
+     "accepted": 29,
+     "partial": 1,
+     "tried": [
+      10,
+      10,
+      10
+     ],
+     "ok": [
+      10,
+      10,
+      9
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "cosa sai di me?",
+   "prompt_tokens": 1588,
+   "gen_tokens": 25,
+   "gen_s": 22.9,
+   "text": "<tool_call>\n<function=recall>\n<parameter=query>\nuser\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     24,
+     24
+    ],
+    "post/he": [
+     0,
+     24
+    ],
+    "pre/eh": [
+     24,
+     24
+    ],
+    "pre/he": [
+     0,
+     24
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 12,
+     "tokens": 24,
+     "accepted": 12,
+     "partial": 0,
+     "tried": [
+      12
+     ],
+     "ok": [
+      12
+     ]
+    },
+    "post/n2": {
+     "steps": 8,
+     "tokens": 24,
+     "accepted": 16,
+     "partial": 0,
+     "tried": [
+      8,
+      8
+     ],
+     "ok": [
+      8,
+      8
+     ]
+    },
+    "post/n3": {
+     "steps": 6,
+     "tokens": 24,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      6,
+      6,
+      6
+     ],
+     "ok": [
+      6,
+      6,
+      6
+     ]
+    },
+    "pre/n1": {
+     "steps": 12,
+     "tokens": 24,
+     "accepted": 12,
+     "partial": 0,
+     "tried": [
+      12
+     ],
+     "ok": [
+      12
+     ]
+    },
+    "pre/n2": {
+     "steps": 8,
+     "tokens": 24,
+     "accepted": 16,
+     "partial": 0,
+     "tried": [
+      8,
+      8
+     ],
+     "ok": [
+      8,
+      8
+     ]
+    },
+    "pre/n3": {
+     "steps": 6,
+     "tokens": 24,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      6,
+      6,
+      6
+     ],
+     "ok": [
+      6,
+      6,
+      6
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "quanto fa 2**100? usa python",
+   "prompt_tokens": 1594,
+   "gen_tokens": 55,
+   "gen_s": 27.9,
+   "text": "<tool_call>\n<function=run_wasm>\n<parameter=path>\n/bin/python3\n</parameter>\n<parameter=args>\n- <<'EOF'\nprint(2**100)\nEOF\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     49,
+     54
+    ],
+    "post/he": [
+     1,
+     54
+    ],
+    "pre/eh": [
+     47,
+     54
+    ],
+    "pre/he": [
+     1,
+     54
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 29,
+     "tokens": 54,
+     "accepted": 25,
+     "partial": 4,
+     "tried": [
+      29
+     ],
+     "ok": [
+      25
+     ]
+    },
+    "post/n2": {
+     "steps": 20,
+     "tokens": 54,
+     "accepted": 34,
+     "partial": 3,
+     "tried": [
+      20,
+      17
+     ],
+     "ok": [
+      17,
+      17
+     ]
+    },
+    "post/n3": {
+     "steps": 17,
+     "tokens": 54,
+     "accepted": 37,
+     "partial": 5,
+     "tried": [
+      17,
+      13,
+      12
+     ],
+     "ok": [
+      13,
+      12,
+      12
+     ]
+    },
+    "pre/n1": {
+     "steps": 29,
+     "tokens": 54,
+     "accepted": 25,
+     "partial": 4,
+     "tried": [
+      29
+     ],
+     "ok": [
+      25
+     ]
+    },
+    "pre/n2": {
+     "steps": 20,
+     "tokens": 54,
+     "accepted": 34,
+     "partial": 3,
+     "tried": [
+      20,
+      17
+     ],
+     "ok": [
+      17,
+      17
+     ]
+    },
+    "pre/n3": {
+     "steps": 18,
+     "tokens": 54,
+     "accepted": 37,
+     "partial": 9,
+     "tried": [
+      18,
+      16,
+      12
+     ],
+     "ok": [
+      16,
+      12,
+      9
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "calcola la media di 3, 7 e 11 con python",
+   "prompt_tokens": 1599,
+   "gen_tokens": 41,
+   "gen_s": 25.4,
+   "text": "<tool_call>\n<function=run_code>\n<parameter=code>\nprint((3 + 7 + 11) / 3)\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     38,
+     40
+    ],
+    "post/he": [
+     1,
+     40
+    ],
+    "pre/eh": [
+     38,
+     40
+    ],
+    "pre/he": [
+     1,
+     40
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 21,
+     "tokens": 40,
+     "accepted": 19,
+     "partial": 2,
+     "tried": [
+      21
+     ],
+     "ok": [
+      19
+     ]
+    },
+    "post/n2": {
+     "steps": 14,
+     "tokens": 40,
+     "accepted": 26,
+     "partial": 1,
+     "tried": [
+      14,
+      13
+     ],
+     "ok": [
+      13,
+      13
+     ]
+    },
+    "post/n3": {
+     "steps": 11,
+     "tokens": 40,
+     "accepted": 29,
+     "partial": 2,
+     "tried": [
+      11,
+      10,
+      10
+     ],
+     "ok": [
+      10,
+      10,
+      9
+     ]
+    },
+    "pre/n1": {
+     "steps": 21,
+     "tokens": 40,
+     "accepted": 19,
+     "partial": 2,
+     "tried": [
+      21
+     ],
+     "ok": [
+      19
+     ]
+    },
+    "pre/n2": {
+     "steps": 14,
+     "tokens": 40,
+     "accepted": 26,
+     "partial": 1,
+     "tried": [
+      14,
+      13
+     ],
+     "ok": [
+      13,
+      13
+     ]
+    },
+    "pre/n3": {
+     "steps": 11,
+     "tokens": 40,
+     "accepted": 30,
+     "partial": 1,
+     "tried": [
+      11,
+      10,
+      10
+     ],
+     "ok": [
+      11,
+      10,
+      9
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "elenca i file in /notes",
+   "prompt_tokens": 1590,
+   "gen_tokens": 26,
+   "gen_s": 21.5,
+   "text": "<tool_call>\n<function=ls>\n<parameter=path>\n/notes\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     25,
+     25
+    ],
+    "post/he": [
+     0,
+     25
+    ],
+    "pre/eh": [
+     25,
+     25
+    ],
+    "pre/he": [
+     0,
+     25
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 13,
+     "tokens": 25,
+     "accepted": 13,
+     "partial": 0,
+     "tried": [
+      13
+     ],
+     "ok": [
+      13
+     ]
+    },
+    "post/n2": {
+     "steps": 9,
+     "tokens": 25,
+     "accepted": 17,
+     "partial": 0,
+     "tried": [
+      9,
+      8
+     ],
+     "ok": [
+      9,
+      8
+     ]
+    },
+    "post/n3": {
+     "steps": 7,
+     "tokens": 25,
+     "accepted": 19,
+     "partial": 0,
+     "tried": [
+      7,
+      6,
+      6
+     ],
+     "ok": [
+      7,
+      6,
+      6
+     ]
+    },
+    "pre/n1": {
+     "steps": 13,
+     "tokens": 25,
+     "accepted": 13,
+     "partial": 0,
+     "tried": [
+      13
+     ],
+     "ok": [
+      13
+     ]
+    },
+    "pre/n2": {
+     "steps": 9,
+     "tokens": 25,
+     "accepted": 17,
+     "partial": 0,
+     "tried": [
+      9,
+      8
+     ],
+     "ok": [
+      9,
+      8
+     ]
+    },
+    "pre/n3": {
+     "steps": 7,
+     "tokens": 25,
+     "accepted": 19,
+     "partial": 0,
+     "tried": [
+      7,
+      6,
+      6
+     ],
+     "ok": [
+      7,
+      6,
+      6
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "leggi /notes/todo.txt",
+   "prompt_tokens": 1589,
+   "gen_tokens": 28,
+   "gen_s": 21.7,
+   "text": "<tool_call>\n<function=cat>\n<parameter=path>\n/notes/todo.txt\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     27,
+     27
+    ],
+    "post/he": [
+     0,
+     27
+    ],
+    "pre/eh": [
+     27,
+     27
+    ],
+    "pre/he": [
+     0,
+     27
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 14,
+     "tokens": 27,
+     "accepted": 14,
+     "partial": 0,
+     "tried": [
+      14
+     ],
+     "ok": [
+      14
+     ]
+    },
+    "post/n2": {
+     "steps": 9,
+     "tokens": 27,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      9,
+      9
+     ],
+     "ok": [
+      9,
+      9
+     ]
+    },
+    "post/n3": {
+     "steps": 7,
+     "tokens": 27,
+     "accepted": 21,
+     "partial": 0,
+     "tried": [
+      7,
+      7,
+      7
+     ],
+     "ok": [
+      7,
+      7,
+      7
+     ]
+    },
+    "pre/n1": {
+     "steps": 14,
+     "tokens": 27,
+     "accepted": 14,
+     "partial": 0,
+     "tried": [
+      14
+     ],
+     "ok": [
+      14
+     ]
+    },
+    "pre/n2": {
+     "steps": 9,
+     "tokens": 27,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      9,
+      9
+     ],
+     "ok": [
+      9,
+      9
+     ]
+    },
+    "pre/n3": {
+     "steps": 7,
+     "tokens": 27,
+     "accepted": 20,
+     "partial": 1,
+     "tried": [
+      7,
+      7,
+      7
+     ],
+     "ok": [
+      7,
+      7,
+      6
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "scrivi in /notes/m47.txt la parola prova",
+   "prompt_tokens": 1595,
+   "gen_tokens": 44,
+   "gen_s": 26.1,
+   "text": "<tool_call>\n<function=write_file>\n<parameter=path>\n/notes/m47.txt\n</parameter>\n<parameter=content>\nprova\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     43,
+     43
+    ],
+    "post/he": [
+     0,
+     43
+    ],
+    "pre/eh": [
+     42,
+     43
+    ],
+    "pre/he": [
+     0,
+     43
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 22,
+     "tokens": 43,
+     "accepted": 22,
+     "partial": 0,
+     "tried": [
+      22
+     ],
+     "ok": [
+      22
+     ]
+    },
+    "post/n2": {
+     "steps": 15,
+     "tokens": 43,
+     "accepted": 29,
+     "partial": 0,
+     "tried": [
+      15,
+      14
+     ],
+     "ok": [
+      15,
+      14
+     ]
+    },
+    "post/n3": {
+     "steps": 11,
+     "tokens": 43,
+     "accepted": 33,
+     "partial": 0,
+     "tried": [
+      11,
+      11,
+      11
+     ],
+     "ok": [
+      11,
+      11,
+      11
+     ]
+    },
+    "pre/n1": {
+     "steps": 22,
+     "tokens": 43,
+     "accepted": 22,
+     "partial": 0,
+     "tried": [
+      22
+     ],
+     "ok": [
+      22
+     ]
+    },
+    "pre/n2": {
+     "steps": 15,
+     "tokens": 43,
+     "accepted": 29,
+     "partial": 0,
+     "tried": [
+      15,
+      14
+     ],
+     "ok": [
+      15,
+      14
+     ]
+    },
+    "pre/n3": {
+     "steps": 11,
+     "tokens": 43,
+     "accepted": 33,
+     "partial": 0,
+     "tried": [
+      11,
+      11,
+      11
+     ],
+     "ok": [
+      11,
+      11,
+      11
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "imposta la temperatura a 0",
+   "prompt_tokens": 1589,
+   "gen_tokens": 36,
+   "gen_s": 23.9,
+   "text": "<tool_call>\n<function=set_setting>\n<parameter=key>\ntemperature\n</parameter>\n<parameter=value>\n0\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     35,
+     35
+    ],
+    "post/he": [
+     0,
+     35
+    ],
+    "pre/eh": [
+     35,
+     35
+    ],
+    "pre/he": [
+     0,
+     35
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 18,
+     "tokens": 35,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      18
+     ],
+     "ok": [
+      18
+     ]
+    },
+    "post/n2": {
+     "steps": 12,
+     "tokens": 35,
+     "accepted": 24,
+     "partial": 0,
+     "tried": [
+      12,
+      12
+     ],
+     "ok": [
+      12,
+      12
+     ]
+    },
+    "post/n3": {
+     "steps": 9,
+     "tokens": 35,
+     "accepted": 27,
+     "partial": 0,
+     "tried": [
+      9,
+      9,
+      9
+     ],
+     "ok": [
+      9,
+      9,
+      9
+     ]
+    },
+    "pre/n1": {
+     "steps": 18,
+     "tokens": 35,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      18
+     ],
+     "ok": [
+      18
+     ]
+    },
+    "pre/n2": {
+     "steps": 12,
+     "tokens": 35,
+     "accepted": 24,
+     "partial": 0,
+     "tried": [
+      12,
+      12
+     ],
+     "ok": [
+      12,
+      12
+     ]
+    },
+    "pre/n3": {
+     "steps": 9,
+     "tokens": 35,
+     "accepted": 27,
+     "partial": 0,
+     "tried": [
+      9,
+      9,
+      9
+     ],
+     "ok": [
+      9,
+      9,
+      9
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "mostra le ultime 5 righe del log",
+   "prompt_tokens": 1593,
+   "gen_tokens": 25,
+   "gen_s": 21.8,
+   "text": "<tool_call>\n<function=read_log>\n<parameter=n>\n5\n</parameter>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     24,
+     24
+    ],
+    "post/he": [
+     0,
+     24
+    ],
+    "pre/eh": [
+     24,
+     24
+    ],
+    "pre/he": [
+     0,
+     24
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 12,
+     "tokens": 24,
+     "accepted": 12,
+     "partial": 0,
+     "tried": [
+      12
+     ],
+     "ok": [
+      12
+     ]
+    },
+    "post/n2": {
+     "steps": 8,
+     "tokens": 24,
+     "accepted": 16,
+     "partial": 0,
+     "tried": [
+      8,
+      8
+     ],
+     "ok": [
+      8,
+      8
+     ]
+    },
+    "post/n3": {
+     "steps": 6,
+     "tokens": 24,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      6,
+      6,
+      6
+     ],
+     "ok": [
+      6,
+      6,
+      6
+     ]
+    },
+    "pre/n1": {
+     "steps": 12,
+     "tokens": 24,
+     "accepted": 12,
+     "partial": 0,
+     "tried": [
+      12
+     ],
+     "ok": [
+      12
+     ]
+    },
+    "pre/n2": {
+     "steps": 8,
+     "tokens": 24,
+     "accepted": 16,
+     "partial": 0,
+     "tried": [
+      8,
+      8
+     ],
+     "ok": [
+      8,
+      8
+     ]
+    },
+    "pre/n3": {
+     "steps": 6,
+     "tokens": 24,
+     "accepted": 18,
+     "partial": 0,
+     "tried": [
+      6,
+      6,
+      6
+     ],
+     "ok": [
+      6,
+      6,
+      6
+     ]
+    }
+   }
+  },
+  {
+   "set": "tools",
+   "q": "quanti core ha la CPU?",
+   "prompt_tokens": 1590,
+   "gen_tokens": 15,
+   "gen_s": 19.8,
+   "text": "<tool_call>\n<function=cpuinfo>\n</function>\n</tool_call><|im_end|>",
+   "step1_acc": {
+    "post/eh": [
+     14,
+     14
+    ],
+    "post/he": [
+     0,
+     14
+    ],
+    "pre/eh": [
+     14,
+     14
+    ],
+    "pre/he": [
+     0,
+     14
+    ]
+   },
+   "sim": {
+    "post/n1": {
+     "steps": 7,
+     "tokens": 14,
+     "accepted": 7,
+     "partial": 0,
+     "tried": [
+      7
+     ],
+     "ok": [
+      7
+     ]
+    },
+    "post/n2": {
+     "steps": 5,
+     "tokens": 14,
+     "accepted": 10,
+     "partial": 0,
+     "tried": [
+      5,
+      5
+     ],
+     "ok": [
+      5,
+      5
+     ]
+    },
+    "post/n3": {
+     "steps": 4,
+     "tokens": 14,
+     "accepted": 11,
+     "partial": 0,
+     "tried": [
+      4,
+      4,
+      3
+     ],
+     "ok": [
+      4,
+      4,
+      3
+     ]
+    },
+    "pre/n1": {
+     "steps": 7,
+     "tokens": 14,
+     "accepted": 7,
+     "partial": 0,
+     "tried": [
+      7
+     ],
+     "ok": [
+      7
+     ]
+    },
+    "pre/n2": {
+     "steps": 5,
+     "tokens": 14,
+     "accepted": 10,
+     "partial": 0,
+     "tried": [
+      5,
+      5
+     ],
+     "ok": [
+      5,
+      5
+     ]
+    },
+    "pre/n3": {
+     "steps": 4,
+     "tokens": 14,
+     "accepted": 11,
+     "partial": 0,
+     "tried": [
+      4,
+      4,
+      3
+     ],
+     "ok": [
+      4,
+      4,
+      3
+     ]
+    }
+   }
+  }
+ ],
+ "check": [
+  0.0,
+  12.125
+ ],
+ "maxrss_mib": 9769
+}
