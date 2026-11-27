@@ -70,6 +70,7 @@ For a window replace `-display none` with `-vga std -display gtk`. For the 2B us
 - After a tool result the 4B sometimes answers in Italian to an English request.
 - The 2B edition calls tools less often and may answer from its own guesses.
 - `make run-remote` exposes a serial port and VNC on all interfaces: trusted networks only.
+- Very short notes (under 20 characters, like "buy milk") are not recalled from memory yet.
 - A hibernated session resumes only on the same edition.
 - Full list: docs/BETA.md.
 
