@@ -1,8 +1,8 @@
 ; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/transformer.asm).
-; Do not edit here: change upstream and re-vendor. AIOS changes (M2.5), all marked "AIOS": optional
+; Do not edit here: change upstream and re-vendor. ringzero changes (M2.5), all marked "ringzero": optional
 ; FP16 KV cache (-DKV_F16): vcvtps2ph on store, dot_f16_avx2 / saxpy_f16_avx2 in gqa_attn_range; and
 ; model_init lets max_seq_override exceed the header's max_seq_len; rope_heads and g_dn_job are global for the
-; batched prefill (M4.8, engine/prefill.asm). M7 (.asmbin v4, all "AIOS"): v4 accepted, Q4_0 slot types tagged into
+; batched prefill (M4.8, engine/prefill.asm). M7 (.asmbin v4, all "ringzero"): v4 accepted, Q4_0 slot types tagged into
 ; bit 0 of the slot pointers (desc_tag_q4, also called by prefill.asm), untied lm_head (CTX_LM_HEAD_PTR), DeltaNet with
 ; Hv = ratio * Hk (V head h reads K head h / ratio, q/k copied before the in-place l2norm).
 ; ============================================================================
@@ -34,7 +34,7 @@ default rel
 
 %include "constants.inc"
 
-; AIOS: KV cache element type (FP16 with -DKV_F16, else FP32 as upstream)
+; ringzero: KV cache element type (FP16 with -DKV_F16, else FP32 as upstream)
 %ifdef KV_F16
 %define KV_SHIFT 1
 %define KV_DOT   dot_f16_avx2
@@ -98,9 +98,9 @@ global model_free
 global transformer_forward
 %ifdef QWEN35
 global deltanet_heads_range
-global rope_heads                       ; AIOS (M4.8)
-global g_dn_job                         ; AIOS (M4.8)
-global desc_tag_q4                      ; AIOS (M7)
+global rope_heads                       ; ringzero (M4.8)
+global g_dn_job                         ; ringzero (M4.8)
+global desc_tag_q4                      ; ringzero (M7)
 %endif
 %if FAST_Q8
 global gqa_attn_range
@@ -195,7 +195,7 @@ model_init:
     cmp     dword [r15 + HDR_MAGIC], ASMBIN_MAGIC
     jne     .err_bad_hdr
 %ifdef QWEN35
-    mov     eax, [r15 + HDR_VERSION]    ; AIOS (M7): v3 or v4
+    mov     eax, [r15 + HDR_VERSION]    ; ringzero (M7): v3 or v4
     sub     eax, ASMBIN_VERSION_V3
     cmp     eax, 1
     ja      .err_bad_hdr
@@ -256,7 +256,7 @@ model_init:
     mov     eax, [r15 + HDR_MAX_SEQ_LEN]
     test    r12, r12
     jz      .use_hdr_seq
-    ; AIOS (M2.5): a non-zero override wins even above the header value (the v3 .asmbin
+    ; ringzero (M2.5): a non-zero override wins even above the header value (the v3 .asmbin
     ; stores the converter default 4096; Qwen3.5-2B config.json: max_position_embeddings 262144)
     mov     rax, r12
 .use_hdr_seq:
@@ -357,7 +357,7 @@ model_init:
     add     rax, r15
     mov     [rbx + CTX_FINAL_NORM_PTR], rax
 %ifdef QWEN35
-    mov     rax, [rbx + CTX_EMB_PTR]    ; AIOS (M7): lm_head = embed (tied) unless v4 gives an untied one
+    mov     rax, [rbx + CTX_EMB_PTR]    ; ringzero (M7): lm_head = embed (tied) unless v4 gives an untied one
     cmp     dword [r15 + HDR_VERSION], ASMBIN_VERSION_V4
     jne     .lm_tied
     mov     rcx, [r15 + HDR_OFF_LM_HEAD]
@@ -377,7 +377,7 @@ model_init:
 .type_chk_lp:
     test    rcx, rcx
     jz      .type_chk_done
-    mov     eax, [rdx + DESC_QTYPES]    ; AIOS (M7): slot types only on the matrix slots 2..5, no type 3
+    mov     eax, [rdx + DESC_QTYPES]    ; ringzero (M7): slot types only on the matrix slots 2..5, no type 3
     test    eax, 0xFFFFF00F
     jnz     .err_layer_type
     mov     r8d, eax
@@ -403,7 +403,7 @@ model_init:
     mov     [rbx + CTX_N_LIN], r13
     test    r13, r13
     jz      .lin_cfg_ok
-    ; DeltaNet kernel assumptions: Hv = ratio * Hk <= 32 (AIOS M7: was Hk == Hv), Dk == Dv == 128, conv kernel 4
+    ; DeltaNet kernel assumptions: Hv = ratio * Hk <= 32 (ringzero M7: was Hk == Hv), Dk == Dv == 128, conv kernel 4
     mov     ecx, [r15 + HDR_N_LIN_K_HEADS]
     test    ecx, ecx
     jz      .err_layer_type
@@ -540,7 +540,7 @@ model_init:
 %endif
     imul    rax, [rbx + CTX_MAX_SEQ]
     imul    rax, [rbx + CTX_KV_DIM]
-    shl     rax, KV_SHIFT               ; AIOS: 2 (f32) or 1 (KV_F16)
+    shl     rax, KV_SHIFT               ; ringzero: 2 (f32) or 1 (KV_F16)
     ALLOC_BUF CTX_BUF_K_CACHE, rax
     ALLOC_BUF CTX_BUF_V_CACHE, rax
 
@@ -826,7 +826,7 @@ transformer_forward:
     mov     [rsp + SLOT(i)], rcx
 %assign i i+1
 %endrep
-    mov     rdi, rax                    ; AIOS (M7): Q4_0 slots get bit 0 set
+    mov     rdi, rax                    ; ringzero (M7): Q4_0 slots get bit 0 set
     lea     rsi, [rsp + SLOT(0)]
     call    desc_tag_q4
 %else
@@ -1031,7 +1031,7 @@ transformer_forward:
     ; Head-major contiguous KV layout: cache[l, kv_h, pos, head_dim]
     ; Eliminates 4KB L1D set aliasing & TLB thrashing across timesteps!
 %ifdef KV_F16
-    ; AIOS: K/V rows are stored as FP16 (vcvtps2ph, round to nearest even)
+    ; ringzero: K/V rows are stored as FP16 (vcvtps2ph, round to nearest even)
     mov     r14, [rbx + CTX_HEAD_DIM]
     shl     r14, 2                      ; f32 head_bytes in buf_k / buf_v
     mov     r15, [rbx + CTX_MAX_SEQ]
@@ -1342,7 +1342,7 @@ transformer_forward:
 %endif
 
 %ifdef QWEN35
-    mov     rdi, [rbx + CTX_LM_HEAD_PTR] ; AIOS (M7): tied (= embed) or untied lm_head
+    mov     rdi, [rbx + CTX_LM_HEAD_PTR] ; ringzero (M7): tied (= embed) or untied lm_head
 %else
     mov     rdi, [rbx + CTX_EMB_PTR]    ; tied embeddings!
 %endif
@@ -1559,7 +1559,7 @@ deltanet_heads_range:
     push    r15
     sub     rsp, 1608                   ; 6 pushes + 1608 + ret = 1664 -> 16B aligned
     ; [rsp + 0] dec f32, [rsp + 4] beta f32, [rsp + 64..575] delta scratch
-    ; AIOS (M7): [rsp + 576..1087] q copy, [rsp + 1088..1599] k copy of this V head's K head
+    ; ringzero (M7): [rsp + 576..1087] q copy, [rsp + 1088..1599] k copy of this V head's K head
     lea     rbx, [rel g_ctx]
     lea     rbp, [rel g_dn_job]
     mov     r12, rdi                    ; h
@@ -1568,7 +1568,7 @@ deltanet_heads_range:
 .hd_lp:
     cmp     r12, [rsp + 8]
     jae     .hd_done
-    ; AIOS (M7): K head kh = h / ratio; q_kh and k_kh are copied (V heads sharing a K head must not
+    ; ringzero (M7): K head kh = h / ratio; q_kh and k_kh are copied (V heads sharing a K head must not
     ; l2norm it twice, possibly on two CPUs at once); with ratio 1 the values are the in-place ones
     mov     rax, r12
     xor     edx, edx
@@ -1636,7 +1636,7 @@ deltanet_heads_range:
     add     rdi, [rbx + CTX_BUF_DN_STATE]
     mov     rsi, r14                    ; q
     mov     rdx, r15                    ; k
-    mov     rcx, [rbx + CTX_KEY_DIM]    ; AIOS (M7): v region after q and k (2 * Hk * Dk floats)
+    mov     rcx, [rbx + CTX_KEY_DIM]    ; ringzero (M7): v region after q and k (2 * Hk * Dk floats)
     shl     rcx, 3
     add     rcx, [rbx + CTX_BUF_Q]
     mov     rax, r12
@@ -1673,7 +1673,7 @@ deltanet_heads_range:
 %endif
 %ifdef KV_F16
 ; ----------------------------------------------------------------------------
-; AIOS: FP16 KV cache helpers (F16C). Same contract as dot_f32_avx2 / saxpy_f32_avx2,
+; ringzero: FP16 KV cache helpers (F16C). Same contract as dot_f32_avx2 / saxpy_f32_avx2,
 ; but b / src are FP16. n multiple of 32.
 ; float dot_f16_avx2(const float *a, const uint16 *b, uint64 n) -> xmm0
 ; ----------------------------------------------------------------------------
@@ -1769,7 +1769,7 @@ gqa_attn_range:
     mov     rbp, [rbx + CTX_HEAD_DIM]
     shl     rbp, 2                      ; rbp = head_bytes (step per t = 512B contiguous!)
     mov     rax, rbp
-    shr     rax, 2 - KV_SHIFT           ; AIOS: head_dim * KV elt bytes
+    shr     rax, 2 - KV_SHIFT           ; ringzero: head_dim * KV elt bytes
     mov     [rsp + 40], rax
     imul    rax, [rbx + CTX_MAX_SEQ]
     mov     [rsp + 32], rax             ; kv_head_stride
@@ -1881,7 +1881,7 @@ gqa_attn_range:
 
 %ifdef QWEN35
 ; ----------------------------------------------------------------------------
-; AIOS (M7): void desc_tag_q4(const desc *d /*rdi*/, u64 *slots /*rsi*/): set bit 0 of slot pointer i when its v4
+; ringzero (M7): void desc_tag_q4(const desc *d /*rdi*/, u64 *slots /*rsi*/): set bit 0 of slot pointer i when its v4
 ; type (DESC_QTYPES, 2 bits per slot) is Q4_0. The matmul kernels dispatch on that bit (tensors are 64-byte aligned);
 ; v3 descriptors have 0 there, so nothing changes for them.
 ; ----------------------------------------------------------------------------
@@ -1906,7 +1906,7 @@ desc_tag_q4:
 
 section .rodata
 align 8
-kv_elt_bytes: dq 1 << KV_SHIFT     ; AIOS: read by the kernel's prefix snapshot
+kv_elt_bytes: dq 1 << KV_SHIFT     ; ringzero: read by the kernel's prefix snapshot
 %ifdef QWEN35
 align 16
 t_one:      dd 1.0

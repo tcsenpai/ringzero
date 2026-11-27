@@ -252,7 +252,7 @@ make model               # Qwen/Qwen3.5-2B (~4.5 GB) -> models/qwen35-2b-q8_0-v3
 make iso                 # kernel + Limine + both models -> build/ringzero.iso
 make disk                # build/disk.img, 512 MiB FAT32 (mkfs.vfat, mtools fallback); never overwrites it
 make wasm-apps           # WASI programs -> build/wasm -> /bin on the disk (guest stopped; keeps every other file)
-make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[main]>), VNC HOST:5901 (password aios)
+make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[main]>), VNC HOST:5901 (password ringzero)
 make run-local           # or: the same VM in a QEMU window on the box's desktop (own disk build/disk-local.img)
 ```
 
@@ -277,7 +277,7 @@ Remote instance on the Fedora box (Tailscale HOST-ADDRESS), running the 4B q4 on
 ```sh
 nc HOST-ADDRESS 4555                 # serial shell: press Enter to get "ringzero[main]> "
 stty -echo -icanon; nc HOST-ADDRESS 4555; stty sane    # without the double local echo (Tab works too)
-open vnc://HOST-ADDRESS:5901         # framebuffer + PS/2 keyboard, password: aios
+open vnc://HOST-ADDRESS:5901         # framebuffer + PS/2 keyboard, password: ringzero
 ssh fedorascale 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
 ssh fedorascale 'cd ~/coding/ringzero && make run-local'   # at the Fedora desktop: the same VM in a QEMU window
 ```
@@ -319,7 +319,7 @@ make iso CONF_ASK=25         # T28: ask y/N below a 0.25 confidence margin inste
 make run-bios            # QEMU/KVM, q35, 6 GiB (GUEST_MEM=6G), 8 CPUs, serial on stdio (Ctrl-C to quit)
 make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window
-make run-remote          # headless: serial on TCP 4555 (nc HOST 4555), VNC on :1 (5901, password aios),
+make run-remote          # headless: serial on TCP 4555 (nc HOST 4555), VNC on :1 (5901, password ringzero),
                          # serial output appended to build/remote-serial.log, monitor on build/remote-monitor.sock
 make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test DISK=build/disk-test.img   # a second instance
                          # (its own disk: QEMU's image lock refuses two guests writing one image)
@@ -364,7 +364,7 @@ Memory index, from the shell:
 | `tools/wasm/c/`, `tools/demo/`, `tools/m8test.py` | M8: setjmp/longjmp over Binaryen's Asyncify (`setjmp.h`, `rzsjlj.c`) and libc stubs (`nosys.c`) for the C programs; the `/demo` inputs of docs/DEMOS.md; a boot test that types steps when a regex matches (REPLs, the editor) |
 | `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
-| `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
+| `engine/` | vendored NASM engine (transformer.asm has marked ringzero changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
 | `tools/manvec.py` | T38 pass 1: boots an ISO headless, `/man dump`, checks and writes `build/manvec.bin` (the manual's vectors linked into the kernel) |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot; `"CMD ^C3"` sends Ctrl-C 3 s after CMD) |

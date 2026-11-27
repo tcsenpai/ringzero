@@ -1,4 +1,4 @@
-; prefill.asm: batched prompt prefill for the Qwen3.5 engine (ringzero M4.8, AIOS code, not vendored).
+; prefill.asm: batched prompt prefill for the Qwen3.5 engine (ringzero M4.8, own code, not vendored).
 ;
 ; transformer_forward reads every weight matrix once per token. transformer_prefill runs a block of n
 ; prompt tokens per pass: the matmuls see all n activation rows at once (tp_matmul_q8_0_batch: each
