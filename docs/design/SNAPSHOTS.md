@@ -300,7 +300,8 @@ Run when free chunks < 64 (64 MiB) before a save, oldest last-visit first:
    restore its nearest restorable ancestor and re-prefill the stored token ids up to it (45 tok/s,
    printed with an ETA, Ctrl-C-able). This is deterministic, so the state hash must match (§5 step 3).
 2. **Drop**: delete leaf points of anonymous lines (`main@N`, `try-N`) whose tip is older than 32 turns,
-   including their KV rows.
+   including their KV rows; when none is that old, the oldest such leaf of any age (T34: seventeen `/clear`
+   conversations within 32 turns filled the 1 GiB pool on the 4B, and every later turn went unsaved).
 3. If that is still not enough: refuse the save with `[snap] pool full: /drop something or /save less`.
    The turn itself still works. Never evict named things automatically.
 

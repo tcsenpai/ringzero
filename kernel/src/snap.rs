@@ -382,7 +382,8 @@ fn make_room(need: usize) -> bool {
     while free_chunks() < need + RESERVE {
         if let Some(n) = thin_candidate() {
             thin(n);
-        } else if let Some(n) = drop_candidate(DROP_AGE, false) {
+        } else if let Some(n) = drop_candidate(DROP_AGE, false).or_else(|| drop_candidate(0, false)) {
+            // T34: 17 /clear conversations within 32 turns filled the 1 GiB pool and every later turn went unsaved
             drop_node(n);
         } else {
             break;
@@ -395,7 +396,7 @@ fn free_slot() -> Option<u16> {
         if let Some(i) = st().nodes.iter().position(|x| !x.used) {
             return Some(i as u16);
         }
-        drop_node(drop_candidate(DROP_AGE, false)?);
+        drop_node(drop_candidate(DROP_AGE, false).or_else(|| drop_candidate(0, false))?);
     }
 }
 /// After a name is removed: drop the leaves nothing points at any more (the line only it used).
