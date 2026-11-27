@@ -18,7 +18,8 @@ Both editions include Qwen3-Embedding-0.6B for the memory index and the built-in
 `make beta` builds all three into `build/beta` with a `SHA256SUMS` file. Two builds from clean (kernel, MicroPython
 package, manual vectors and `build/beta` deleted before each; 90 s each with the models, the Limine and MicroPython
 checkouts and the WASI programs already on the box) gave the same bytes. The sums below are from one build of the
-release commit (the two-build check ran on the commit before it, which changed only the memory index):
+release commit (the two-build check ran on an earlier commit of the same day; the builds take the commit time as
+`SOURCE_DATE_EPOCH`, so rebuilding this commit from a clean checkout should give these sums):
 
 | File | Bytes | SHA-256 |
 |---|---:|---|
