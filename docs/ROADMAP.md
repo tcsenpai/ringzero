@@ -19,18 +19,18 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │   ├── ○ 🟢 M6 real PC [E1]
 │               │   └── ✓ 🟠 M4.5 agentd: deterministic context and memory subsystem [E1]
 │               │       ├── ✓ 🟠 M4.8 base: batched prefill in the engine [E1]
-│               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
-│               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
+│               │       │   ├── ✓ 🟠 M4.8a Multi-mind batched decode [E1]
+│               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
 │               │       │   │   └── ✓ 🟠 Beta release gate [E1]
 │               │       │   │       ├── T37: After the beta: tell llm.asm and ProbeLogits authors about ringzero (circular)
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1]
 │               │       │   │       │   └── ○ 🟢 MTP draft only in tool-call rounds [E1] [blocked by T44]
 │               │       │   │       ├── ✓ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1]
-│               │       │   │       ├── ○ 🟢 Decision model (user note, post-beta) [E1]
+│               │       │   │       ├── ✓ 🟢 Decision model (user note, post-beta) [E1]
 │               │       │   │       ├── ○ 🟢 Engine kernels for other model architectures (e.g. Gemma) [E1]
 │               │       │   │       └── T51: Beta release (today, 2026-11-27) (circular)
-│               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
+│               │       │   └── ✓ 🟠 M4.8c Precomputed document states [E1]
 │               │       ├── ✓ 🟠 M4.7b Hibernate the agent: snapshots to disk [E1]
 │               │       ├── ○ 🟠 Kernel event bus to the agent (deterministic perimeter) [E1]
 │               │       ├── ✓ 🟠 Built-in OS manual in memory [E1]
@@ -66,6 +66,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │   │   └── ✓ 🟠 Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B [E1]
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
+○ 🟢 Decision-model second opinion on low-margin calls (host prototype) [E1]
 ○ 🟢 T55 follow-ups: 2**100 first call, 2B drivers answer [E1]
 ○ 🟢 Type-ahead prefill: prefill while the user types [E1]
 ○ 🟢 Interruptible between layers [E1]
@@ -82,5 +83,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 59 task(s) shown
+ℹ️ 60 task(s) shown
 ```
