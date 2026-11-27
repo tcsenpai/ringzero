@@ -7,11 +7,16 @@ All diagrams of this page as one PDF: [ARCHITECTURE_DIAGRAMS.pdf](ARCHITECTURE_D
 ringzero presents itself as a Unix: the models already know Linux, so the OS follows Linux/Unix conventions
 wherever they fit (everything is a file: /proc, /sys as sysfs, /dev, /etc; familiar paths, command names and
 outputs). New features expose state as files first and add a special tool only when a file cannot do the job.
-ringzero's own data lives outside the Linux paths (/var/lib/ringzero, migration from /sys planned). Exact Linux formats are not required: familiar paths and names matter, content only needs to be clear, because the model interprets the output.
+ringzero's own data lives outside the Linux paths (/var/lib/ringzero, T55). Exact Linux formats are not required: familiar paths and names matter, content only needs to be clear, because the model interprets the output.
 
-First piece (T54): `/proc` is a virtual directory in fs.rs (procfs.rs), so the shell's `!ls`/`!cat`, the agent's
-`ls`/`cat` tools and the WASI runtime see the same files through one path layer. A WASI open of a /proc file
-generates the content once and keeps the bytes in the fd (no fatfs handle); every write path is EROFS.
+T54 put `/proc` in front of the volume; T55 made it a mount table: fs.rs `mount_of` routes `/proc` (procfs.rs),
+`/sys` (sysfs.rs), `/dev` (devfs.rs) and the virtual `/etc/os-release` and `/etc/passwd` (layout.rs), everything
+else is the FAT volume, so the shell's `!ls`/`!cat`, the agent's `ls`/`cat` tools and the WASI runtime see the same
+tree through one path layer. A WASI open of a virtual file generates the content once and keeps the bytes in the
+fd (no fatfs handle); /dev opens become `Fd::Dev` (null, zero, random, the raw disk) or `Fd::Tty`; every write path
+is EROFS but `/sys/power/state` (`disk` hibernates) and the data devices. layout.rs runs right after the mount:
+it moves a 0.1 disk's FAT `/sys` data to `/var/lib/ringzero` (copy, verify, commit marker, remove; no rename),
+makes `/etc/hostname` and `/tmp`, and empties `/tmp` at a boot that does not resume a hibernation image.
 
 ## Diagram
 
@@ -28,11 +33,14 @@ flowchart TB
         MEM["mem.rs<br/>bump arena, lower-half identity map,<br/>uncached MMIO map, 192 MiB kernel heap (linked_list_allocator,<br/>low-heap flag for wasm runs, M8),<br/>wasm slot: one linear memory, realloc in place (M5b)"]
         BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
         FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
-        PROC["procfs.rs: /proc (T54)<br/>read-only virtual files generated at read time:<br/>cpuinfo, meminfo, uptime, version, devices,<br/>bus/pci/devices (PCI bus 0 via 0xCF8); writes -> EROFS"]
+        PROC["procfs.rs: /proc (T54)<br/>read-only virtual files generated at read time:<br/>cpuinfo, meminfo, uptime, version, devices, kmsg, mounts,<br/>bus/pci/devices (PCI bus 0 via 0xCF8); writes -> EROFS"]
+        SYSFS["sysfs.rs: /sys (T55)<br/>class/block/vda, bus/pci/devices/ADDR,<br/>devices/system/cpu, power/state (disk -> hibernate)"]
+        DEVFS["devfs.rs: /dev (T55)<br/>null, zero, random, urandom, tty, console, vda"]
+        LAY["layout.rs (T55)<br/>/var/lib/ringzero paths, migration of a 0.1 disk<br/>(copy, verify, marker, remove), /etc/hostname,<br/>virtual os-release + passwd, /tmp clean"]
         FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
         AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35;<br/>T22: a how-to message gets the best manual section, also mid-conversation),<br/>facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
         MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept;<br/>T38: + their Q8_0 rows (include_bytes!, build/manvec.bin from a headless<br/>pass-1 boot: /man dump), used at boot when the key matches"]
-        MST["mstore.rs: /sys/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
+        MST["mstore.rs: /var/lib/ringzero/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
         CON["console.rs<br/>COM1 + framebuffer glyphs,<br/>ANSI SGR colors on both"]
         KBD["kbd.rs<br/>PS/2 set 1, layouts us / it, AltGr, Ctrl"]
@@ -42,11 +50,11 @@ flowchart TB
         AG["agent.rs<br/>system prompt + tool registry, parser, validator,<br/>tool loop, 8 KiB result cap"]
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
         LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32),<br/>M4.8b: prompt-lookup drafts, one verify pass,<br/>DeltaNet state copy for rollback"]
-        SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay (batched), eviction,<br/>boot snapshot cache (/sys/bootsnap.bin, 33 MiB),<br/>hibernation image: tree + pool chunks, state hash"]
+        SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay (batched), eviction,<br/>boot snapshot cache (/var/lib/ringzero/bootsnap.bin, 35 MiB),<br/>hibernation image: tree + pool chunks, state hash"]
         GRAM["gram.rs: tool-call grammar (M4.7a)<br/>byte automaton from the tool schemas (names, keys,<br/>enums, integers, required, closing tags),<br/>vocab trie: ids sorted by bytes + prefix lengths (1.2 MiB),<br/>check the pick; on a reject logits -> -inf, pick again;<br/>T39: draft(): the text the grammar implies up to the<br/>model's next choice, tokenized, as the speculative draft;<br/>T28: at a decision token (tool name, optional parameter,<br/>enum, integer) the margin p1 - p2 of the softmax over the<br/>allowed tokens, read from the pick's logits row"]
-        HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff -> /sys/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
+        HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff, disk to /sys/power/state<br/>-> /var/lib/ringzero/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
-        IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/sys/mem/index.bin)"]
+        IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/var/lib/ringzero/mem/index.bin)"]
         ENG["engine.rs<br/>FFI, output capture"]
         Q4T["q4test.rs (M7)<br/>boot check: Q4_0 kernel vs Q8_0 kernel<br/>on the unpacked rows, bit-identical"]
     end
@@ -71,7 +79,7 @@ flowchart TB
 
     subgraph WS["WASI runtime (Rust, ring 0; M5b)"]
         WRT["wasm.rs: !wasm / !run, run_wasm tool,<br/>fresh wasmi Engine + Store per run, fuel slices of 10 M,<br/>budget + Ctrl-C + low heap between slices, memory cap (StoreLimits),<br/>stdout/stderr -> console or 6 KiB / 1500-token capture (M8)"]
-        WASI["wasm.rs: WASI preview1 host functions<br/>args, environ, clocks, random (RDRAND), poll_oneoff,<br/>fd_* + path_* over fs.rs, preopen / = fd 3,<br/>'..' above / refused, /sys read-only, others ENOSYS;<br/>M8: open files keep their fatfs handle,<br/>console tty: fd 0 typed lines, /dev/tty raw, isatty"]
+        WASI["wasm.rs: WASI preview1 host functions<br/>args, environ, clocks, random (RDRAND), poll_oneoff,<br/>fd_* + path_* over fs.rs, preopen / = fd 3,<br/>'..' above / refused, /var/lib/ringzero EACCES, virtual files EROFS,<br/>T55: /dev devices (Fd::Dev), /sys/power/state, others ENOSYS;<br/>M8: open files keep their fatfs handle,<br/>console tty: fd 0 typed lines, /dev/tty raw, isatty"]
         WMI["wasmi 2.0.3 (interpreter, no_std + alloc)<br/>validate, lazy translation, register bytecode"]
     end
 
@@ -121,7 +129,13 @@ flowchart TB
     SYS --> RTC
     SYS -- "shutdown: save the index" --> AGD
     FS --> BLK --> VBLK
-    FS -- "paths under /proc" --> PROC
+    FS -- "mount_of: /proc" --> PROC
+    FS -- "mount_of: /sys" --> SYSFS
+    FS -- "mount_of: /dev" --> DEVFS
+    FS -- "after the mount: migrate, /etc, /tmp;<br/>/etc/os-release, /etc/passwd" --> LAY
+    SYSFS -- "PCI scan, roles" --> PROC
+    SYSFS -- "power/state: disk" --> HIB
+    WASI -- "Fd::Dev vda: read_raw" --> BLK
     PROC -- "cpu, memory, uptime" --> SYS
     PROC -- "drivers, PCI config" --> BLK
     BLK -- "DMA pages, bounce ring, map_mmio" --> MEM
@@ -198,7 +212,7 @@ sequenceDiagram
     participant S as shell.rs
     participant A as agent.rs
     participant L as llm.rs + engine
-    participant T as sys.rs (tool)
+    participant T as fs.rs + procfs.rs (tool)
     U->>S: "how much free memory?" (Ctrl-C polled between tokens)
     S->>A: ask(q)
     A->>A: fill >= 75% of 32768? compact first (see below)
@@ -206,10 +220,10 @@ sequenceDiagram
     A->>L: encode user turn, feed (prefill), generate (stream to console)
     L-->>A: stop at </tool_call>, captured text (markup hidden on screen)
     A->>A: lenient parse + validate against the schema
-    A->>T: meminfo()
-    T-->>A: "RAM total 4095 MiB, free 2057 MiB, ..."
+    A->>T: meminfo() (T55: reads /proc/meminfo through fs.rs mount_of and procfs.rs)
+    T-->>A: "MemTotal: ... kB, MemFree: ... kB, MemAvailable: ... kB, ..."
     A->>L: <tool_response> turn, feed, generate
-    L-->>U: "La memoria libera è di 2057 MiB."
+    L-->>U: the answer from the MemFree line
     A->>A: snap commit: save point no. N (rows of the turn + DeltaNet state, ~21 MiB, 1-8 ms), Ctrl-C instead restores the previous point (~0.6 ms)
     Note over A: up to ROUNDS tool rounds per user turn (10, !set rounds), then one answer round with the tool_call token blocked, poweroff/reboot ask y/N at the shell first
 ```
@@ -254,7 +268,7 @@ sequenceDiagram
             D->>L: on top of the current point: feed the fixed instruction, then generate (greedy, no thinking), one token per step
             L-->>D: EPISODE: ... / FACT: key = value (CAP only)
             D->>P: rollback: the current point back (R copy, ~0.7 ms)
-            D->>D: validate facts (snake_case key, short value, grounded in what the user said, dedup), append to /sys/mem
+            D->>D: validate facts (snake_case key, short value, grounded in what the user said, dedup), append to /var/lib/ringzero/mem
         end
     end
     S->>D: preempt() on the first input byte: a consolidation in flight stops, the current point is restored
@@ -290,7 +304,8 @@ Legend:
   `<|endoftext|>` (151643), the vector is the last token's `x * w_final` (the RMSNorm scale cancels in the L2
   normalization, so the forward skips the lm_head), cut to the Matryoshka dim and L2-normalized.
 - **agentd** (agentd.rs, mstore.rs, M4.5): the OS does the memory bookkeeping, the 2B only reads and writes it
-  through typed tools (`remember`, `forget` with y/N, `recall`). Stores in `/sys/mem` are append-only files of
+  through typed tools (`remember`, `forget` with y/N, `recall`). Stores in `/var/lib/ringzero/mem` (T55; `/sys/mem`
+  before, migrated by layout.rs) are append-only files of
   records `'R' kind len:u32 ts:u64 sum:u32 payload` (ts from the CMOS RTC, sum = folded FNV-1a): `journal.log`
   (U user turn, A answer, T tool result, C compaction summary, B boot, P poweroff), `facts.log` (S set
   `key\tvalue\tsource`, X forget; replayed, last wins), `episodes.log` (E). At boot each store is scanned to its
@@ -310,7 +325,7 @@ Legend:
   `recall` adds it after its top 3 for a how-to message. Consolidation (after 60 s idle or `/consolidate`) runs the 2B greedy and without thinking on top of
   the current snapshot point, captures `EPISODE:` / `FACT:` lines, then restores the point. Every decision goes to
   the kernel log (level D) and the `/agentd log` ring (128 lines).
-- **Boot snapshot cache** (snap.rs `save_prefix` / `load_prefix`, agent.rs): `/sys/bootsnap.bin` holds the
+- **Boot snapshot cache** (snap.rs `save_prefix` / `load_prefix`, agent.rs): `/var/lib/ringzero/bootsnap.bin` holds the
   prefix state right after its prefill: a 48-byte header (key, pos, row bytes, planes, R bytes, FNV of the rest),
   the token ids, rows 0..pos of the 24 K/V planes and R (33 MiB for 1252 tokens). The key is FNV over the prefix
   ids, a sample hash of the model file, an engine build hash from build.rs (asm sources + KV flag), the KV element
@@ -322,7 +337,7 @@ Legend:
   cosine, and runs BM25 (k1 1.5, b 0.75, IT/EN stopwords) over the texts. BM25 joins the ranking (RRF, k 60) only
   when the query looks like an identifier or path (`a/b.c`, `HL-L2350DW`, `casa-wifi`, letters+digits, all caps)
   or when its top hit has every query term and at least 1.5x the second score. Used by `/index`, `/search` and the
-  agent's `recall` tool (via agentd). Persistence: `/sys/mem/index.bin` = a 72-byte header (embedder sample hash,
+  agent's `recall` tool (via agentd). Persistence: `/var/lib/ringzero/mem/index.bin` = a 72-byte header (embedder sample hash,
   dim, row stride, layout id, fidx chunker version, counts, FNV of the payload), agentd's extra lines (store sizes
   the index covers, the table of indexed files with size and mtime), then offsets, rows and texts. Loaded at boot
   in about a millisecond; any header mismatch or a bad checksum means a rebuild in idle time. Records past the

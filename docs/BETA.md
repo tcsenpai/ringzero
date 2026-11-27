@@ -120,6 +120,9 @@ make beta                                    # build/beta: both ISOs, disk.img, 
   on a trusted network only.
 - A hibernation image resumes only on the same edition (model, prompt and engine); another ISO boots fresh.
 - Files written by the agent's tools are at most 64 KiB; `cat` returns at most 8 KiB.
+- Builds after 0.1.0 move ringzero's data from FAT `/sys` to `/var/lib/ringzero` at their first boot (the saved
+  hibernation is not resumed across that upgrade). The 0.1.0 ISO booted on such a disk afterwards finds an empty
+  memory; INFO.md has the copy-back recipe, and what 0.1.0 writes then is kept apart (`/agentd merge-legacy`).
 
 ## Reporting issues
 

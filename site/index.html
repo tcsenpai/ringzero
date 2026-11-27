@@ -116,9 +116,11 @@
     <li><h3>Real software</h3>
       <p>python3 (CPython 3.15), sqlite3, jq, Lua, QuickJS, ripgrep, the coreutils and a text editor run from
         <code>/bin</code> in a WASI sandbox. MicroPython is built in for one-liners (<code>!py 17*23</code>).</p></li>
-    <li><h3>A Unix-style /proc</h3>
-      <p><code>cat /proc/cpuinfo</code>, <code>/proc/meminfo</code> and <code>/proc/devices</code> (the active
-        drivers) work from the shell, for the agent and for programs, read-only and generated when read.</p></li>
+    <li><h3>A Unix-like file tree</h3>
+      <p><code>/proc</code> (cpuinfo, meminfo, uptime, devices), <code>/sys</code> (disk, PCI devices, cores,
+        <code>power/state</code>), <code>/dev</code> (null, zero, urandom), <code>/etc</code> and <code>/tmp</code>
+        work the same from the shell, for the agent and for programs; <code>echo disk &gt; /sys/power/state</code>
+        hibernates. ringzero's own data lives in <code>/var/lib/ringzero</code>.</p></li>
     <li><h3>Fast where it matters</h3>
       <p>The prompt is read in blocks (about 230 tokens/s on the 2B). Text copied from the conversation is written
         about 2.5x faster, and tool calls about 1.8x faster, with the same output.</p></li>

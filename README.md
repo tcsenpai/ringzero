@@ -59,8 +59,10 @@ ringzero[main]> count the lines of /demo/stats.py with wc
 - **Real software.** python3 (CPython 3.15), sqlite3, jq, Lua, QuickJS, ripgrep, the coreutils and a text
   editor run from `/bin` in a WASI sandbox, from the shell and for the agent. MicroPython is built in for quick
   one-liners (`!py 17*23`).
-- **A Unix-style /proc.** `cat /proc/cpuinfo`, `/proc/meminfo` and `/proc/devices` (the active drivers) work from
-  the shell, for the agent and for programs, read-only and generated when read.
+- **A Unix-like file tree.** `/proc` (cpuinfo, meminfo, uptime, devices, kmsg), `/sys` (disk, PCI devices, cores,
+  `power/state`), `/dev` (null, zero, urandom, the disk), `/etc` (hostname, os-release) and `/tmp` work the same
+  from the shell, for the agent and for programs; `echo disk > /sys/power/state` hibernates. ringzero's own data
+  lives in `/var/lib/ringzero`, out of the agent's reach.
 - **Fast where it matters.** The prompt is read in blocks (about 230 tokens/s on the 2B), the boot state is
   cached on disk, and the system does its housekeeping (indexing, summarizing) while you are idle. When the
   answer copies text from the conversation (a file, a tool result), it is written about 2.5x faster, and tool

@@ -84,3 +84,11 @@ Fixed on main after 0.1.0, not in the 0.1.0 ISOs:
 
 ringzero is GPL-2.0-or-later. The engine (llm.asm by alesha-pro) is MIT. The Qwen weights inside the ISOs are
 Apache-2.0. Details: LICENSE.md on the Hugging Face page and INFO.md in the repository.
+
+## Upgrade note for the next release
+
+- The first boot of a build after 0.1.0 moves ringzero's data from FAT `/sys` to `/var/lib/ringzero` (facts,
+  episodes, the journal and the memory index are kept; the boot cache is rebuilt). A hibernated session saved by
+  0.1.0 is not resumed across this upgrade. The new tree: `/proc`, `/sys`, `/dev`, `/etc`, `/tmp` (INFO.md).
+- Going back to 0.1.0 on the same disk shows an empty memory unless the stores are copied back first (INFO.md);
+  what 0.1.0 writes afterwards is kept in `/var/lib/ringzero/legacy/` and `/agentd merge-legacy` merges it.

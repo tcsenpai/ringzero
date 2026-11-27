@@ -33,7 +33,7 @@ The context holds 32768 tokens. `/ctx` shows how many are in use. Past 75% fill 
 
 ## Hibernation
 Asked as: how do I hibernate, come faccio a ibernare, ibernazione, save the session before power off, resume after reboot
-Type `/hibernate` (a session command: it starts with a slash, not with `!`) to save the current conversation and all its snapshot points to the disk (`/sys/hib/image.bin`); every `!poweroff` does the same. At the next boot the conversation is resumed exactly where it was. `/hibernate status` says whether an image exists; `/hibernate discard` deletes it, so the next boot starts a fresh conversation.
+Type `/hibernate` (a session command: it starts with a slash, not with `!`) to save the current conversation and all its snapshot points to the disk (`/var/lib/ringzero/hib/image.bin`); every `!poweroff` does the same, and so does writing `disk` to `/sys/power/state` (`!write /sys/power/state disk`), which then powers off. At the next boot the conversation is resumed exactly where it was. `/hibernate status` says whether an image exists; `/hibernate discard` deletes it, so the next boot starts a fresh conversation.
 
 ## Power off and reboot
 Asked as: how do I shut down, come spengo, spegnere, riavviare, reboot
@@ -43,9 +43,13 @@ Asked as: how do I shut down, come spengo, spegnere, riavviare, reboot
 Asked as: how do I list files, come vedo i file, leggere un file, show a file, disk space, spazio libero
 `!ls PATH` lists a directory on the disk (`!ls /` for the root), `!cat PATH` prints a file, `!df` shows the disk size and free space. Paths are absolute (start with `/`), without `.` or `..`. The agent can do the same with its `ls` and `cat` tools ("leggi /notes/todo.txt").
 
-## System information in /proc
-Asked as: which drivers are there, quali driver ci sono, what hardware is this, che hardware ho, cpu flags, free memory, memoria libera, devices, dispositivi, pci
-`/proc` holds live system files, read-only and generated when read: `/proc/cpuinfo` (one block per core: model, MHz, flags such as avx2 fma f16c), `/proc/meminfo` (MemTotal, MemFree, MemAvailable in kB), `/proc/uptime` (seconds since boot), `/proc/version`, `/proc/devices` (the active drivers: serial, PS/2 keyboard, framebuffer, virtio-blk disk, FAT32 filesystem) and `/proc/bus/pci/devices` (PCI devices with vendor:device ids). Read them with `!cat /proc/meminfo`, `!ls /proc`, the agent's `cat` and `ls` tools, or programs (`!run cat /proc/cpuinfo`, python3 `open("/proc/uptime")`). Writing to /proc fails with "read-only file system".
+## System information in /proc and /sys
+Asked as: which drivers are there, quali driver ci sono, what hardware is this, che hardware ho, cpu flags, free memory, memoria libera, devices, dispositivi, pci, disk size, quanto e grande il disco, hostname, nome della macchina, version, versione
+ringzero's file tree is Unix-like. `/proc` and `/sys` hold live system files, read-only and generated when read: `/proc/cpuinfo` (one block per core: model, MHz, role; the flags such as avx2 fma f16c in processor 0), `/proc/meminfo` (MemTotal, MemFree, MemAvailable in kB), `/proc/uptime` (seconds since boot, then hours, minutes and seconds), `/proc/version`, `/proc/devices` (the active drivers: serial, PS/2 keyboard, framebuffer, virtio-blk disk, FAT32 filesystem), `/proc/bus/pci/devices`, `/proc/kmsg` (the kernel log) and `/proc/mounts`. `/sys/class/block/vda/size` is the disk size in 512-byte sectors, `/sys/bus/pci/devices/` has one folder per PCI device (vendor, device, class, driver), `/sys/devices/system/cpu/online` and `inference` list the cores and the ones used for inference. `/etc/hostname` is the machine's name (writable), `/etc/os-release` the system name and version. Read them with `!cat /proc/meminfo`, `!ls /sys`, the agent's `cat` and `ls` tools, or programs (`!run cat /proc/cpuinfo`, python3 `open("/proc/uptime")`). Writing to /proc or /sys fails with "read-only file system", except `/sys/power/state` (`disk` hibernates and powers off).
+
+## Devices, /tmp and ringzero's own data
+Asked as: dev null, random bytes, numeri casuali, /dev, scratch files, file temporanei, where is my memory stored, dove sono i dati
+`/dev/null`, `/dev/zero`, `/dev/random` and `/dev/urandom` work as on Linux for programs (`!run head -c 16 /dev/urandom`); `/dev/vda` is the raw disk, read-only; `!cat` refuses devices. `/tmp` is for scratch files: it is emptied at a fresh boot and kept when a hibernated conversation resumes. ringzero keeps its own data in `/var/lib/ringzero` (facts, episodes, the journal and the memory index in `mem/`, the hibernation image, the boot cache): the agent cannot change it (it uses remember and forget), programs only read it. A disk from ringzero 0.1 is moved there at the first boot; what an older version wrote later is kept in `/var/lib/ringzero/legacy/` and `/agentd merge-legacy` merges it.
 
 ## Writing and deleting files
 Asked as: how do I create a file, come creo un file, scrivere un file, delete a file, cancellare, make a folder, creare una cartella
@@ -85,7 +89,7 @@ Asked as: how do I make answers deterministic, temperatura, more creative answer
 
 ## CPU, cores, memory and uptime
 Asked as: how many cores, quanti core, how much RAM, quanta memoria, uptime, da quanto e acceso
-`!cpu` shows the CPU model, clock and features; `!cores` the cores online and `!cores N` sets how many are used for inference; `!mem` total and free memory, the model and the engine arena; `!uptime` the time since boot; `!stats` threads, parking, arena and context. The agent can answer the same questions with its tools.
+`!cpu` shows the CPU model, clock and features; `!cores` the cores online and `!cores N` sets how many are used for inference; `!mem` total and free memory, the model and the engine arena; `!uptime` the time since boot; `!stats` threads, parking, arena and context. The agent answers the same questions with its `meminfo`, `cpuinfo`, `list_cores` and `uptime` tools, which read `/proc/meminfo`, `/proc/cpuinfo`, `/sys/devices/system/cpu` and `/proc/uptime`, or with `cat` on those files.
 
 ## Kernel log
 Asked as: how do I see the log, vedere il log, errori nel log, kernel messages
