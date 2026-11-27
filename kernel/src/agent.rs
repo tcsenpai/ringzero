@@ -679,6 +679,9 @@ pub fn ask(q: &str) {
     crate::agentd::on_user(q);
     let _ = write!(t, "<|im_start|>user\n{}{}<|im_end|>\n{}", slot, q, gen_prompt);
     let mut intr = false;
+    // F7: after a "no" in this turn, every later call that changes the machine asks first (the 4B retried a declined
+    // mkdir until a confident call ran it without a question)
+    let mut declined = false;
     for round in 0..=MAX_ROUNDS {
         let n = llm::encode(&t.b[..t.n], toks());
         let mut pos = pos_now;
@@ -739,13 +742,18 @@ pub fn ask(q: &str) {
                     // M4.7a: a value the grammar had to choose is a guess; tools that change the machine do not run it
                     if crate::gram::last_steered() && FX.contains(&c.name) {
                         let _ = write!(res, "error: not run: a tool name, parameter or value was not in the schema and the kernel had to replace it. Call {} again with values from its schema, or answer without the tool", c.name);
-                    } else if band == Some(Band::Low) && FX.contains(&c.name) && !ASKS.contains(&c.name)
-                        && !shell::confirm("\n[confidence] the agent is not sure about this call. Run it?")
+                    } else if (band == Some(Band::Low) || declined) && FX.contains(&c.name) && !ASKS.contains(&c.name)
+                        && !shell::confirm(if band == Some(Band::Low) {
+                            "\n[confidence] the agent is not sure about this call. Run it?"
+                        } else {
+                            "\n[agent] you declined a call in this turn; the agent calls a tool again. Run it?"
+                        })
                     {
                         let _ = write!(res, "{}", DECLINED);
                     } else {
                         exec(&c, res);
                     }
+                    declined |= res.as_str().starts_with("NOT RUN");
                 }
                 if res.n > RES_CAP {
                     res.n = floor_char(res.as_str(), RES_CAP - 96);
