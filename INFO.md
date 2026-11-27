@@ -297,7 +297,7 @@ another guest ([docs/M7_Q4_RESULT.md](docs/M7_Q4_RESULT.md)); quality = KLD and 
 Short version: a 16 GB machine runs any row; the 4B Q4 (`q4`) is the best quality per GB, the 4B Q8 the best
 quality, the 2B the fastest. The working model (the one used day to day) is the **4B q4**: best tool selection of the
 three on the tool-call sets at about 21 tok/s ([docs/MODEL_CHOICE.md](docs/MODEL_CHOICE.md)); the build default
-stays the 2B. Every 4B option needs an 8G guest (6G no longer boots it since M5 / M5b). `QUANT=q4` keeps the attention and DeltaNet projections in Q8_0 because quantizing them
+stays the 2B. Two Qwen3.5-4B fine-tunes (NeoHorse-1-4B, QwenPaw-Flash-4B) were tested as replacements and dropped: both fail the M7 quality gate at Q4 ([docs/MODEL_EVAL.md](docs/MODEL_EVAL.md)). Every 4B option needs an 8G guest (6G no longer boots it since M5 / M5b). `QUANT=q4` keeps the attention and DeltaNet projections in Q8_0 because quantizing them
 to Q4 doubles the error (`q4all`); embeddings / lm_head are Q8_0 and norms, conv and DeltaNet gates f32 in all options.
 
 ```sh
@@ -487,7 +487,7 @@ Memory index, from the shell:
 | `tools/accept.py` | drives the shell over TCP (answers y/N prompts, sends Ctrl-C, waits idle, powers off), saves a transcript |
 | `tools/uxtest.py` | types steps byte by byte over TCP (Tab completion, suggestions, long pasted lines), waits for a quiet prompt |
 | `tools/fetch_model.sh` | `make model`: Hugging Face download (uvx hf, curl fallback) + export, skipped when the .asmbin exists |
-| `tools/export_weights.py` | safetensors -> .asmbin Q8_0 exporter, vendored from llm.asm (alesha-pro, MIT; Qwen3.5 v3 export from tcsenpai/llm.asm; `--v3` for Qwen3 / the embedder) |
+| `tools/export_weights.py` | safetensors -> .asmbin Q8_0 exporter, vendored from llm.asm (alesha-pro, MIT; Qwen3.5 v3 export from tcsenpai/llm.asm; `--v3` for Qwen3 / the embedder). Text-only Qwen3.5 checkpoints with tensors under `model.` instead of `model.language_model.` (fine-tunes such as NeoHorse-1-4B) are detected automatically; boot the file with `make iso MODEL=path/to/file.asmbin EDITION="..." GUEST_MEM=8G` |
 | `tools/embed_ref.py` | HF fp32 reference embeddings (transformers via uv) vs the kernel's `/embed -v` output, cosine per string |
 | `tools/retrieval.py` | the embedder spike's retrieval set as shell steps (`/index add`, `/search`) and its scorer |
 | `tools/hf_prefix.py` | renders the agent prefix with the HF chat template, compares token ids with the kernel |
