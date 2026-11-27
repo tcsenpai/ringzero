@@ -559,16 +559,28 @@ const BS_MAGIC: &[u8; 4] = b"RZBS";
 const BS_HDR: usize = 48;
 
 fn bs_parts(pos: usize) -> alloc::vec::Vec<&'static mut [u8]> {
+    state_parts(0, pos)
+}
+
+/// The live state of positions [base, base + n) as byte slices: token ids, the rows of every K/V plane, then the
+/// whole R (the boot cache, and the document states of docstate.rs).
+pub fn state_parts(base: usize, n: usize) -> alloc::vec::Vec<&'static mut [u8]> {
     let g = geo();
     let mut v = alloc::vec::Vec::with_capacity(2 * g.heads + 2);
     unsafe {
-        v.push(core::slice::from_raw_parts_mut(llm::rec().as_mut_ptr() as *mut u8, pos * 4));
+        v.push(core::slice::from_raw_parts_mut(llm::rec().as_mut_ptr().add(base) as *mut u8, n * 4));
         for p in 0..2 * g.heads {
-            v.push(core::slice::from_raw_parts_mut(plane(&g, p), pos * g.hb));
+            v.push(core::slice::from_raw_parts_mut(plane(&g, p).add(base * g.hb), n * g.hb));
         }
         v.push(core::slice::from_raw_parts_mut(ctx(CTX_BUF_DN_STATE) as *mut u8, r_bytes()));
     }
     v
+}
+
+/// (bytes per row of one plane, planes per cache, R bytes): the geometry a state file must match.
+pub fn geometry() -> (u32, u32, u64) {
+    let g = geo();
+    (g.hb as u32, g.heads as u32, r_bytes() as u64)
 }
 
 fn bs_header(key: u64, pos: u64, sum: u64) -> [u8; BS_HDR] {

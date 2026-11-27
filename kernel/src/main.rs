@@ -35,6 +35,7 @@ mod upy; // M5 MicroPython
 mod wasm; // M5b WASI runtime
 mod gram; // M4.7a constrained decoding
 mod hib; // M4.7b hibernation
+mod docstate; // M4.8c document states (/read)
 
 use core::arch::asm;
 use limine::firmware_type::FirmwareType;
