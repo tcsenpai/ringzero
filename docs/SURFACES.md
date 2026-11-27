@@ -7,6 +7,7 @@ same piece of work, then `tools/surfaces_check.sh` must pass.
 | Surface | Source in this repo | Published by | Audience |
 |---|---|---|---|
 | README | `README.md` | GitHub (on push) | users: features, try it, editions, credits |
+| Contributing guide | `CONTRIBUTING.md` | GitHub | contributors: OpenSpec proposals, pull requests, where to start |
 | Technical notes | `INFO.md` | GitHub | developers: every command, numbers, layout, licenses |
 | Beta guide | `docs/BETA.md` | GitHub | testers: requirements, run commands, known limits, checklist |
 | Demos | `docs/DEMOS.md`, `tools/demo/` | GitHub, the data disk | users: copy-paste examples |
