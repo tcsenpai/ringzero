@@ -536,6 +536,8 @@ def export_model_v3(model_dir: str, out_path: str, max_seq_len: int = 4096, scal
     hdr = {k: v for _, h, _ in shards.values() for k, v in h.items()}
     if not is35 and pre + "embed_tokens.weight" not in hdr and "embed_tokens.weight" in hdr:
         pre = ""  # ringzero: Qwen3-Embedding stores the bare Qwen3Model (no "model." prefix)
+    if is35 and pre + "embed_tokens.weight" not in hdr and "model.embed_tokens.weight" in hdr:
+        pre = "model."  # ringzero (T59): text-only Qwen3.5 repacks (Qwen3_5ForCausalLM, NeoHorse-1-4B) drop "language_model."
 
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     tok_blob = build_tokenizer_blob(tok_path, vocab_size, tok_cfg)
