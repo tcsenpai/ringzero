@@ -118,7 +118,6 @@ make beta                                    # build/beta: both ISOs, disk.img, 
   QEMU serial on stdio) and saves only into an existing directory.
 - `make run-remote` listens on all interfaces with a fixed VNC password (`ringzero`) and an open serial port: use it
   on a trusted network only.
-- Very short notes (under 20 characters, like "buy milk") are not recalled from memory yet (follow-up F8).
 - A hibernation image resumes only on the same edition (model, prompt and engine); another ISO boots fresh.
 - Files written by the agent's tools are at most 64 KiB; `cat` returns at most 8 KiB.
 

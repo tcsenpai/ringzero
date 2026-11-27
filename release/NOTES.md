@@ -70,9 +70,15 @@ For a window replace `-display none` with `-vga std -display gtk`. For the 2B us
 - After a tool result the 4B sometimes answers in Italian to an English request.
 - The 2B edition calls tools less often and may answer from its own guesses.
 - `make run-remote` exposes a serial port and VNC on all interfaces: trusted networks only.
-- Very short notes (under 20 characters, like "buy milk") are not recalled from memory yet.
 - A hibernated session resumes only on the same edition.
 - Full list: docs/BETA.md.
+
+## Unreleased
+
+Fixed on main after 0.1.0, not in the 0.1.0 ISOs:
+
+- Short notes in files (like `/notes/todo.txt` with "buy milk") are now recalled into a new conversation: file
+  chunks need 8 characters instead of 20 (follow-up F8). In 0.1.0 the agent finds them only when it calls `recall`.
 
 ## Licenses
 

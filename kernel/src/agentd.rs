@@ -40,6 +40,9 @@ const RECALL_MIN: f32 = 0.55;
 const RECALL_MIN_BM25: f32 = 0.40;
 /// shortest note body, in characters ("ciao", "hello", "comprare il latte" carry nothing for a new message)
 const NOTE_MIN: usize = 20;
+/// shortest file chunk body: "buy milk" in /notes/todo.txt is the whole note (F8); one-word files ("ciao", "hello",
+/// "prova") stay out, they scored 0.55+ against unrelated requests and turned a mkdir into an rm
+const FILE_NOTE_MIN: usize = 8;
 /// recalled lines at most (facts are pinned and not counted)
 const SLOT_LINES: usize = 3;
 const MAX_FACTS: usize = 64;
@@ -864,8 +867,8 @@ fn tokens(t: &str) -> usize {
 
 /// The memory slot for the first user message of a conversation (or after a compaction): facts, newest
 /// first, within FACT_BUDGET tokens, then at most SLOT_LINES notes recalled for q (of the top RECALL_K: cos >=
-/// RECALL_MIN, or >= RECALL_MIN_BM25 for a BM25 match; NOTE_MIN characters or more; not q itself) up to
-/// SLOT_BUDGET tokens in all. Empty when there is nothing to say. Every candidate and its verdict is logged.
+/// RECALL_MIN, or >= RECALL_MIN_BM25 for a BM25 match; NOTE_MIN characters or more, FILE_NOTE_MIN for a file
+/// chunk; not q itself) up to SLOT_BUDGET tokens in all. Empty when there is nothing to say. Every candidate and its verdict is logged.
 pub fn slot(q: &str, why: &str, o: &mut String) {
     let s = st();
     if unsafe { SLOT_BUDGET } == 0 {
@@ -907,7 +910,7 @@ pub fn slot(q: &str, why: &str, o: &mut String) {
                 Some("a fact, pinned above")
             } else if x.cos < floor {
                 Some(if x.via == memidx::Via::Emb { "below the threshold" } else { "keyword match, below the bm25 floor" })
-            } else if note.chars().count() < NOTE_MIN {
+            } else if note.chars().count() < if t.starts_with("[/") { FILE_NOTE_MIN } else { NOTE_MIN } {
                 Some("too short")
             } else if t.starts_with("[said] ") && note.eq_ignore_ascii_case(q.trim()) {
                 Some("the message itself")
