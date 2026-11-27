@@ -67,6 +67,8 @@ INFO = [
     ("which version of ringzero is running?", [{"cat /proc/version", "cat /etc/os-release"}]),
 ]
 INOS += INFO
+# T55: reading the file a hidden alias stands for is the same right call (the spike prompts name the old tools)
+EQUIV = {"meminfo": {"cat /proc/meminfo"}, "cpuinfo": {"cat /proc/cpuinfo"}, "list_cores": CORES, "uptime": {"cat /proc/uptime"}}
 # (question, accepted answers: lowercase substrings, any one); no tool expected
 IT = [
     ("Qual è la capitale dell'Australia? Rispondi in una parola.", ["canberra"]),
@@ -151,7 +153,7 @@ def score(r):
     # shortcut: args split on ", " (a value containing ", k=" would split wrong; the spike values do not)
     cargs = [dict(kv.split("=", 1) for kv in re.split(r", (?=[a-z_]+=)", a) if "=" in kv)
              for a in re.findall(r"^\[tool\] [a-z_]+\((.*)\)$", o, re.M)]
-    inset = lambda i, e: any(hit(calls[i], cargs[i] if i < len(cargs) else {}, x) for x in e)
+    inset = lambda i, e: any(hit(calls[i], cargs[i] if i < len(cargs) else {}, x) for x in set(e).union(*(EQUIV.get(n, set()) for n in e)))
     gl = re.findall(r"^\[grammar\] .*$", o, re.M)
     exp = r["expect"]
     if exp and exp[-1] == set():  # optional call
@@ -184,8 +186,21 @@ def score(r):
 
 
 def main():
-    host, port, mode, path = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
-    sets = (sys.argv[5] if len(sys.argv) > 5 else "spike,inos").split(",")
+    if sys.argv[1] == "--rescore":  # T55: score a saved run again with the current rules: tooleval.py --rescore IN.json OUT.json
+        d = json.load(open(sys.argv[2]))
+        res, mode, path = d["results"], d["mode"], sys.argv[3]
+        for rs in res.values():
+            for r in rs:
+                r["expect"] = [set(e) for e in r["expect"]]
+    else:
+        res = None
+    if res is None:
+        host, port, mode, path = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
+        res = run(host, port, mode, (sys.argv[5] if len(sys.argv) > 5 else "spike,inos").split(","))
+    summarize(res, mode, path)
+
+
+def run(host, port, mode, sets):
     sp = [(p["text"], [set(e["tool"]) for e in p["expect"]]) for p in SPIKE]
     res = {}
     if "spike" in sets:
@@ -198,6 +213,10 @@ def main():
         res["it"] = drive(host, port, mode, [(q, []) for q, _ in IT])
         for r, (_, acc) in zip(res["it"], IT):
             r["accept"] = acc
+    return res
+
+
+def summarize(res, mode, path):
     summ = {}
     for k, rs in res.items():
         sc = [score(r) for r in rs]
