@@ -27,9 +27,9 @@ read_log) exist only because the state was not in files. The 2B model reads `cat
   `/agentd merge-legacy [DIR]` merges it on request when the record format is compatible.
 - `/var/lib/ringzero` is read-only for WASI programs (EACCES, as `/sys` is today) and for the agent's
   write_file, mkdir and rm (today the agent can overwrite `/sys/mem/facts.log`).
-- Tools: meminfo, cpuinfo, list_cores and uptime leave the prompt and stay as hidden aliases (a call still works);
-  read_log stays. Gated by a tooleval A/B before the apply. The system prompt and the ls/cat descriptions name
-  the tree in one sentence each.
+- Tools: meminfo, cpuinfo, list_cores and uptime were to leave the prompt as hidden aliases, gated by a tooleval A/B;
+  the gate failed, so they stay in the prompt, name their file and answer with its content. read_log stays. The
+  system prompt and the ls/cat descriptions name the tree in one sentence each.
 
 ## Non-goals
 - No tmpfs in RAM, no symlinks, no permissions model beyond the fixed rules above, no writable /proc, no writable

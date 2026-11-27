@@ -104,6 +104,10 @@ size, hostname, version), counting cat on the right file as a right first tool a
 Accept if the right-first-tool rate drops by at most 1 prompt, round-limit hits do not rise and the answers to the
 uptime and cores questions are right by hand; otherwise keep the four tools in the prompt with descriptions that
 name their file, and update the agent-tools delta before the apply.
+Result (docs/T55_RESULT.md): the hidden aliases lost 2 first calls against main on the in-OS set (gate failed), so
+the four tools stay in the prompt with descriptions that name their file and answer with its content; the build
+with them visible loses the same 2 first calls. Prefix: 1571 tokens on main, 1419 with the aliases hidden, 1635 as
+built.
 
 ### D6. Migration of an existing disk
 Runs once per disk, at mount, when FAT `/sys` exists or `/var/lib/ringzero/layout` is missing. fatfs `rename`
@@ -171,7 +175,7 @@ hibernation is not resumed across this upgrade". Rollback: D7.
 
 ## Decisions on the open questions (user, 2026-11-27)
 - Q1. Hidden aliases for meminfo, cpuinfo, list_cores and uptime, gated by the tooleval (D5); if the gate fails they
-  stay in the prompt with descriptions that name their file. Result in docs/T55_RESULT.md.
+  stay in the prompt with descriptions that name their file. The gate failed: they stay (docs/T55_RESULT.md).
 - Q2. /tmp on the disk, emptied at a fresh boot, kept when a hibernation image resumes.
 - Q3. /etc/hostname writable by everyone (shell, agent, programs).
 - Q4. /dev/vda read-only (programs read it; cat refuses devices).

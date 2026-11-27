@@ -117,14 +117,6 @@ Source: kernel/src/wasm.rs file, resolve, fd_prestat_get, fd_prestat_dir_name, r
 - **WHEN** a program opens `../../etc/passwd` from fd 3
 - **THEN** path_open returns 76 and nothing is opened
 
-### Requirement: /sys is read-only for programs
-The system SHALL refuse with EACCES (2) every WASI write, create, truncate, mkdir, unlink, rmdir or rename whose path starts with `/sys` (case-insensitive), while reads of /sys stay allowed.
-Source: kernel/src/wasm.rs tty_wait, sys_ro, path_open, path_op, path_rename
-
-#### Scenario: write to /sys
-- **WHEN** a program opens `sys/bootsnap.bin` for writing
-- **THEN** path_open returns 2 and the file is unchanged
-
 ### Requirement: Program stdin, terminal and environment
 The system SHALL give a `run_wasm` run a stdin at EOF unless `< FILE` is given, and a shell run the console as a terminal: fd 0 reads typed lines, `/dev/tty` gives raw bytes, and isatty() is true. The environment SHALL be `HOME=/`, `PWD=/`, `PATH=/bin`, `TERM=dumb`, `PYTHON_BASIC_REPL=1`.
 Source: kernel/src/wasm.rs drop_handles, tty_wait, fd_fdstat_get, path_open, run
@@ -208,6 +200,14 @@ Source: tools/wasm_apps.sh fetch, crate, cc_init; Makefile target disk, target w
 #### Scenario: checksum mismatch
 - **WHEN** a downloaded archive does not match its pinned SHA-256
 - **THEN** the file is deleted and the script stops with `checksum mismatch: URL`
+
+### Requirement: ringzero data is read-only for programs
+The system SHALL refuse with EACCES (2) every WASI write, create, truncate, mkdir, unlink, rmdir or rename whose path is under `/var/lib/ringzero` (case-insensitive), while reads there stay allowed; /proc, /sys (but /sys/power/state) and /dev/vda refuse changes with EROFS (69).
+Source: kernel/src/wasm.rs data_ro, path_open, path_op, path_rename
+
+#### Scenario: write to the boot cache
+- **WHEN** a program opens `var/lib/ringzero/bootsnap.bin` for writing
+- **THEN** path_open returns 2 and the file is unchanged
 
 ## Open questions
 - OPEN: pure C loops inside MicroPython (a huge bigint power such as `10**10**8`, a giant str()) never reach the VM hook, so the budget and Ctrl-C may not stop them; stated only in a comment (kernel/src/upy.rs:4-7) and docs/M5_MICROPYTHON_RESULT.md, not confirmable from the code paths.
