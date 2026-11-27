@@ -50,7 +50,7 @@ ringzero[main]> count the lines of /demo/stats.py with wc
   kernel indexes (its vectors are built into the kernel) and puts in front of the question; `/man TOPIC`
   searches it directly.
 - **Undo for the AI.** Every turn is a snapshot of the model's state: `/undo`, `/redo`, `/retry`, named
-  branches, save and load. Going back takes under a millisecond.
+  branches, save and load. Going back takes about 1.5 ms on the 4B.
 - **Hibernate and resume.** Power off and the whole conversation, with its history tree, is written to disk.
   The next boot picks it up exactly where it was, checked by a state hash.
 - **Tool calls that cannot break.** While the model writes a tool call, the kernel only lets through tokens

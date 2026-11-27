@@ -18,11 +18,36 @@ The ISOs are larger than the 2 GiB limit of GitHub release files, so they are ho
 
 ## Requirements
 
-<!-- FILL from docs/BETA.md (measured): guest RAM per edition, host RAM, CPU flags, disk -->
+Measured on QEMU/KVM, 8 vCPUs (details in docs/BETA.md):
+
+| | 4B q4 | 2B q8 |
+|---|---|---|
+| guest RAM (default) | 8 GB | 6 GB |
+| smallest that works | 7 GB (fewer undo points) | 4 GB |
+| host RAM free | guest RAM + about 1 GB | guest RAM + about 1 GB |
+
+- CPU: x86-64 with AVX2, FMA, F16C and XSAVE, passed to the guest (`-cpu host`). AVX-512 and VNNI are not needed.
+- Linux host with KVM. The data disk is 512 MiB.
 
 ## Run
 
-<!-- FILL from docs/BETA.md: download, verify, unpack the disk, the QEMU command line -->
+Verify and unpack:
+
+```sh
+sha256sum -c SHA256SUMS --ignore-missing
+xz -d ringzero-beta-disk.img.xz && cp ringzero-beta-disk.img my-disk.img
+```
+
+Serial console in the terminal (Ctrl-A X quits; `!poweroff` inside ringzero saves the session):
+
+```sh
+qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 8G -smp 8 \
+  -cdrom ringzero-beta-4b-q4.iso -boot d -no-reboot -display none -serial mon:stdio \
+  -drive file=my-disk.img,if=none,id=disk0,format=raw -device virtio-blk-pci,drive=disk0
+```
+
+For a window replace `-display none` with `-vga std -display gtk`. For the 2B use `ringzero-beta-2b-q8.iso` and
+`-m 6G`. Then type a sentence, `/help`, or `/man TOPIC`. Examples: docs/DEMOS.md.
 
 ## What works
 
@@ -36,7 +61,14 @@ The ISOs are larger than the 2 GiB limit of GitHub release files, so they are ho
 
 ## Known limits
 
-<!-- FILL from docs/BETA.md known limits -->
+- QEMU/KVM only, no network, no real-hardware support yet.
+- The model can pick the wrong tool or wrong values with high confidence. Tool calls are always well formed; the
+  confidence check asks before about 5 of 8 wrong calls that change the machine.
+- After a tool result the 4B sometimes answers in Italian to an English request.
+- The 2B edition calls tools less often and may answer from its own guesses.
+- `make run-remote` exposes a serial port and VNC on all interfaces: trusted networks only.
+- A hibernated session resumes only on the same edition.
+- Full list: docs/BETA.md.
 
 ## Licenses
 
