@@ -155,6 +155,9 @@ struct Dev {
     size: u64,
     lba: u64, // sector in `buf`, u64::MAX = none
     buf: [u8; SECTOR],
+    ra_lba: u64, // first sector in RA, u64::MAX = none
+    ra_n: u64,   // sectors in RA
+    seq: u64,    // the sector after the last direct read
 }
 
 /// Handle on the one disk (the device lives in DEV), so fs.rs can unmount and mount it again (`!sync`).
@@ -162,11 +165,16 @@ pub struct Disk;
 static mut DEV: Option<Dev> = None;
 
 const RUN: usize = 128; // sectors per direct transfer (64 KiB)
+/// M4.8c read-ahead: fatfs reads a file one cluster per call (4 KiB on a small FAT32 volume), one request each.
+/// A direct read that starts where the last one ended fills RA (1 MiB, RUN sectors per request) and the next
+/// reads are copied from it: 185 MiB document states took 1.4-1.7 s at 4 KiB per request. Writes drop it.
+const RA_SECT: u64 = 2048;
+static mut RA: [u8; RA_SECT as usize * SECTOR] = [0; RA_SECT as usize * SECTOR];
 
 impl Disk {
     pub fn new(blk: Blk) -> Self {
         let size = blk.capacity() * SECTOR as u64;
-        unsafe { DEV = Some(Dev { blk, pos: 0, size, lba: u64::MAX, buf: [0; SECTOR] }) };
+        unsafe { DEV = Some(Dev { blk, pos: 0, size, lba: u64::MAX, buf: [0; SECTOR], ra_lba: u64::MAX, ra_n: 0, seq: u64::MAX }) };
         Disk
     }
 }
@@ -183,6 +191,40 @@ impl Dev {
             self.lba = lba;
         }
         Ok(())
+    }
+    /// Sectors [lba, lba + k) from RA, filling it first when this read continues the last direct one. false = read
+    /// them directly.
+    fn ahead(&mut self, lba: u64, out: &mut [u8]) -> Result<bool, DiskErr> {
+        let k = (out.len() / SECTOR) as u64;
+        let ra = unsafe { &mut *core::ptr::addr_of_mut!(RA) };
+        let hit = |d: &Self| d.ra_lba != u64::MAX && lba >= d.ra_lba && lba + k <= d.ra_lba + d.ra_n;
+        if !hit(self) {
+            if lba != self.seq || k >= RA_SECT {
+                return Ok(false);
+            }
+            let n = RA_SECT.min(self.size / SECTOR as u64 - lba);
+            self.ra_lba = u64::MAX;
+            let mut i = 0;
+            while i < n {
+                let m = (n - i).min(RUN as u64);
+                let b = &mut ra[(i as usize) * SECTOR..((i + m) as usize) * SECTOR];
+                self.blk.read_blocks((lba + i) as usize, b).map_err(|_| DiskErr::Io)?;
+                i += m;
+            }
+            (self.ra_lba, self.ra_n) = (lba, n);
+            if !hit(self) {
+                return Ok(false);
+            }
+        }
+        let o = ((lba - self.ra_lba) as usize) * SECTOR;
+        out.copy_from_slice(&ra[o..o + out.len()]);
+        Ok(true)
+    }
+    /// A write over [lba, lba + k) makes RA stale.
+    fn ra_drop(&mut self, lba: u64, k: u64) {
+        if self.ra_lba != u64::MAX && lba < self.ra_lba + self.ra_n && self.ra_lba < lba + k {
+            self.ra_lba = u64::MAX;
+        }
     }
 }
 
@@ -226,7 +268,10 @@ impl Dev {
         let (lba, off) = (self.pos / SECTOR as u64, self.pos as usize % SECTOR);
         let n = if off == 0 && want >= SECTOR {
             let k = (want / SECTOR).min(RUN) * SECTOR;
-            self.blk.read_blocks(lba as usize, &mut out[..k]).map_err(|_| DiskErr::Io)?;
+            if !self.ahead(lba, &mut out[..k])? {
+                self.blk.read_blocks(lba as usize, &mut out[..k]).map_err(|_| DiskErr::Io)?;
+            }
+            self.seq = lba + (k / SECTOR) as u64;
             k
         } else {
             self.load(lba)?;
@@ -252,12 +297,14 @@ impl Dev {
             if self.lba >= lba && self.lba < lba + (k / SECTOR) as u64 {
                 self.lba = u64::MAX;
             }
+            self.ra_drop(lba, (k / SECTOR) as u64);
             self.blk.write_blocks(lba as usize, &data[..k]).map_err(|_| DiskErr::Io)?;
             k
         } else {
             self.load(lba)?; // read-modify-write of a partial sector
             let k = want.min(SECTOR - off);
             self.buf[off..off + k].copy_from_slice(&data[..k]);
+            self.ra_drop(lba, 1);
             let r = self.blk.write_blocks(lba as usize, &self.buf);
             if r.is_err() {
                 self.lba = u64::MAX;

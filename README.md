@@ -51,6 +51,10 @@ ringzero[main]> count the lines of /demo/stats.py with wc
   searches it directly.
 - **Undo for the AI.** Every turn is a snapshot of the model's state: `/undo`, `/redo`, `/retry`, named
   branches, save and load. Going back takes about 1.5 ms on the 4B.
+- **Long documents load in a second.** `/read FILE` puts a text file into the conversation; the model's state
+  after reading it is cached on the disk, so the next `/read` of the same file in a fresh conversation loads
+  it instead of reading it again (a 4300-token file: 0.12-0.18 s instead of 23-28 s on the 2B, 0.56-0.76 s instead of 72 s on the 4B), with exactly
+  the same result.
 - **Hibernate and resume.** Power off and the whole conversation, with its history tree, is written to disk.
   The next boot picks it up exactly where it was, checked by a state hash.
 - **Tool calls that cannot break.** While the model writes a tool call, the kernel only lets through tokens

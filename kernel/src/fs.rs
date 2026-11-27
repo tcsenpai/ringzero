@@ -585,6 +585,12 @@ pub fn walk(f: &mut dyn FnMut(&str, u64, u32)) -> Result<(), &'static str> {
     rec(&fs()?.root_dir(), &mut String::new(), f)
 }
 
+/// Free bytes on the FAT volume (docstate.rs keeps a reserve before it writes a cache file).
+pub fn free_bytes() -> Result<u64, &'static str> {
+    let s = fs()?.stats().map_err(err)?;
+    Ok(s.free_clusters() as u64 * s.cluster_size() as u64)
+}
+
 pub fn df(o: &mut impl core::fmt::Write) {
     let Ok(f) = fs() else {
         let _ = write!(o, "no disk mounted");
