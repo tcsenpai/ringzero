@@ -1,6 +1,22 @@
-# ringzero
+<p align="center">
+  <img src="assets/branding/logo-256.png" width="160" alt="ringzero logo: a red R0 die on a CPU package">
+</p>
 
-An operating system where the AI is part of the kernel.
+<h1 align="center">ringzero</h1>
+
+<p align="center">
+  <b>An operating system where the AI is part of the kernel.</b><br>
+  <a href="https://tcsenpai.github.io/ringzero-site/">Website</a> ·
+  <a href="docs/DEMOS.md">Demos</a> ·
+  <a href="INFO.md">Technical notes</a> ·
+  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
+  <a href="docs/ROADMAP.md">Roadmap</a>
+</p>
+
+<p align="center">
+  <img src="assets/branding/chip-wide.jpg" width="720" alt="The R0 die on a CPU package">
+</p>
+
 
 ringzero boots on bare x86-64 (no Linux underneath) and runs two models in ring 0, next to the scheduler
 and the drivers, on one shared inference engine:
