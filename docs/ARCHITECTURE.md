@@ -19,7 +19,7 @@ flowchart TB
         FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
         FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
         AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35;<br/>T22: a how-to message gets the best manual section, also mid-conversation),<br/>facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
-        MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept"]
+        MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept;<br/>T38: + their Q8_0 rows (include_bytes!, build/manvec.bin from a headless<br/>pass-1 boot: /man dump), used at boot when the key matches"]
         MST["mstore.rs: /sys/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
         CON["console.rs<br/>COM1 + framebuffer glyphs"]
@@ -285,7 +285,10 @@ Legend:
   within 120, then recalled notes) in front of the first message of a conversation and of the first turn after a
   compaction. T22: the manual (docs/MANUAL.md, compiled into the kernel) is indexed one section per entry as
   `[manual: TITLE] ...`; at boot and on a rebuild, indexed sections that are not in the kernel's manual any more
-  are dropped and missing ones are queued, so only a changed section is embedded again. Manual sections are
+  are dropped and missing ones are queued, so only a changed section is embedded again. T38: with
+  `MANUAL_VECTORS=1` the kernel also carries the sections' Q8_0 rows (computed by a pass-1 build of the same
+  kernel booted headless, `/man dump`); when their key (section texts, embedder hash, engine hash, chunker version,
+  dim) matches, missing sections are stored with those rows at boot and nothing is queued. Manual sections are
   ranked apart from the user's own memory (they never take one of its slot lines or recall hits); a message that
   asks how to do something gets the best section (cos >= 0.55) as one slot line, mid-conversation too, and
   `recall` adds it after its top 3 for a how-to message. Consolidation (after 60 s idle or `/consolidate`) runs the 2B greedy and without thinking on top of

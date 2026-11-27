@@ -444,16 +444,108 @@ fn queue_manual() {
     let dropped = memidx::retain(|t| !t.starts_with(MAN) || cur.iter().any(|c| c == t));
     s.memq.retain(|t| !t.starts_with(MAN));
     let n = cur.len();
-    let mut q = 0;
-    for t in cur.into_iter().filter(|t| !memidx::contains(t)) {
-        s.memq.push_back(t);
-        q += 1;
+    let rows = baked(&cur);
+    let (mut q, mut b) = (0, 0);
+    for (i, t) in cur.iter().enumerate().filter(|(_, t)| !memidx::contains(t)) {
+        match &rows {
+            Ok(r) if memidx::store_row(t, &r[i * memidx::row_len()..(i + 1) * memidx::row_len()]).is_ok() => b += 1,
+            _ => {
+                s.memq.push_back(t.clone());
+                q += 1;
+            }
+        }
     }
-    crate::dlog!("manual: {} sections, {} already in the index, {} queued, {} old entries dropped", n, n - q, q, dropped);
+    crate::dlog!("manual: {} sections, {} already in the index, {} from the vectors in the kernel (no embedder work), {} queued, {} old entries dropped{}",
+        n, n - q - b, b, q, dropped, rows.err().map_or(String::new(), |e| format!(" (vectors in the kernel not used: {})", e)));
+}
+
+// ---- T38: manual vectors baked into the kernel (MANUAL_VECTORS=1, tools/manvec.py) ----
+// Blob: "RZMV", u32 version, u64 key, u32 n, u32 dim, u32 row bytes, then n Q8_0 rows in manual() order.
+// Empty when built with MANUAL_VECTORS=0. The rows come from `/man dump` of a kernel with the same key.
+const BAKED: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/manvec.bin"));
+const MV_VER: u32 = 1;
+const MV_HDR: usize = 28;
+
+/// What the vectors depend on: every section text (with its Asked-as line), the embedder file, the engine
+/// build, the chunker version and the index dim.
+fn man_key(cur: &[String]) -> u64 {
+    let h = cur.iter().fold(crate::mstore::FNV0, |h, t| crate::mstore::fnv(crate::mstore::fnv(h, t.as_bytes()), &[0]));
+    let h = crate::mstore::fnv(h, &embed::hash().to_le_bytes());
+    let h = crate::mstore::fnv(h, env!("RINGZERO_ENGINE_HASH").as_bytes());
+    let h = crate::mstore::fnv(h, &fidx::VERSION.to_le_bytes());
+    crate::mstore::fnv(h, &(memidx::dim() as u32).to_le_bytes())
+}
+
+fn mv_head(cur: &[String]) -> Vec<u8> {
+    let mut h = Vec::from(&b"RZMV"[..]);
+    h.extend_from_slice(&MV_VER.to_le_bytes());
+    h.extend_from_slice(&man_key(cur).to_le_bytes());
+    for v in [cur.len(), memidx::dim(), memidx::row_len()] {
+        h.extend_from_slice(&(v as u32).to_le_bytes());
+    }
+    h
+}
+
+/// The baked rows if their header matches this kernel's manual, embedder, engine, chunker and dim.
+fn baked(cur: &[String]) -> Result<&'static [u8], &'static str> {
+    if BAKED.is_empty() {
+        return Err("not built in (MANUAL_VECTORS=0)");
+    }
+    if !embed::ready() {
+        return Err("no embedder");
+    }
+    if BAKED.len() < MV_HDR || BAKED[..MV_HDR] != mv_head(cur)[..] {
+        return Err("key differs (manual, embedder, engine, chunker or dim changed)");
+    }
+    let rows = &BAKED[MV_HDR..];
+    if rows.len() != cur.len() * memidx::row_len() {
+        return Err("size does not match the header");
+    }
+    Ok(rows)
+}
+
+/// `/man dump`: header + every section's Q8_0 row (embedded now, like the idle indexer), as hex lines
+/// `MV <hex>` for tools/manvec.py, then `MV end <fnv>`. `/man check`: the same rows against the baked ones.
+fn man_vectors(check: bool) {
+    let cur: Vec<String> = manual().collect();
+    let mut v = [0.0f32; embed::DIM];
+    let dim = memidx::dim();
+    let mut blob = mv_head(&cur);
+    let base = if check { baked(&cur) } else { Ok(&[][..]) };
+    if let Err(e) = base {
+        crate::println!("[man] vectors in the kernel: {}", e);
+        return;
+    }
+    let (t0, mut same) = (smp::rdtsc(), 0);
+    for (i, t) in cur.iter().enumerate() {
+        if let Err(e) = embed::embed(t, false, dim, &mut v) {
+            crate::println!("[man] embed failed: {}", e);
+            return;
+        }
+        let r = memidx::row_of(&v[..dim]);
+        if check {
+            same += (base.unwrap()[i * r.len()..(i + 1) * r.len()] == r[..]) as usize;
+        }
+        blob.extend_from_slice(&r);
+    }
+    let ms = smp::tsc_to_us(smp::rdtsc() - t0) / 1000;
+    if check {
+        crate::println!("[man] vectors in the kernel: {}/{} rows byte-identical to a fresh embedding ({} ms)", same, cur.len(), ms);
+        return;
+    }
+    for c in blob.chunks(64) {
+        let mut l = String::from("MV ");
+        c.iter().for_each(|b| { let _ = write!(l, "{:02x}", b); });
+        crate::println!("{}", l);
+    }
+    crate::println!("MV end {:016x} {} bytes, {} sections in {} ms", crate::mstore::fnv(crate::mstore::FNV0, &blob), blob.len(), cur.len(), ms);
 }
 
 /// `/man [TOPIC]`: the best two manual sections for TOPIC, in full; alone: the section titles.
 pub fn man(q: &str) {
+    if q == "dump" || q == "check" {
+        return man_vectors(q == "check");
+    }
     if q.is_empty() {
         let t: Vec<String> = manual().map(|t| String::from(&t[MAN.len()..t.find("] ").unwrap_or(MAN.len())])).collect();
         crate::println!("manual sections ({}): {}", t.len(), t.join(", "));

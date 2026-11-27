@@ -149,7 +149,7 @@ const CMDS: &[Cmd] = &[
     c("embed", SLASH, &["-q", "-v"], "[-q] [-v] TEXT  embed TEXT (-q: as a query, -v: print all values)"),
     c("index", SLASH, &["add", "stats", "clear", "dim"], "add TEXT | stats | clear (rebuild) | dim N  the memory index"),
     c("search", SLASH, &[], "QUERY  top 5 in the memory index (embedding + gated BM25)"),
-    c("man", SLASH, &[], "[TOPIC]  search the built-in manual (alone: list its sections)"),
+    c("man", SLASH, &[], "[TOPIC|check]  search the built-in manual (alone: list its sections; check: baked vectors vs a fresh embedding)"),
     c("bench", SLASH, &[], "64-token decode bench (the conversation is restored after)"),
     c("fill", SLASH, &[], "<tokens>  prefill + decode speed at that context fill"),
     c("gen", SLASH, &[], "<n> <text>  debug: greedy ids + logit margins"),

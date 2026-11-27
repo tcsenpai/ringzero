@@ -285,23 +285,42 @@ pub fn room(text: &str) -> Result<(), &'static str> {
 
 /// Store a text with its embedding v (len = dim()): one Q8_0 row + the text.
 pub fn store(text: &str, v: &[f32], info: embed::Info) -> Result<Added, &'static str> {
+    let id = store_row(text, &row_of(&v[..ix().dim]))?;
+    let x = ix();
+    x.embed_us += info.us;
+    x.embed_tok += info.n_tok as u64;
+    Ok(Added { id, info })
+}
+
+/// T38: v[..dim] as the Q8_0 row `store` would write (the baked manual vectors are made with this).
+pub fn row_of(v: &[f32]) -> alloc::vec::Vec<u8> {
+    let mut r = alloc::vec![0u8; stride(v.len())];
+    quantize(v, &mut r);
+    r
+}
+/// Bytes of one row at the current dim.
+pub fn row_len() -> usize {
+    stride(ix().dim)
+}
+/// T38: store a text with a row that is already quantized (row_len() bytes, the current dim), no embedding.
+pub fn store_row(text: &str, row: &[u8]) -> Result<usize, &'static str> {
     room(text)?;
     let x = ix();
+    let st = stride(x.dim);
+    if row.len() != st {
+        return Err("row size differs from the index dim");
+    }
     let text = text.trim();
     let text = &text[..crate::agent::floor_char(text, TEXT_MAX)];
-    let st = stride(x.dim);
-    let rows = unsafe { &mut *core::ptr::addr_of_mut!(ROWS) };
-    quantize(&v[..x.dim], &mut rows[x.n * st..(x.n + 1) * st]);
+    unsafe { (&mut *core::ptr::addr_of_mut!(ROWS))[x.n * st..(x.n + 1) * st].copy_from_slice(row) };
     let t = unsafe { &mut *core::ptr::addr_of_mut!(TXT) };
     t[x.text_n..x.text_n + text.len()].copy_from_slice(text.as_bytes());
     x.off[x.n] = x.text_n as u32;
     x.text_n += text.len();
     x.off[x.n + 1] = x.text_n as u32;
     x.n += 1;
-    x.embed_us += info.us;
-    x.embed_tok += info.n_tok as u64;
     x.gen += 1;
-    Ok(Added { id: x.n - 1, info })
+    Ok(x.n - 1)
 }
 
 /// Keep only the entries whose text passes `keep` (file chunks of a rewritten or removed file); returns how

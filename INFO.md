@@ -90,6 +90,20 @@ user's message (or the query) is such a how-to question and the section scores c
 section titles. The system prompt and the boot prefix are unchanged. Results:
 [docs/T22_MANUAL_RESULT.md](docs/T22_MANUAL_RESULT.md).
 
+Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 26 sections' Q8_0
+rows into the kernel (`include_bytes!`, 28316 bytes), so a fresh disk has the manual in its index at boot with no
+embedder work. Two passes, both in `make kernel`: pass 1 builds an ISO without vectors (`MANUAL_VECTORS=0
+ISO=build/manvec-pass1.iso`), `tools/manvec.py` boots it headless once (QEMU/KVM, no disk, guest RAM
+`GUEST_MEM`) and types `/man dump`: the kernel embeds every section with its own Q8 embedder (the idle indexer's
+path) and prints the blob as hex lines with its FNV-1a; pass 2 is the normal kernel build with
+`RINGZERO_MANVEC=build/manvec.bin`. `build/manvec.bin` is rebuilt only when docs/MANUAL.md, the embedder file, the
+engine sources, embed.rs, memidx.rs or llm.rs change (about 90 s for the 4B, then the file is reused). The blob header
+holds a key: FNV over every section text (Asked-as lines included), the embedder hash, the engine build hash, the
+chunker version and the index dim. At boot a matching key puts the rows straight into the index (logged: `26 from
+the vectors in the kernel (no embedder work)`); any mismatch, or `MANUAL_VECTORS=0`, falls back to the idle
+indexing above, with the reason in the log. `/man check` embeds the sections again and compares them with the
+linked rows (26/26 byte-identical). Results: [docs/T38_RESULT.md](docs/T38_RESULT.md).
+
 Python (M5): MicroPython 1.29.0 (`ports/embed`) is compiled freestanding into the kernel and runs in ring 0
 with an 8 MiB GC heap and its own 1 MiB stack from the engine arena (`RINGZERO_UPY_HEAP_MIB=16 make iso` for
 another heap size). `!py CODE` runs one line (an expression's value is echoed, like the REPL), `!py -f PATH`
@@ -329,6 +343,7 @@ Memory index, from the shell:
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
 | `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
+| `tools/manvec.py` | T38 pass 1: boots an ISO headless, `/man dump`, checks and writes `build/manvec.bin` (the manual's vectors linked into the kernel) |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot; `"CMD ^C3"` sends Ctrl-C 3 s after CMD) |
 | `tools/tooleval.py` | tool-call A/B (M4.7a): the spike prompts + in-OS prompts with `!set constrain on|off`, scored (calls, malformed, schema errors, grammar lines, decode speed) |
 | `tools/accept.py` | drives the shell over TCP (answers y/N prompts, sends Ctrl-C, waits idle, powers off), saves a transcript |

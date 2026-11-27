@@ -35,6 +35,13 @@ fn main() {
         }
     }
     println!("cargo:rustc-env=RINGZERO_ENGINE_HASH={h:#x}");
+    // T38: the manual's vectors (tools/manvec.py, MANUAL_VECTORS=1), linked by agentd.rs; empty = T22 indexing
+    println!("cargo:rerun-if-env-changed=RINGZERO_MANVEC");
+    let mv = env::var("RINGZERO_MANVEC").ok().filter(|p| !p.is_empty());
+    if let Some(p) = &mv {
+        println!("cargo:rerun-if-changed={p}");
+    }
+    std::fs::write(out.join("manvec.bin"), mv.map(|p| std::fs::read(&p).expect("RINGZERO_MANVEC file")).unwrap_or_default()).unwrap();
     println!("cargo:rustc-link-arg=-T{}", manifest.join("linker.ld").display());
     println!("cargo:rerun-if-changed={}", manifest.join("linker.ld").display());
     upy(&manifest, &out);

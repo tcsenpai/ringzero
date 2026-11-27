@@ -76,8 +76,23 @@ model:
 	HF_DIR="$(EMBED_HF_DIR)" HF_REPO=Qwen/Qwen3-Embedding-0.6B EXPORT_ARGS="--v3 --max-seq-len 1024" \
 	    HF_FILES="config.json model.safetensors tokenizer.json tokenizer_config.json" tools/fetch_model.sh $(EMBED)
 
+# T38: MANUAL_VECTORS=1 (default) links the manual's vectors into the kernel: pass 1 builds an ISO without them,
+# boots it headless once (tools/manvec.py: `/man dump`, the kernel's own Q8 embedder) and writes $(MANVEC);
+# pass 2 is the normal kernel build with that file. MANUAL_VECTORS=0: no vectors, the manual is embedded in idle
+# time at the first boot (T22). The kernel checks the key at boot and falls back to T22 on any mismatch.
+MANUAL_VECTORS ?= 1
+MANVEC := $(BUILD)/manvec.bin
+ifeq ($(MANUAL_VECTORS),1)
+kernel: $(MANVEC)
+MANVEC_PATH := $(abspath $(MANVEC))
+endif
+$(MANVEC): docs/MANUAL.md $(EMBED) $(wildcard engine/*.asm engine/*.inc) kernel/src/embed.rs kernel/src/memidx.rs kernel/src/llm.rs
+	$(MAKE) iso MANUAL_VECTORS=0 ISO=$(BUILD)/manvec-pass1.iso
+	MEM=$(GUEST_MEM) python3 tools/manvec.py $(BUILD)/manvec-pass1.iso $@
+	rm -rf $(BUILD)/manvec-pass1.iso $@.boot
+
 kernel: upy
-	cd kernel && RINGZERO_EDITION="$(EDITION)" cargo build --release -j 8
+	cd kernel && RINGZERO_EDITION="$(EDITION)" RINGZERO_MANVEC="$(MANVEC_PATH)" cargo build --release -j 8
 
 # M5: MicroPython (MIT), fetched at a pinned tag + commit and turned into the ports/embed package that
 # kernel/build.rs compiles freestanding (config: kernel/upy/mpconfigport.h). Needs python3 on the build box.
