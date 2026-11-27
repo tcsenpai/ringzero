@@ -130,8 +130,10 @@ iso: kernel $(BUILD)/limine/limine
 	xorriso -as mkisofs -iso-level 3 -R -r -J -b boot/limine/limine-bios-cd.bin \
 	    -no-emul-boot -boot-load-size 4 -boot-info-table \
 	    --efi-boot boot/limine/limine-uefi-cd.bin -efi-boot-part --efi-boot-image \
-	    --protective-msdos-label $(BUILD)/iso_root -o $(ISO)
+	    --protective-msdos-label $(if $(SOURCE_DATE_EPOCH),--set_all_file_dates =$(SOURCE_DATE_EPOCH)) $(BUILD)/iso_root -o $(ISO)
 	$(BUILD)/limine/limine bios-install $(ISO)
+	@# make beta: bios-install writes a random MBR disk id (srand(time(NULL))); a fixed one keeps the ISO reproducible
+	$(if $(SOURCE_DATE_EPOCH),printf 'RZ01' | dd of=$(ISO) bs=1 seek=440 conv=notrunc status=none)
 	rm -rf $(BUILD)/iso_root
 
 # whole-volume FAT32, no partition table (mtools on the host: mdir -i build/disk.img ::/)
@@ -164,7 +166,8 @@ wasm-apps: $(DISK)
 
 # T34 beta (docs/BETA.md): both ISOs (4B q4, the recommended edition, and the default 2B q8) and one fresh data disk
 # with the M8 apps and /demo in build/beta, plus SHA256SUMS. SOURCE_DATE_EPOCH (default: the last commit's time)
-# fixes every timestamp xorriso, mkfs.vfat (--invariant: fixed volume id) and mtools write, so a second run on the
+# fixes every timestamp xorriso (--set_all_file_dates), mkfs.vfat (--invariant: fixed volume id) and mtools write and
+# the ISO's MBR disk id, so a second run on the
 # same tree and inputs gives the same bytes. Needs the models (make model, both editions) and KVM (manual vectors;
 # the 2B goes first so pass 1 boots a 6G guest).
 BETA ?= $(BUILD)/beta

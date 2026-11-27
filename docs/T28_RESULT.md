@@ -174,7 +174,10 @@ vocab-trie walks per decision token, about 0.5 ms in a call round of 1-3 s.
   the model splitting between `re` and `read` shows as a lower margin than its real doubt between tools.
 - The margin is computed with a soft-float exp in the kernel: 0.74 ms per call on average (2.3 ms at most), next
   to 1-3 s for a call round.
-- A declined call returns an error to the model, but the 4B can still claim it did the thing ("Ho creato il file"
-  after a declined write_file). The kernel line and the question are what the user can trust, not the answer text.
+- A declined call returned an error to the model, and the 4B could still claim it did the thing ("Ho creato il file"
+  after a declined write_file). Fixed for the beta (F7): the result is now `NOT RUN: the user declined this call.
+  Nothing was changed. Do not call it again; tell the user it was not done.`, and after a no every later call of a
+  tool that changes the machine in the same turn asks again (the 4B retried a declined mkdir until a confident call
+  ran it without a question). On the beta, 9 declined calls (it + en): no answer claimed success (docs/BETA.md).
 - The margin depends on the whole context (memory slot, earlier turns): the same request can be a near-tie in one
   conversation and clear in another.
