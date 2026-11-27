@@ -41,6 +41,7 @@ const NOSPC: i32 = 51;
 const NOSYS: i32 = 52;
 const NOTDIR: i32 = 54;
 const NOTEMPTY: i32 = 55;
+const ROFS: i32 = 69;
 const SPIPE: i32 = 70;
 const NOTCAPABLE: i32 = 76;
 const RIGHTS: u64 = 0x1fff_ffff; // all 29 rights
@@ -120,11 +121,18 @@ struct OpenFile {
     append: bool,
     write: bool,
     h: Option<fs::File>, // M8: the open fatfs file, opened on first use (see drop_handles)
+    virt: Option<Vec<u8>>, // T54: a /proc file, generated when it is opened
 }
 
 impl OpenFile {
     fn new(path: String, append: bool, write: bool) -> Fd {
-        Fd::File(OpenFile { path, pos: 0, append, write, h: None })
+        Fd::File(OpenFile { path, pos: 0, append, write, h: None, virt: None })
+    }
+    fn len(&mut self) -> R<u64> {
+        match &self.virt {
+            Some(v) => Ok(v.len() as u64),
+            None => fs::len(self.handle()?).map_err(errno),
+        }
     }
     fn handle(&mut self) -> R<&mut fs::File> {
         if self.h.is_none() {
@@ -224,6 +232,7 @@ fn errno(e: &str) -> i32 {
         "disk full" => NOSPC,
         "not a directory, or a directory where a file was expected" => NOTDIR,
         "disk I/O error" | "corrupted file system" | "no disk mounted" => IO,
+        fs::ROFS => ROFS,
         _ => INVAL,
     }
 }
@@ -381,10 +390,11 @@ fn tty_wait(h: &mut Host, raw: bool, want: usize) -> Option<Vec<u8>> {
     Some(h.line.drain(..k).collect())
 }
 
-/// /sys holds agentd's stores and the boot snapshot: a wasm program may read it, never change it.
+/// /sys holds agentd's stores and the boot snapshot: a wasm program may read it, never change it. /proc (T54) is
+/// virtual and read-only: EROFS.
 fn sys_ro(p: &str) -> R {
     let first = p.trim_start_matches('/').split('/').next().unwrap_or("");
-    if first.eq_ignore_ascii_case("sys") { Err(ACCES) } else { Ok(()) }
+    if first.eq_ignore_ascii_case("sys") { Err(ACCES) } else if first == "proc" { Err(ROFS) } else { Ok(()) }
 }
 
 /// FAT mtime (fs.rs packing, local time from the RTC) -> ns since the epoch.
@@ -469,7 +479,15 @@ fn fd_read(c: &mut C, fd: i32, iov: u32, n: u32, nr: u32, off: Option<u64>) -> R
         Ok(Fd::File(f)) => (|| {
             let mut buf = vec![0u8; want];
             let at = off.unwrap_or(f.pos);
-            let k = fs::read_at(f.handle()?, at, &mut buf).map_err(errno)?;
+            let k = match &f.virt {
+                Some(v) => {
+                    let a = (at as usize).min(v.len());
+                    let k = buf.len().min(v.len() - a);
+                    buf[..k].copy_from_slice(&v[a..a + k]);
+                    k
+                }
+                None => fs::read_at(f.handle()?, at, &mut buf).map_err(errno)?,
+            };
             scatter(m, iov, n, &buf[..k])?;
             if off.is_none() {
                 f.pos += k as u64;
@@ -488,7 +506,7 @@ fn fd_seek(c: &mut C, fd: i32, off: i64, whence: i32, p: u32) -> R {
     let base = match whence {
         0 => 0,
         1 => f.pos as i64,
-        2 => fs::len(f.handle()?).map_err(errno)? as i64,
+        2 => f.len()? as i64,
         _ => return Err(INVAL),
     };
     let to = base.checked_add(off).filter(|&x| x >= 0).ok_or(INVAL)?;
@@ -605,7 +623,12 @@ fn path_open(c: &mut C, dirfd: i32, pp: u32, pl: u32, oflags: i32, rights: u64, 
             if trunc {
                 fs::truncate(&path, 0).map_err(errno)?;
             }
-            OpenFile::new(path, append, write)
+            let virt = if path.starts_with("/proc/") { Some(fs::proc_read(&path[1..]).map_err(errno)?) } else { None };
+            let mut f = OpenFile::new(path, append, write);
+            if let Fd::File(o) = &mut f {
+                o.virt = virt;
+            }
+            f
         }
         Err("not found") if creat && !dir_only => {
             sys_ro(&path)?;

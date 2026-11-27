@@ -11,7 +11,7 @@ import glob, os, re, sys
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 # placeholders and directory names that look like commands; hidden test commands (not in /help by design)
-IGNORE = {"name", "cmd", "bin", "lib", "demo", "sys", "home", "notes", "tmp", "boot"}
+IGNORE = {"name", "cmd", "bin", "lib", "demo", "sys", "home", "notes", "tmp", "boot", "proc"}
 HIDDEN = {"toks", "fault"}
 CMD = re.compile(r"(?:^|(?<=[\s(|]))([!/])([a-z][a-z0-9]*)(?![\w/.])")
 SET = re.compile(r"!set ([a-z]+)\b")

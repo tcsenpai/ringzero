@@ -241,6 +241,12 @@ impl Write for Console {
     }
 }
 
+/// /proc/devices: (serial console present, framebuffer width, height, bpp).
+pub fn devices() -> (bool, Option<(usize, usize, usize)>) {
+    let c = CONSOLE.lock();
+    (c.serial.is_some(), c.fb.as_ref().map(|f| (f.width, f.height, f.bpp)))
+}
+
 pub fn print(args: fmt::Arguments) {
     // try_lock: a panic while printing must still reach the screen instead of deadlocking.
     if let Some(mut c) = CONSOLE.try_lock() {

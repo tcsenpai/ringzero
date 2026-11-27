@@ -43,6 +43,10 @@ Asked as: how do I shut down, come spengo, spegnere, riavviare, reboot
 Asked as: how do I list files, come vedo i file, leggere un file, show a file, disk space, spazio libero
 `!ls PATH` lists a directory on the disk (`!ls /` for the root), `!cat PATH` prints a file, `!df` shows the disk size and free space. Paths are absolute (start with `/`), without `.` or `..`. The agent can do the same with its `ls` and `cat` tools ("leggi /notes/todo.txt").
 
+## System information in /proc
+Asked as: which drivers are there, quali driver ci sono, what hardware is this, che hardware ho, cpu flags, free memory, memoria libera, devices, dispositivi, pci
+`/proc` holds live system files, read-only and generated when read: `/proc/cpuinfo` (one block per core: model, MHz, flags such as avx2 fma f16c), `/proc/meminfo` (MemTotal, MemFree, MemAvailable in kB), `/proc/uptime` (seconds since boot), `/proc/version`, `/proc/devices` (the active drivers: serial, PS/2 keyboard, framebuffer, virtio-blk disk, FAT32 filesystem) and `/proc/bus/pci/devices` (PCI devices with vendor:device ids). Read them with `!cat /proc/meminfo`, `!ls /proc`, the agent's `cat` and `ls` tools, or programs (`!run cat /proc/cpuinfo`, python3 `open("/proc/uptime")`). Writing to /proc fails with "read-only file system".
+
 ## Writing and deleting files
 Asked as: how do I create a file, come creo un file, scrivere un file, delete a file, cancellare, make a folder, creare una cartella
 `!write PATH TEXT` creates or replaces a file (`\n` in TEXT is a new line; missing parent folders are created). `!mkdir PATH` makes a folder, `!rm PATH` deletes a file and `!rm -r PATH` a folder with its content; `!rm` always asks y/N. Files are at most 64 KiB. Text files are added to the memory index in idle time, so the agent can find them later.

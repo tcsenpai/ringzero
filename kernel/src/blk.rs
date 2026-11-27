@@ -92,6 +92,13 @@ unsafe impl Hal for KHal {
 // ---- probe ----
 
 pub type Blk = VirtIOBlk<KHal, PciTransport>;
+/// The probed disk for /proc: (PCI device, function, MiB); device 0xff = none.
+static mut LOC: (u8, u8, u64) = (0xff, 0, 0);
+
+pub fn location() -> Option<(u8, u8, u64)> {
+    let l = unsafe { LOC };
+    (l.0 != 0xff).then_some(l)
+}
 
 /// First virtio-blk on PCI bus 0 (QEMU q35 puts -device virtio-blk-pci there).
 pub fn probe() -> Option<Blk> {
@@ -109,6 +116,7 @@ pub fn probe() -> Option<Blk> {
     };
     match VirtIOBlk::<KHal, _>::new(t) {
         Ok(b) => {
+            unsafe { LOC = (df.device, df.function, b.capacity() * SECTOR as u64 >> 20) };
             klog!(b'I', "disk: virtio-blk at PCI 00:{:02x}.{} (device id {:04x}), {} sectors ({} MiB){}", df.device, df.function,
                 info.device_id, b.capacity(), b.capacity() * SECTOR as u64 >> 20, if b.readonly() { ", read-only" } else { "" });
             Some(b)

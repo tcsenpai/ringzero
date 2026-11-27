@@ -3,6 +3,8 @@
 // absolute, no "." or ".." components, bounded length. Writes are write-through (blk.rs); `!sync`,
 // poweroff and reboot flush the FS info sector and the device cache. File times come from the CMOS RTC
 // (sys::rtc), so a file changed on the host (mtools) is told apart by its size and mtime (agentd, M4.5).
+// T54: /proc is a virtual read-only directory (procfs.rs) in front of the volume: ls, read, entry and list serve
+// it, every write path fails with ROFS.
 use crate::blk::{self, Disk, DiskErr};
 use crate::klog;
 use alloc::string::String;
@@ -91,6 +93,15 @@ pub fn check(path: &str) -> Result<&str, &'static str> {
     Ok(rel)
 }
 
+/// T54: /proc is virtual (procfs.rs) and read-only: every change under it fails with this error.
+pub const ROFS: &str = "read-only file system";
+
+/// `check` plus: Err(ROFS) for a path under /proc.
+fn check_rw(path: &str) -> Result<&str, &'static str> {
+    let rel = check(path)?;
+    if crate::procfs::is_proc(rel) { Err(ROFS) } else { Ok(rel) }
+}
+
 /// The checked path in one spelling ("/a/b"), the key the indexer uses.
 pub fn canon(path: &str) -> Result<String, &'static str> {
     Ok(alloc::format!("/{}", check(path)?))
@@ -98,22 +109,23 @@ pub fn canon(path: &str) -> Result<String, &'static str> {
 
 /// `ls`: one entry per line, directories end with '/'.
 pub fn ls(path: &str, o: &mut impl core::fmt::Write) -> Result<usize, &'static str> {
-    let rel = check(path)?;
-    let root = fs()?.root_dir();
-    let d = if rel.is_empty() { root } else { root.open_dir(rel).map_err(err)? };
     let mut n = 0;
-    for e in d.iter() {
-        let e = e.map_err(err)?;
-        let name = e.file_name();
-        if name == "." || name == ".." {
-            continue;
-        }
-        let _ = if e.is_dir() { write!(o, "{}{}/", if n > 0 { "\n" } else { "" }, name) } else {
-            write!(o, "{}{}  {} B", if n > 0 { "\n" } else { "" }, name, e.len())
+    for (name, dir, size) in list(path)? {
+        let _ = if dir { write!(o, "{}{}/", if n > 0 { "\n" } else { "" }, name) } else {
+            write!(o, "{}{}  {} B", if n > 0 { "\n" } else { "" }, name, size)
         };
         n += 1;
     }
     Ok(n)
+}
+
+/// A /proc file's content; a /proc directory is the same error fatfs gives for one.
+pub fn proc_read(rel: &str) -> Result<Vec<u8>, &'static str> {
+    match crate::procfs::entry(rel) {
+        Some((true, _)) => Err("not a directory, or a directory where a file was expected"),
+        Some(_) => crate::procfs::read(rel).ok_or("not found"),
+        None => Err("not found"),
+    }
 }
 
 /// Read at most `max` bytes from `off`; returns (bytes, file size).
@@ -121,6 +133,11 @@ pub fn read(path: &str, off: u64, max: usize) -> Result<(Vec<u8>, u64), &'static
     let rel = check(path)?;
     if rel.is_empty() {
         return Err("/ is a directory");
+    }
+    if crate::procfs::is_proc(rel) {
+        let v = proc_read(rel)?;
+        let (size, a) = (v.len() as u64, (off as usize).min(v.len()));
+        return Ok((v[a..(a + max).min(v.len())].to_vec(), size));
     }
     let mut f = fs()?.root_dir().open_file(rel).map_err(err)?;
     let size = f.seek(SeekFrom::End(0)).map_err(err)?;
@@ -132,7 +149,7 @@ pub fn read(path: &str, off: u64, max: usize) -> Result<(Vec<u8>, u64), &'static
 
 /// Create or replace a file; missing parent directories are created.
 pub fn write(path: &str, data: &[u8]) -> Result<(), &'static str> {
-    let rel = check(path)?;
+    let rel = check_rw(path)?;
     if rel.is_empty() {
         return Err("/ is a directory");
     }
@@ -150,7 +167,7 @@ pub fn write(path: &str, data: &[u8]) -> Result<(), &'static str> {
 
 /// mkdir -p. Ok(false) if it was already there.
 pub fn mkdir(path: &str) -> Result<bool, &'static str> {
-    let rel = check(path)?;
+    let rel = check_rw(path)?;
     if rel.is_empty() {
         return Ok(false);
     }
@@ -172,7 +189,7 @@ fn mkdirs(rel: &str) -> Result<(), &'static str> {
 
 /// What rm would delete: Ok((is_dir, size or entries inside, recursively)).
 pub fn stat(path: &str) -> Result<(bool, u64), &'static str> {
-    let rel = check(path)?;
+    let rel = check_rw(path)?;
     if rel.is_empty() {
         return Err("refusing to remove /");
     }
@@ -214,7 +231,7 @@ fn rm_tree(d: &Dir) -> Result<(), &'static str> {
 
 /// Remove a file or a directory (recursive = with everything in it).
 pub fn rm(path: &str, recursive: bool) -> Result<(), &'static str> {
-    let rel = check(path)?;
+    let rel = check_rw(path)?;
     if rel.is_empty() {
         return Err("refusing to remove /");
     }
@@ -236,7 +253,7 @@ pub fn read_into(path: &str, off: u64, buf: &mut [u8]) -> Result<(usize, u64), &
 
 /// Create or replace a file from several pieces (no size limit: agentd's index and the boot snapshot).
 pub fn write_parts(path: &str, parts: &[&[u8]]) -> Result<u64, &'static str> {
-    let rel = check(path)?;
+    let rel = check_rw(path)?;
     if let Some((parent, _)) = rel.rsplit_once('/') {
         mkdirs(parent)?;
     }
@@ -253,7 +270,7 @@ pub fn write_parts(path: &str, parts: &[&[u8]]) -> Result<u64, &'static str> {
 
 /// Append to a file (created with its parents if missing); returns the size after the append.
 pub fn append(path: &str, data: &[u8]) -> Result<u64, &'static str> {
-    let rel = check(path)?;
+    let rel = check_rw(path)?;
     if let Some((parent, _)) = rel.rsplit_once('/') {
         mkdirs(parent)?;
     }
@@ -271,7 +288,7 @@ pub fn append(path: &str, data: &[u8]) -> Result<u64, &'static str> {
 
 /// Cut a file at `len` bytes (recovery of a torn append).
 pub fn truncate(path: &str, len: u64) -> Result<(), &'static str> {
-    let mut f = fs()?.root_dir().open_file(check(path)?).map_err(err)?;
+    let mut f = fs()?.root_dir().open_file(check_rw(path)?).map_err(err)?;
     f.seek(SeekFrom::Start(len)).map_err(err)?;
     f.truncate().map_err(err)?;
     f.flush().map_err(err)
@@ -299,6 +316,9 @@ pub fn entry(path: &str) -> Result<(bool, u64, u32), &'static str> {
         fs()?;
         return Ok((true, 0, 0));
     }
+    if crate::procfs::is_proc(rel) {
+        return crate::procfs::entry(rel).map(|(d, n)| (d, n, 0)).ok_or("not found");
+    }
     let (dir, name) = rel.rsplit_once('/').unwrap_or(("", rel));
     let root = fs()?.root_dir();
     let d = if dir.is_empty() { root } else { root.open_dir(dir).map_err(err)? };
@@ -316,6 +336,13 @@ pub fn entry(path: &str) -> Result<(bool, u64, u32), &'static str> {
 /// A directory's entries as (name, is_dir, size).
 pub fn list(path: &str) -> Result<Vec<(String, bool, u64)>, &'static str> {
     let rel = check(path)?;
+    if crate::procfs::is_proc(rel) {
+        return match crate::procfs::entry(rel) {
+            Some((true, _)) => crate::procfs::list(rel).ok_or("not found"),
+            Some(_) => Err("not a directory, or a directory where a file was expected"),
+            None => Err("not found"),
+        };
+    }
     let root = fs()?.root_dir();
     let d = if rel.is_empty() { root } else { root.open_dir(rel).map_err(err)? };
     let mut v = Vec::new();
@@ -326,12 +353,15 @@ pub fn list(path: &str) -> Result<Vec<(String, bool, u64)>, &'static str> {
             v.push((name, e.is_dir(), e.len()));
         }
     }
+    if rel.is_empty() && !v.iter().any(|e| e.0.eq_ignore_ascii_case("proc")) {
+        v.push((String::from("proc"), true, 0)); // T54: the virtual /proc shows in `ls /`
+    }
     Ok(v)
 }
 
 /// Open or create a file (parents must exist), emptied if `trunc`.
 pub fn touch(path: &str, trunc: bool) -> Result<(), &'static str> {
-    let rel = check(path)?;
+    let rel = check_rw(path)?;
     let mut f = fs()?.root_dir().create_file(rel).map_err(err)?;
     if trunc {
         f.truncate().map_err(err)?;
@@ -348,6 +378,9 @@ pub fn open(path: &str) -> Result<File, &'static str> {
     let rel = check(path)?;
     if rel.is_empty() {
         return Err("/ is a directory");
+    }
+    if crate::procfs::is_proc(rel) {
+        return Err(ROFS); // callers read /proc through read() (wasm.rs keeps the bytes in the fd)
     }
     fs()?.root_dir().open_file(rel).map_err(err)
 }
@@ -400,7 +433,7 @@ pub fn write_file_at(f: &mut File, off: u64, data: &[u8]) -> Result<u64, &'stati
 
 /// Rename or move a file or a directory (the target must not exist).
 pub fn rename(from: &str, to: &str) -> Result<(), &'static str> {
-    let (a, b) = (check(from)?, check(to)?);
+    let (a, b) = (check_rw(from)?, check_rw(to)?);
     if a.is_empty() || b.is_empty() {
         return Err("refusing to rename /");
     }

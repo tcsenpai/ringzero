@@ -9,6 +9,10 @@ wherever they fit (everything is a file: /proc, /sys as sysfs, /dev, /etc; famil
 outputs). New features expose state as files first and add a special tool only when a file cannot do the job.
 ringzero's own data lives outside the Linux paths (/var/lib/ringzero, migration from /sys planned). Exact Linux formats are not required: familiar paths and names matter, content only needs to be clear, because the model interprets the output.
 
+First piece (T54): `/proc` is a virtual directory in fs.rs (procfs.rs), so the shell's `!ls`/`!cat`, the agent's
+`ls`/`cat` tools and the WASI runtime see the same files through one path layer. A WASI open of a /proc file
+generates the content once and keeps the bytes in the fd (no fatfs handle); every write path is EROFS.
+
 ## Diagram
 
 ```mermaid
@@ -24,6 +28,7 @@ flowchart TB
         MEM["mem.rs<br/>bump arena, lower-half identity map,<br/>uncached MMIO map, 192 MiB kernel heap (linked_list_allocator,<br/>low-heap flag for wasm runs, M8),<br/>wasm slot: one linear memory, realloc in place (M5b)"]
         BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
         FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
+        PROC["procfs.rs: /proc (T54)<br/>read-only virtual files generated at read time:<br/>cpuinfo, meminfo, uptime, version, devices,<br/>bus/pci/devices (PCI bus 0 via 0xCF8); writes -> EROFS"]
         FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
         AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35;<br/>T22: a how-to message gets the best manual section, also mid-conversation),<br/>facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
         MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept;<br/>T38: + their Q8_0 rows (include_bytes!, build/manvec.bin from a headless<br/>pass-1 boot: /man dump), used at boot when the key matches"]
@@ -116,6 +121,9 @@ flowchart TB
     SYS --> RTC
     SYS -- "shutdown: save the index" --> AGD
     FS --> BLK --> VBLK
+    FS -- "paths under /proc" --> PROC
+    PROC -- "cpu, memory, uptime" --> SYS
+    PROC -- "drivers, PCI config" --> BLK
     BLK -- "DMA pages, bounce ring, map_mmio" --> MEM
     SYS -- "sync before poweroff / reboot" --> FS
     SH -- "!cmd" --> SYS
@@ -203,7 +211,7 @@ sequenceDiagram
     A->>L: <tool_response> turn, feed, generate
     L-->>U: "La memoria libera è di 2057 MiB."
     A->>A: snap commit: save point no. N (rows of the turn + DeltaNet state, ~21 MiB, 1-8 ms), Ctrl-C instead restores the previous point (~0.6 ms)
-    Note over A: up to ROUNDS tool rounds per user turn (10, !set rounds), then one answer round with the tool_call token blocked; poweroff/reboot ask y/N at the shell first
+    Note over A: up to ROUNDS tool rounds per user turn (10, !set rounds), then one answer round with the tool_call token blocked, poweroff/reboot ask y/N at the shell first
 ```
 
 Memory slot at the start of a conversation (agentd context compiler; also on the first turn after a compaction):

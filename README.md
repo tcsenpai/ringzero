@@ -59,6 +59,8 @@ ringzero[main]> count the lines of /demo/stats.py with wc
 - **Real software.** python3 (CPython 3.15), sqlite3, jq, Lua, QuickJS, ripgrep, the coreutils and a text
   editor run from `/bin` in a WASI sandbox, from the shell and for the agent. MicroPython is built in for quick
   one-liners (`!py 17*23`).
+- **A Unix-style /proc.** `cat /proc/cpuinfo`, `/proc/meminfo` and `/proc/devices` (the active drivers) work from
+  the shell, for the agent and for programs, read-only and generated when read.
 - **Fast where it matters.** The prompt is read in blocks (about 230 tokens/s on the 2B), the boot state is
   cached on disk, and the system does its housekeeping (indexing, summarizing) while you are idle. When the
   answer copies text from the conversation (a file, a tool result), it is written about 2.5x faster, and tool
@@ -114,6 +116,12 @@ serial, PS/2, framebuffer. Serial and framebuffer show the same ANSI colors (`!s
 - [INFO.md](INFO.md): every command, the measurements, the source layout, the licenses
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the architecture diagram
 - [docs/ROADMAP.md](docs/ROADMAP.md): what is done and what comes next
+
+## Contributing
+
+ringzero is open to ideas and code: propose a change in behaviour as an [OpenSpec](https://github.com/Fission-AI/OpenSpec)
+change next to the specs in [openspec/specs/](openspec/specs/), open an issue, or send a pull request. How, and where
+to start: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Related work
 

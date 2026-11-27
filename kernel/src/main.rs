@@ -15,6 +15,7 @@ mod embed;
 mod engine;
 mod fidx;
 mod fs;
+mod procfs; // T54 /proc
 mod idt;
 mod kbd;
 mod llm;
@@ -81,14 +82,14 @@ static _END: RequestsEndMarker = RequestsEndMarker::new();
 
 const MIB: u64 = 1024 * 1024;
 /// M7: `make MODEL=9b` builds the 9B edition (Makefile sets RINGZERO_EDITION)
-const EDITION: &str = match option_env!("RINGZERO_EDITION") {
+pub(crate) const EDITION: &str = match option_env!("RINGZERO_EDITION") {
     Some(e) => e,
     None => "ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)",
 };
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// release channel shown next to the version (the release name is the edition tag, e.g. QweQwe)
-const CHANNEL: &str = "beta";
+pub(crate) const CHANNEL: &str = "beta";
 
 /// T47: the boot banner (14 lines, at most 70 columns): the R0 die and the name, then version, edition, models and
 /// the machine. Colors go through console::sgr (plain text when color is off); the kernel log gets one plain line.
@@ -322,6 +323,7 @@ extern "C" fn kmain() -> ! {
     upy::init(); // M5: MicroPython heap + stack, before the snapshot pool takes the arena
     wasm::init(); // M5b: the wasm memory slot, same reason
     klog!(b'I', "wasm: command-line splitter self-test {}", if wasm::selftest() { "PASS" } else { "FAIL" });
+    klog!(b'I', "proc: /proc path table self-test {}", if procfs::selftest() { "PASS" } else { "FAIL" });
 
     // ---- engine ABI test, model, golden self-test, REPL ----
     let ok = engine::selftest();

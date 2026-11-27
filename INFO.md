@@ -49,6 +49,23 @@ note in the RAM memory index (Q8_0 rows), `/search QUERY` returns the top 5 by e
 joining only for identifier-like queries or a strong keyword match, and shows which signal matched. The agent
 has a `recall` tool over the same index (through agentd, below). Results: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md).
 
+/proc (T54, the Unix principle: state as files): a read-only virtual directory in front of the FAT volume
+(kernel/src/procfs.rs, routed by fs.rs), generated at every read, so `!ls /proc`, `!cat /proc/meminfo`, the agent's
+`ls` and `cat` tools and WASI programs (`!run cat /proc/cpuinfo`, `!run ls /proc`, python3's `open()`) see the
+same files. Familiar Linux names, plain `key: value` content (not byte-exact Linux formats):
+
+| File | Content |
+|---|---|
+| `/proc/cpuinfo` | one block per core: processor, model name, cpu MHz (TSC), cpu cores, role (BSP or engine worker), flags from CPUID (sse.., avx, avx2, fma, f16c, bmi2, avx512f, ...) |
+| `/proc/meminfo` | MemTotal, MemFree, MemAvailable, ModelWeights, SnapshotPool, KernelHeap in kB |
+| `/proc/uptime` | seconds since boot |
+| `/proc/version` | `ringzero version 0.1.0 beta (EDITION), Rust kernel, x86_64, not Linux` |
+| `/proc/devices` | the active drivers: 16550 serial, PS/2 keyboard (layout), Limine framebuffer (size), virtio-blk (PCI slot, MiB), fatfs (FAT type, label, size, free), proc |
+| `/proc/bus/pci/devices` | PCI bus 0 from the config ports: `bus:dev.fn vendor:device class (code), driver` |
+
+Writes, mkdir, rm and rename under /proc fail with `read-only file system` (WASI: EROFS); `ls /` shows `proc/`.
+The file indexer does not walk it. The ls tool's description names the files.
+
 Disk (M4): a virtio-blk disk (`build/disk.img`, 512 MiB FAT32, made once by `make disk`) is mounted at `/` at
 boot; the banner prints its size and free space. Shell: `!ls [PATH]`, `!cat PATH`, `!write PATH TEXT` (`\n` =
 new line, parents created), `!mkdir PATH`, `!rm [-r] PATH` (asks y/N), `!df`, `!sync` (poweroff and reboot sync
@@ -86,10 +103,10 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   to its snapshot point after.
 Results: [docs/M45_RESULT.md](docs/M45_RESULT.md).
 
-Built-in manual (T22): [docs/MANUAL.md](docs/MANUAL.md) is a manual written for the model (26 short sections, one
+Built-in manual (T22): [docs/MANUAL.md](docs/MANUAL.md) is a manual written for the model (29 short sections, one
 topic each, English, each with an `Asked as:` line of Italian and English wordings that is embedded but not shown).
 It is compiled into the kernel (`include_str!`) and indexed one section per memory-index entry, `[manual: TITLE]
-...`, in idle time at the first boot (27 entries, about 20 s of idle embedding); the entries are saved with the
+...`, in idle time at the first boot (29 entries, about 20 s of idle embedding); the entries are saved with the
 index, and at every boot (and on `/index clear`) indexed sections that differ from the kernel's manual are dropped
 and missing ones queued, so editing one section re-embeds only that one. Manual sections are ranked apart from the
 user's memory: they never take one of the slot's recalled lines or one of `recall`'s top 3. A message that asks how
@@ -101,8 +118,8 @@ user's message (or the query) is such a how-to question and the section scores c
 section titles. The system prompt and the boot prefix are unchanged. Results:
 [docs/T22_MANUAL_RESULT.md](docs/T22_MANUAL_RESULT.md).
 
-Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 27 sections' Q8_0
-rows into the kernel (`include_bytes!`, 28316 bytes), so a fresh disk has the manual in its index at boot with no
+Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 29 sections' Q8_0
+rows into the kernel (`include_bytes!`, 31580 bytes), so a fresh disk has the manual in its index at boot with no
 embedder work. Two passes, both in `make kernel`: pass 1 builds an ISO without vectors (`MANUAL_VECTORS=0
 ISO=build/manvec-pass1.iso`), `tools/manvec.py` boots it headless once (QEMU/KVM, no disk, guest RAM
 `GUEST_MEM`) and types `/man dump`: the kernel embeds every section with its own Q8 embedder (the idle indexer's
@@ -110,7 +127,7 @@ path) and prints the blob as hex lines with its FNV-1a; pass 2 is the normal ker
 `RINGZERO_MANVEC=build/manvec.bin`. `build/manvec.bin` is rebuilt only when docs/MANUAL.md, the embedder file, the
 engine sources, embed.rs, memidx.rs or llm.rs change (about 90 s for the 4B, then the file is reused). The blob header
 holds a key: FNV over every section text (Asked-as lines included), the embedder hash, the engine build hash, the
-chunker version and the index dim. At boot a matching key puts the rows straight into the index (logged: `26 from
+chunker version and the index dim. At boot a matching key puts the rows straight into the index (logged: `29 from
 the vectors in the kernel (no embedder work)`); any mismatch, or `MANUAL_VECTORS=0`, falls back to the idle
 indexing above, with the reason in the log. `/man check` embeds the sections again and compares them with the
 linked rows (26/26 byte-identical). Results: [docs/T38_RESULT.md](docs/T38_RESULT.md).
@@ -397,6 +414,7 @@ Memory index, from the shell:
 | Path | What |
 |---|---|
 | `kernel/src/blk.rs`, `fs.rs`, `fidx.rs` | virtio-blk on PCI, FAT32 at /, file indexer (M4) |
+| `kernel/src/procfs.rs` | /proc: read-only virtual files generated at read time (cpuinfo, meminfo, uptime, version, devices, bus/pci/devices) (T54) |
 | `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log; record stores in /sys/mem (M4.5) |
 | `kernel/src/gram.rs` | tool-call grammar: byte automaton from the tool schemas, vocab trie, logit mask (M4.7a) |
 | `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
