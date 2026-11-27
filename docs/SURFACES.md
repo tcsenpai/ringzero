@@ -18,6 +18,7 @@ same piece of work, then `tools/surfaces_check.sh` must pass.
 | Download page (ISOs) | `release/hf/README.md`, `release/hf/LICENSE.md` | `hf upload` to Pleistocene/ringzero | testers |
 | GitHub release notes | `release/NOTES.md` (per release) | `gh release create` | testers |
 | GitHub About | description, homepage, topics | `gh repo edit` | everyone |
+| Behaviour specs | `openspec/specs/*/spec.md` | GitHub | developers, agents: what the system does, with code sources |
 | Result docs | `docs/*_RESULT.md` | GitHub | records of measurements: not rewritten, new results get new sections |
 
 Rules (also in AGENTS.md):
@@ -25,3 +26,8 @@ Rules (also in AGENTS.md):
 - No hostnames, IP addresses, machine paths or personal names on any surface.
 - Italian appears only where it documents bilingual support (keyword lists, the manual's "Asked as" lines) or
   inside quoted test inputs in result docs.
+- The behaviour specs in `openspec/specs/` are the reference for every other surface. A behaviour change is an
+  OpenSpec change (propose, apply, archive) next to its mycelium task, and the archive updates the specs.
+- `tools/spec_check.py`, run by `tools/surfaces_check.sh`, checks that the commands and `!set` keys in the specs,
+  INFO.md and the /help table in kernel/src/shell.rs are the same set; `openspec validate --specs --strict`
+  checks the spec format.

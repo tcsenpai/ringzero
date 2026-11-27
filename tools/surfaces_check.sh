@@ -10,6 +10,7 @@ say() { echo "surfaces: $*"; fail=1; }
 USER_FACING=(README.md docs/BETA.md docs/DEMOS.md site/index.html release/hf/README.md)
 ALL=("${USER_FACING[@]}" INFO.md docs/ARCHITECTURE.md docs/MANUAL.md docs/SURFACES.md release/hf/LICENSE.md)
 [ -f release/NOTES.md ] && ALL+=(release/NOTES.md) && USER_FACING+=(release/NOTES.md)
+ALL+=(openspec/specs/*/spec.md)  # behaviour specs: same private-data, em dash and link rules
 
 for f in "${ALL[@]}"; do [ -f "$f" ] || { say "missing $f"; continue; }; done
 
@@ -49,6 +50,14 @@ for f in sys.argv[1:]:
             print(f"surfaces: broken link in {f}: {l}"); bad = 1
 sys.exit(bad)
 EOF
+
+# OpenSpec (openspec/specs): commands and settings agree between the specs, INFO.md and /help
+python3 tools/spec_check.py || fail=1
+if command -v openspec >/dev/null; then
+  OPENSPEC_TELEMETRY=0 openspec validate --specs --strict --no-interactive >/dev/null || { say "openspec validate --specs --strict failed"; }
+else
+  echo "surfaces: openspec CLI not installed, spec format not validated"
+fi
 
 [ $fail = 0 ] && echo "surfaces: ok (${#ALL[@]} files)"
 exit $fail
