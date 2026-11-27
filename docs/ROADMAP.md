@@ -6,11 +6,11 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 
 📋 Tasks (Tree View)
 ✓ 🔴 Release fixes from the user's manual test [E1]
-│   └── ○ 🔴 Beta release (today, 2026-11-27) [E1]
-│       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T51]
-│       ├── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1] [blocked by T51]
-│       ├── ○ 🟠 Unix compatibility layer (design principle) [E1] [blocked by T51]
-│       └── ○ 🟢 Release cadence: post-beta updates, then weekly [E1] [blocked by T51]
+│   └── ✓ 🔴 Beta release (today, 2026-11-27) [E1]
+│       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1]
+│       ├── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1]
+│       ├── ○ 🟠 Unix compatibility layer (design principle) [E1]
+│       └── ○ 🟢 Release cadence: post-beta updates, then weekly [E1]
 ✓ 🔴 M0 scaffold: Limine boot + Rust hello [E1]
 │   └── ✓ 🔴 M1 engine in ring 0 [E1]
 │       └── ✓ 🟠 M2 console and shell with @ agent prefix [E1]
