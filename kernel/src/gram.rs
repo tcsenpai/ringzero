@@ -294,6 +294,7 @@ pub fn active() -> bool {
 pub fn begin() {
     unsafe {
         CUR = G0;
+        CF = CF0;
         LAST_STEER = false;
         ACTIVE = true;
         ST = S0;
@@ -316,13 +317,12 @@ fn accept(g: &mut G, t: usize) -> bool {
     false
 }
 
-/// -inf on every token the automaton rejects from g. Returns (allowed, the last allowed id).
-fn mask(g: &G) -> (usize, usize) {
+/// f(id, allowed) for every token of the trie, from automaton state g (skips every token under a rejected prefix).
+fn walk(g: &G, mut f: impl FnMut(usize, bool)) {
     let (o, l, nv) = unsafe { (&*core::ptr::addr_of!(ORDER), &*core::ptr::addr_of!(LCP), NV) };
     let st = unsafe { &mut *core::ptr::addr_of_mut!(STACK) };
-    let logits = ctx(CTX_BUF_LOGITS) as *mut u32;
     st[0] = *g;
-    let (mut count, mut last, mut dead) = (0, 0, usize::MAX);
+    let mut dead = usize::MAX;
     for i in 0..nv {
         let id = o[i] as usize;
         let d0 = l[i] as usize;
@@ -343,13 +343,22 @@ fn mask(g: &G) -> (usize, usize) {
                 d += 1;
             }
         };
+        f(id, ok);
+    }
+}
+
+/// -inf on every token the automaton rejects from g. Returns (allowed, the last allowed id).
+fn mask(g: &G) -> (usize, usize) {
+    let logits = ctx(CTX_BUF_LOGITS) as *mut u32;
+    let (mut count, mut last) = (0, 0);
+    walk(g, |id, ok| {
         if ok {
             count += 1;
             last = id;
         } else {
             unsafe { *logits.add(id) = NEG_INF };
         }
-    }
+    });
     // tokens outside the trie: specials (only </tool_call> at the end), empty or too long ones
     let n = unsafe { NSAMPLE };
     for t in 0..n {
@@ -369,6 +378,7 @@ fn mask(g: &G) -> (usize, usize) {
 /// The sampler picked t inside a call: t if the grammar allows it, else the pick over the masked logits.
 pub fn fix(t: u64) -> u64 {
     let g = unsafe { &mut *core::ptr::addr_of_mut!(CUR) };
+    let g0 = *g; // T28: the state the pick was made from
     let x = s();
     x.toks += 1;
     let t0 = smp::rdtsc();
@@ -376,6 +386,7 @@ pub fn fix(t: u64) -> u64 {
     let t1 = smp::rdtsc();
     x.check_cyc += t1 - t0;
     if ok {
+        conf(&g0, t);
         return t;
     }
     if !unsafe { ON } {
@@ -395,7 +406,310 @@ pub fn fix(t: u64) -> u64 {
         unsafe { ACTIVE = false };
         return t;
     }
+    conf(&g0, pick);
     pick
+}
+
+// ---- T28: confidence of the decision tokens (method from ProbeLogits, arXiv:2604.11943) ----
+//
+// At a decision token of a call the margin is p1 - p2 of the softmax restricted to the tokens the grammar allows
+// from the state before that token (raw logits, temperature 1), over the outcomes of the decision: tokens that lead
+// to the same set of names still open are summed ("cat" and "ca" both mean cat), tokens that narrow nothing ('='
+// before a tool name) are left out. Decision tokens: the tool name, a parameter name when
+// an optional parameter is among the candidates, another optional parameter or the end of the call, an enum value,
+// an integer digit or its end; never a free string value, and not a byte the grammar leaves only one way to write.
+// The logits are the ones the pick used (a single decode step, or the verify row of the M4.8b/T39 pass: every pick
+// goes through fix() above), only read: no extra forward pass, the sampling does not change.
+
+/// `!set confidence on|off` (default on).
+pub static mut CONF_ON: bool = true;
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum Kind {
+    Name,
+    Param,
+    Opt,
+    Enum,
+    Int,
+}
+
+impl Kind {
+    pub fn what(self) -> &'static str {
+        match self {
+            Kind::Name => "tool name",
+            Kind::Param => "parameter",
+            Kind::Opt => "optional parameter",
+            Kind::Enum => "enum value",
+            Kind::Int => "integer",
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Conf {
+    pub n: u32,       // decision tokens of the call
+    pub min: f32,     // the smallest margin
+    pub kind: Kind,   // where it was
+    pub top: [u32; 2], // the two most likely allowed tokens there
+    pub m: [f32; 8],  // the first 8 margins, in call order
+    pub cyc: u64,     // TSC spent computing them
+}
+const CF0: Conf = Conf { n: 0, min: 1.0, kind: Kind::Name, top: [0; 2], m: [0.0; 8], cyc: 0 };
+static mut CF: Conf = CF0;
+static mut LAST_CF: Conf = CF0;
+
+/// The margins of the last call (None: confidence off, or no decision token).
+pub fn last_conf() -> Option<Conf> {
+    let c = unsafe { LAST_CF };
+    (unsafe { CONF_ON } && c.n > 0).then_some(c)
+}
+
+/// The decision the next byte b makes from state x, if it is one (more than one way on that the model chooses).
+fn choice(x: &G, b: u8) -> Option<Kind> {
+    if x.n == 0 && is_ws(b) {
+        return None; // layout whitespace
+    }
+    let w = &x.buf[..x.n as usize];
+    match x.st {
+        St::Name => (SPECS.iter().filter(|s| s.0.as_bytes().starts_with(w)).count() > 1).then_some(Kind::Name),
+        St::Key => {
+            let p = x.params();
+            let (mut k, mut opt) = (0, false);
+            for j in (0..p.len()).filter(|&j| x.used & 1 << j == 0 && p[j].0.as_bytes().starts_with(w)) {
+                (k, opt) = (k + 1, opt || !p[j].2);
+            }
+            (k > 1 && opt).then_some(Kind::Param) // only required ones left: their order is not a decision
+        }
+        St::Tag => {
+            let p = x.params();
+            let left = (0..p.len()).any(|j| x.used & 1 << j == 0);
+            let done = p.iter().enumerate().all(|(j, y)| !y.2 || x.used & 1 << j != 0);
+            (left && done && PARAM.starts_with(w) && CLOSE_F.starts_with(w)).then_some(Kind::Opt)
+        }
+        St::Enum => {
+            let Ty::Str(a) = x.params()[x.key as usize].1 else { return None };
+            (a.iter().filter(|v| v.as_bytes().starts_with(w)).count() > 1).then_some(Kind::Enum)
+        }
+        St::Int => Some(Kind::Int),
+        _ => None,
+    }
+}
+
+/// Token t from state g makes a decision on one of its bytes.
+fn decision(g: &G, t: usize) -> Option<Kind> {
+    if t >= SPECIAL_MIN {
+        return None;
+    }
+    let mut x = *g;
+    for &b in tok(t) {
+        if let Some(k) = choice(&x, b) {
+            return Some(k);
+        }
+        if !x.step(b) {
+            return None;
+        }
+    }
+    None
+}
+
+/// e^x for x <= 0, 0 below -30 (engine.rs exp_ref in f32: Taylor on x/1024, then squared 10 times).
+fn expn(x: f32) -> f32 {
+    if !(x > -30.0) {
+        return 0.0;
+    }
+    let r = x / 1024.0;
+    let mut s = 1.0 + r * (1.0 + r * (0.5 + r * (1.0 / 6.0 + r * (1.0 / 24.0))));
+    for _ in 0..10 {
+        s *= s;
+    }
+    s
+}
+
+/// The candidates of a name decision still open in state x: bit j = tool j (Name), unused parameter j (Key), enum
+/// value j (Enum) that starts with the bytes written so far.
+fn open(x: &G) -> u32 {
+    let w = &x.buf[..x.n as usize];
+    let bits = |it: &mut dyn Iterator<Item = (usize, bool)>| it.fold(0u32, |m, (j, ok)| if ok { m | 1 << j } else { m });
+    match x.st {
+        St::Name => bits(&mut SPECS.iter().enumerate().map(|(j, s)| (j, s.0.as_bytes().starts_with(w)))),
+        St::Key => bits(&mut x.params().iter().enumerate().map(|(j, p)| (j, x.used & 1 << j == 0 && p.0.as_bytes().starts_with(w)))),
+        St::Enum => match x.params()[x.key as usize].1 {
+            Ty::Str(a) => bits(&mut a.iter().enumerate().map(|(j, v)| (j, v.as_bytes().starts_with(w)))),
+            Ty::Int => 0,
+        },
+        _ => 0,
+    }
+}
+
+/// Which outcome of the decision token t takes from g (None: t does not narrow it, e.g. '=' before a tool name or
+/// '<' before '<parameter=' / '</function>'). Name, Key, Enum: the set of names left open (or the one chosen);
+/// integer and optional-parameter decisions: the token itself.
+fn outcome(g: &G, t: usize) -> Option<u64> {
+    let mut x = *g;
+    let b = tok(t);
+    let mut i = 0;
+    let k = loop {
+        let c = *b.get(i)?;
+        if let Some(k) = choice(&x, c) {
+            break k;
+        }
+        if !x.step(c) {
+            return None;
+        }
+        i += 1;
+    };
+    let (st0, m0) = (x.st, open(&x));
+    let mut m = m0;
+    let mut num: Option<u64> = None; // Int: FNV of the digits when the token ends the number
+    for &c in &b[i..] {
+        if x.st == St::Int && st0 == St::Int && num.is_none() && (is_ws(c) || c == b'<') {
+            num = Some(x.buf[..x.n as usize].iter().fold(FNV, |h, &d| (h ^ d as u64).wrapping_mul(0x100_0000_01b3)));
+        }
+        if x.st == st0 && matches!(st0, St::Name | St::Key | St::Enum) {
+            if c == b'>' || (st0 == St::Enum && (is_ws(c) || c == b'<')) {
+                // the name ends here: the one that equals the bytes written
+                let w = &x.buf[..x.n as usize];
+                let mut e = 0;
+                for j in 0..32 {
+                    if m & 1 << j != 0 {
+                        let name = match st0 {
+                            St::Name => SPECS[j].0,
+                            St::Key => x.params()[j].0,
+                            _ => match x.params()[x.key as usize].1 { Ty::Str(a) => a[j], Ty::Int => "" },
+                        };
+                        if name.as_bytes() == w {
+                            e |= 1 << j;
+                        }
+                    }
+                }
+                m = e;
+            }
+        }
+        if !x.step(c) {
+            return None;
+        }
+        if x.st == st0 && matches!(st0, St::Name | St::Key | St::Enum) {
+            m = open(&x);
+        }
+    }
+    match k {
+        Kind::Name | Kind::Param | Kind::Enum => (m != m0).then_some(m as u64),
+        // another parameter (2) or the end of the call (1), however the token spells it
+        Kind::Opt => match x.st {
+            St::Tag => {
+                let w = &x.buf[..x.n as usize];
+                match (PARAM.starts_with(w), CLOSE_F.starts_with(w)) {
+                    (true, true) => None,
+                    (p, _) => Some(1 << 63 | if p { 2 } else { 1 }),
+                }
+            }
+            St::Done | St::Func => Some(1 << 63 | 1),
+            _ => Some(1 << 63 | 2),
+        },
+        // the number written so far, and whether the token ends it
+        Kind::Int => Some(match num {
+            Some(h) => 1 << 62 | h >> 2,
+            None => x.buf[..x.n as usize].iter().fold(FNV, |h, &d| (h ^ d as u64).wrapping_mul(0x100_0000_01b3)) >> 2,
+        }),
+    }
+}
+
+const FNV: u64 = 0xcbf2_9ce4_8422_2325;
+const NOUT: usize = 64; // distinct outcomes kept per decision (more are rare: names, digits)
+const NTOK: usize = 4096; // allowed tokens kept per decision
+static mut DT: [(u64, f32); NTOK] = [(0, 0.0); NTOK];
+
+/// Margin of the decision made from g: P(best outcome) - P(second) under the softmax restricted to the tokens the
+/// grammar allows from g that narrow the decision (current logits, temperature 1). Tokens with the same outcome
+/// are summed. Also the best token of the two outcomes.
+fn margin(g: &G) -> (f32, [u32; 2]) {
+    let lg = ctx(CTX_BUF_LOGITS) as *const u32;
+    let dt = unsafe { &mut *core::ptr::addr_of_mut!(DT) };
+    let (mut n, mut mx) = (0, f32::NEG_INFINITY);
+    walk(g, |id, ok| {
+        if !ok || n == NTOK {
+            return;
+        }
+        let Some(o) = outcome(g, id) else { return };
+        let l = f32::from_bits(unsafe { *lg.add(id) });
+        dt[n] = (o, l);
+        n += 1;
+        mx = if l > mx { l } else { mx };
+    });
+    // per outcome: (key, sum of e^(l - mx), best logit, its token): the token is found again below
+    let mut out = [(0u64, 0.0f32, f32::NEG_INFINITY); NOUT];
+    let (mut k, mut total) = (0, 0.0f32);
+    for &(o, l) in &dt[..n] {
+        let e = expn(l - mx);
+        total += e;
+        let j = match out[..k].iter().position(|x| x.0 == o) {
+            Some(j) => j,
+            None if k < NOUT => {
+                k += 1;
+                out[k - 1].0 = o;
+                k - 1
+            }
+            None => continue,
+        };
+        out[j].1 += e;
+        out[j].2 = if l > out[j].2 { l } else { out[j].2 };
+    }
+    let (mut a, mut b) = (usize::MAX, usize::MAX);
+    for j in 0..k {
+        if a == usize::MAX || out[j].1 > out[a].1 {
+            (b, a) = (a, j);
+        } else if b == usize::MAX || out[j].1 > out[b].1 {
+            b = j;
+        }
+    }
+    if a == usize::MAX || !(total > 0.0) {
+        return (1.0, [0; 2]);
+    }
+    let p2 = if b == usize::MAX { 0.0 } else { out[b].1 };
+    // the best token of each of the two outcomes (for the log line)
+    let mut top = [0u32; 2];
+    let want = [Some(out[a]), (b != usize::MAX).then(|| out[b])];
+    walk(g, |id, ok| {
+        if !ok {
+            return;
+        }
+        for (i, w) in want.iter().enumerate() {
+            if let Some((o, _, best)) = w {
+                if f32::from_bits(unsafe { *lg.add(id) }) == *best && outcome(g, id) == Some(*o) {
+                    top[i] = id as u32;
+                }
+            }
+        }
+    });
+    ((out[a].1 - p2) / total, top)
+}
+
+/// fix() kept or picked t from state g0: the margin if t is a decision token.
+fn conf(g0: &G, t: u64) {
+    if !unsafe { CONF_ON } {
+        return;
+    }
+    let t0 = smp::rdtsc();
+    let Some(k) = decision(g0, t as usize) else { return };
+    let (m, top) = margin(g0);
+    let c = unsafe { &mut *core::ptr::addr_of_mut!(CF) };
+    if (c.n as usize) < c.m.len() {
+        c.m[c.n as usize] = m;
+    }
+    if c.n == 0 || m < c.min {
+        (c.min, c.kind, c.top) = (m, k, top);
+    }
+    c.n += 1;
+    c.cyc += smp::rdtsc() - t0;
+}
+
+/// A token's text for a log line (printable ASCII, '.' else, at most 16 bytes).
+pub fn show(t: u32) -> SBuf<20> {
+    let mut b = SBuf::<20>::new();
+    if (t as usize) < SPECIAL_MIN {
+        tok(t as usize).iter().take(16).for_each(|&c| b.push(&[if c.is_ascii_graphic() || c == b' ' { c } else { b'.' }]));
+    }
+    b
 }
 
 // ---- T39: the grammar as a draft source for the speculative verify (llm.rs generate) ----
@@ -490,6 +804,7 @@ pub fn draft(out: &mut [u32]) -> usize {
 
 /// generate() is done: one line about the call (if there was one), also in the kernel log.
 pub fn finish(ended: bool) {
+    unsafe { (LAST_CF, CF) = (CF, CF0) }; // T28: CF is CF0 when this generate() made no call
     if !unsafe { ACTIVE } && s().toks == 0 {
         return;
     }
@@ -579,5 +894,23 @@ pub fn selftest() -> bool {
         && chain(b"\n<function=meminfo").as_str() == ">\n</function>\n"
         && chain(b"\n<function=set_setting>\n<parameter=key>\ncor").as_str() == "es\n</parameter>\n<parameter=value>\n"
         && chain(b"").as_str() == "\n<function=";
-    good.iter().all(|s| run(s)) && !bad.iter().any(|s| run(s)) && d
+    // T28: which next byte is a decision, and e^x
+    let at = |pre: &[u8], b: u8| {
+        let mut g = G0;
+        pre.iter().for_each(|&c| { g.step(c); });
+        choice(&g, b)
+    };
+    let c = at(b"\n<function=", b'c') == Some(Kind::Name)
+        && at(b"\n<function=set_", b's').is_none()
+        && at(b"\n<function=set_setting>\n<parameter=", b'k').is_none()
+        && at(b"\n<function=run_wasm>\n<parameter=", b'p') == Some(Kind::Param)
+        && at(b"\n<function=read_log>\n", b'<') == Some(Kind::Opt)
+        && at(b"\n<function=meminfo>\n", b'<').is_none()
+        && at(b"\n<function=set_setting>\n<parameter=key>\n", b'c') == Some(Kind::Enum)
+        && at(b"\n<function=read_log>\n<parameter=n>\n", b'5') == Some(Kind::Int)
+        && at(b"\n<function=read_log>\n<parameter=n>\n", b'\n').is_none()
+        && at(b"\n<function=cat>\n<parameter=path>\n", b'/').is_none();
+    let de = expn(-1.0) - 0.367_879;
+    let e = expn(0.0) == 1.0 && de < 1e-4 && de > -1e-4 && expn(-31.0) == 0.0;
+    good.iter().all(|s| run(s)) && !bad.iter().any(|s| run(s)) && d && c && e
 }

@@ -11,6 +11,8 @@ Counted per prompt: tool calls ([tool] lines), parser errors ([tool] malformed c
 call / INVALID / leaves the grammar), decode speed of the rounds that made a call, whether the first call is a
 right tool, and (spike set) whether the arguments match the spike's rules (docs/spikes/toolcall/score.py).
 SLOT=N (env) sets `!set slot N` instead of 0 and keeps `/agentd log 12` (the slot's candidates) per prompt.
+T28: a [confidence] y/N question (a low-margin call of a tool that changes the machine) is answered y, so the eval
+runs the same calls as without it; every other y/N is answered n. CONF=on|off (env) sends `!set confidence ...`.
 SETS: comma list of spike, inos, it (default spike,inos). `it`: 10 short Italian knowledge / reasoning questions
 (docs/MODEL_CHOICE.md); `auto` is a substring pre-check of the answer, the verdict is by hand."""
 import json, os, re, socket, sys, time
@@ -63,9 +65,12 @@ PROMPT = re.compile(rb"ringzero(?:\[[^\]\n]*\])?> ")
 YN = b"[y/N] "
 
 
-def drive(host, port, mode, prompts):
+def drive(host, port, mode, prompts, first=False):
+    """first=True (tools/confeval.py): Ctrl-C once the first tool result is printed (the rest of the turn is not
+    needed; the turn is rolled back)."""
     s = socket.create_connection((host, port)); s.settimeout(0.2)
     buf = b""
+    intr = [False]
 
     def until(timeout=600):
         nonlocal buf
@@ -74,8 +79,11 @@ def drive(host, port, mode, prompts):
             m = PROMPT.search(buf); y = buf.find(YN)
             if y >= 0 and (not m or y < m.start()):
                 seen, buf = buf[:y], buf[y + len(YN):]
-                s.sendall(b"n\r")
-                return seen.decode(errors="replace") + "[y/N] n\n" + until(timeout)
+                a = "y" if b"[confidence]" in seen[seen.rfind(b"\n", 0, max(len(seen) - 1, 0)) + 1:] else "n"
+                s.sendall(a.encode() + b"\r")
+                return seen.decode(errors="replace") + f"[y/N] {a}\n" + until(timeout)
+            if first and not intr[0] and re.search(rb"^\[tool\] -> ", buf, re.M):
+                s.sendall(b"\x03"); intr[0] = True
             if m:
                 seen, buf = buf[:m.start()], buf[m.end():]
                 return seen.decode(errors="replace")
@@ -89,11 +97,14 @@ def drive(host, port, mode, prompts):
 
     s.sendall(b"\r"); until(20)
     cmd(f"!set constrain {mode}")
+    if os.environ.get("CONF"):
+        cmd(f"!set confidence {os.environ['CONF']}")
     slot = os.environ.get("SLOT", "0")  # SLOT=200: memory slot on (T35 A/B); its decisions are kept per prompt
     cmd(f"!set slot {slot}"); cmd("!set consolidate 0")  # the slot carries earlier eval prompts in (one session)
     out = []
     for text, exp in prompts:
         cmd("/clear")
+        intr[0] = False
         t0 = time.time()
         txt = cmd(text)
         out.append({"text": text, "expect": exp, "out": txt.replace("\r", ""), "secs": round(time.time() - t0, 1)})
@@ -138,6 +149,8 @@ def score(r):
         "grammar_bad": sum(1 for g in gl if "valid call" not in g or "INVALID" in g or "leaves" in g),
         "grammar": gl, "decode": [(int(a), float(b)) for a, b in dec],
         "masked": sum(int(m) for m in re.findall(r"(\d+) masked", " ".join(gl))),
+        "conf": re.findall(r"^\[confidence\] min.*$", o, re.M),
+        "conf_ask": len(re.findall(r"^\[confidence\] the agent is not sure.*\[y/N\] y$", o, re.M)),
     }
 
 
@@ -169,6 +182,8 @@ def main():
                    "args_rule_prompts": sum(x["args_exact"] is not None for x in sc), "args_exact": sum(bool(x["args_exact"]) for x in sc),
                    "no_tool_ok": sum(1 for r, x in zip(rs, sc) if not r["expect"] and not x["calls"]),
                    "auto_ok": sum(bool(x["auto_ok"]) for x in sc),
+                   "conf_lines": sum(len(x["conf"]) for x in sc), "conf_asked_y": sum(x["conf_ask"] for x in sc),
+                   "conf_low_mid": [c for x in sc for c in x["conf"] if not c.endswith("-> run")],
                    "call_round_decode_tok_s": round(ntok / (ms / 1000), 2) if ms else None}
     print(json.dumps(summ, indent=1))
     json.dump({"mode": mode, "summary": summ, "results": res}, open(path, "w"), indent=1, default=sorted)

@@ -31,7 +31,7 @@ flowchart TB
         CM["agent.rs: context manager<br/>fill tracking, compaction (summary + rebuild),<br/>last 2 exchanges, raw transcript ring"]
         LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32),<br/>M4.8b: prompt-lookup drafts, one verify pass,<br/>DeltaNet state copy for rollback"]
         SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay (batched), eviction,<br/>boot snapshot cache (/sys/bootsnap.bin, 33 MiB),<br/>hibernation image: tree + pool chunks, state hash"]
-        GRAM["gram.rs: tool-call grammar (M4.7a)<br/>byte automaton from the tool schemas (names, keys,<br/>enums, integers, required, closing tags),<br/>vocab trie: ids sorted by bytes + prefix lengths (1.2 MiB),<br/>check the pick; on a reject logits -> -inf, pick again;<br/>T39: draft(): the text the grammar implies up to the<br/>model's next choice, tokenized, as the speculative draft"]
+        GRAM["gram.rs: tool-call grammar (M4.7a)<br/>byte automaton from the tool schemas (names, keys,<br/>enums, integers, required, closing tags),<br/>vocab trie: ids sorted by bytes + prefix lengths (1.2 MiB),<br/>check the pick; on a reject logits -> -inf, pick again;<br/>T39: draft(): the text the grammar implies up to the<br/>model's next choice, tokenized, as the speculative draft;<br/>T28: at a decision token (tool name, optional parameter,<br/>enum, integer) the margin p1 - p2 of the softmax over the<br/>allowed tokens, read from the pick's logits row"]
         HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff -> /sys/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
         IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/sys/mem/index.bin)"]
@@ -96,7 +96,8 @@ flowchart TB
     LLM -- "after <tool_call>: fix(pick) per token,<br/>draft() before each verify (T39)" --> GRAM
     AG -. "tool schemas (SPECS)" .-> GRAM
     GRAM -- "-inf on rejected logits, vocab bytes" --> TR
-    SH -- "!set constrain on|off" --> GRAM
+    SH -- "!set constrain on|off,<br/>!set confidence on|off" --> GRAM
+    GRAM -- "last_conf(): min margin of the call (T28)<br/>-> [confidence] line, band: run / log / y/N first" --> AG
     SH -- "/hibernate [discard|status]" --> HIB
     SYS -- "poweroff: hibernate first" --> HIB
     KMAIN -- "boot: trie, resume" --> GRAM & HIB
@@ -428,6 +429,13 @@ parameter is missing, `</parameter>`, `</function>`, a unique enum value), token
 hands it to the same verify pass; only when it is empty does the prompt lookup run. `</tool_call>` is not drafted:
 it comes as the pick after a fully accepted draft. Grammar drafts do not move the lookup's length and back-off
 gate. Results: docs/T39_RESULT.md.
+
+T28: every pick inside a call goes through `gram::fix`, in a decode step or a verify row; when its bytes make a
+decision (tool name, a parameter with an optional one among the candidates, optional parameter or end, enum value,
+integer), `margin` walks the vocab trie from the state before the pick and takes P(best) - P(second) of the softmax
+over the allowed tokens, grouped by outcome. The logits are only read. agent.rs prints the call's smallest margin as
+a `[confidence]` line and picks the band (`CONF_LO` 0.25, `CONF_HI` 0.80): run, run and log, or y/N first for tools
+that change the machine. Results: docs/T28_RESULT.md.
 
 ## Memory
 

@@ -16,7 +16,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
 │               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
-│               │       │   │   └── ○ 🟠 Beta release gate [E1] [blocked by T28]
+│               │       │   │   └── ○ 🟠 Beta release gate [E1]
 │               │       │   │       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T34]
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1] [blocked by T34]
 │               │       │   │       └── ○ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1] [blocked by T34]
@@ -28,7 +28,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   └── ✓ 🟢 Manual vectors baked into the kernel binary (build flag, default on) [E1]
 │               │       │       ├── T34: Beta release gate (circular)
 │               │       │       └── ✓ 🟠 Grammar as a speculative draft source [E1]
-│               │       │           ├── ○ 🟢 Uncertainty-aware agent [E1]
+│               │       │           ├── ✓ 🟢 Uncertainty-aware agent [E1]
 │               │       │           │   └── T34: Beta release gate (circular)
 │               │       │           └── T34: Beta release gate (circular)
 │               │       ├── ○ 🟢 Deterministic replay as audit log [E1]

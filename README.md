@@ -39,6 +39,7 @@ ringzero[main]> count the lines of /demo/stats.py with wc
   The next boot picks it up exactly where it was, checked by a state hash.
 - **Tool calls that cannot break.** While the model writes a tool call, the kernel only lets through tokens
   that keep it valid against the tool's schema. In the tests: zero malformed calls.
+- **Unsure calls ask first.** Each tool call shows how sure the model was; unsure ones that change the machine ask.
 - **Real software.** python3 (CPython 3.15), sqlite3, jq, Lua, QuickJS, ripgrep, the coreutils and a text
   editor run from `/bin` in a WASI sandbox, from the shell and for the agent. MicroPython is built in for quick
   one-liners (`!py 17*23`).
@@ -103,7 +104,7 @@ serial, PS/2, framebuffer.
 - D. Son, *ProbeLogits: Kernel-Level LLM Inference Primitives for AI-Native Operating Systems*, 2026,
   [arXiv:2604.11943](https://arxiv.org/abs/2604.11943). Anima OS, a bare-metal x86-64 Rust kernel with LLM
   inference inside, reads the model's next-token logits as a kernel primitive for classifying agent actions.
-  ringzero acts on the logits in the kernel too (the tool-call grammar mask, and the planned uncertainty signal).
+  ringzero acts on the logits in the kernel too (the tool-call grammar mask, and the confidence of each tool call, T28).
 - [NIGHTRUN](https://github.com/hardrave/NIGHTRUN), 2026: a UEFI application in Rust that runs Qwen3-4B (Q4_K_M) with its
   own inference kernels before any OS loads, as a chat. ringzero is a kernel with an agent, tools, memory and programs
   around the model.

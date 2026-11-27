@@ -100,7 +100,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "seed"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "confidence", "seed"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -109,7 +109,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), seed (sampler RNG)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), confidence (on|off: margin of a tool call's decision tokens, low ones ask first), seed (sampler RNG)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
@@ -434,6 +434,12 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             let on = matches!(val, "on" | "1" | "true");
             unsafe { crate::gram::ON = on };
             let _ = write!(o, "constrain = {}", if on { "on (tool calls follow the tool schemas)" } else { "off (the grammar only checks tool calls)" });
+            true
+        }
+        "confidence" => {
+            let on = matches!(val, "on" | "1" | "true");
+            unsafe { crate::gram::CONF_ON = on };
+            let _ = write!(o, "confidence = {}", if on { "on (a [confidence] line per tool call; a low margin asks first on tools that change the machine)" } else { "off" });
             true
         }
         "seed" => match val.parse::<u64>() {

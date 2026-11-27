@@ -572,6 +572,47 @@ fn fs_tool<const N: usize>(c: &Call, o: &mut SBuf<N>, fx: &mut SBuf<160>) -> Res
     Ok(())
 }
 
+/// Tools that change the machine (M4.7a steered calls, T28 low-confidence calls).
+const FX: [&str; 10] = ["set_setting", "remember", "forget", "write_file", "mkdir", "rm", "poweroff", "reboot", "run_code", "run_wasm"];
+/// Of FX, the ones that ask the human y/N themselves (the confidence band adds no second question).
+const ASKS: [&str; 4] = ["rm", "poweroff", "reboot", "forget"];
+
+/// T28 bands of a call's smallest decision margin (gram.rs), picked on the tune split of tools/confeval.py
+/// (docs/T28_RESULT.md): at or above CONF_HI run, from CONF_LO run and log, below CONF_LO ask first (FX) or run with
+/// a notice (read-only tools).
+pub const CONF_LO: f32 = 0.25;
+pub const CONF_HI: f32 = 0.80;
+
+#[derive(Clone, Copy, PartialEq)]
+enum Band {
+    High,
+    Mid,
+    Low,
+}
+
+/// The `[confidence]` line of a parsed call (also in the kernel log) and its band; None when off or no decision.
+fn conf_line(name: &str) -> Option<Band> {
+    let c = crate::gram::last_conf()?;
+    let band = if c.min >= CONF_HI { Band::High } else if c.min >= CONF_LO { Band::Mid } else { Band::Low };
+    let act = match band {
+        Band::High => "run",
+        Band::Mid => "run (middle band, logged)",
+        Band::Low if !FX.contains(&name) => "run (read-only tool, low-confidence notice: check the result)",
+        Band::Low if ASKS.contains(&name) => "ask (the tool asks y/N itself)",
+        Band::Low => "ask y/N",
+    };
+    let mut l = SBuf::<240>::new();
+    let _ = write!(l, "[confidence] min margin {:.2} at '{}' ('{}' vs '{}'), {} decision tokens:", c.min, c.kind.what(),
+        crate::gram::show(c.top[0]).as_str(), crate::gram::show(c.top[1]).as_str(), c.n);
+    for m in &c.m[..(c.n as usize).min(c.m.len())] {
+        let _ = write!(l, " {:.2}", m);
+    }
+    let _ = write!(l, ", {} us -> {}", smp::tsc_to_us(c.cyc), act);
+    println!("{}", l.as_str());
+    crate::log::record(b'A', l.as_str());
+    Some(band)
+}
+
 /// One user turn at the shell.
 pub fn ask(q: &str) {
     let max_seq = llm::ctx_max_seq();
@@ -672,11 +713,15 @@ pub fn ask(q: &str) {
                     print!("{}{}={}", if i > 0 { ", " } else { "" }, k, v);
                 }
                 println!(")");
-                // M4.7a: a value the grammar had to choose is a guess; tools that change the machine do not run it
-                const FX: [&str; 10] = ["set_setting", "remember", "forget", "write_file", "mkdir", "rm", "poweroff", "reboot", "run_code", "run_wasm"];
+                let band = conf_line(c.name);
                 if validate(&c, res).is_some() {
+                    // M4.7a: a value the grammar had to choose is a guess; tools that change the machine do not run it
                     if crate::gram::last_steered() && FX.contains(&c.name) {
                         let _ = write!(res, "error: not run: a tool name, parameter or value was not in the schema and the kernel had to replace it. Call {} again with values from its schema, or answer without the tool", c.name);
+                    } else if band == Some(Band::Low) && FX.contains(&c.name) && !ASKS.contains(&c.name)
+                        && !shell::confirm("\n[confidence] the agent is not sure about this call. Run it?")
+                    {
+                        let _ = write!(res, "error: not run: the agent was unsure about this call and the user did not confirm it. Ask the user what they want, or answer without the tool");
                     } else {
                         exec(&c, res);
                     }

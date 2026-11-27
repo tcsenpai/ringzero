@@ -162,6 +162,18 @@ chosen by the mask is not run when the tool changes the machine. Outside a tool 
 keeps the grammar as a checker only (it reports where a call breaks), for A/B runs. Every call prints a
 `[grammar]` line. Results: [docs/M47_RESULT.md](docs/M47_RESULT.md).
 
+Confidence of tool calls (T28, method from ProbeLogits, arXiv:2604.11943): at every decision token of a call (tool
+name, a parameter choice with an optional one among the candidates, another optional parameter or the end, an enum
+value, an integer digit) the kernel takes P(best) - P(second) of the softmax over the tokens the grammar allows,
+grouped by outcome (tokens leading to the same name are summed, tokens that narrow nothing left out), from the logits
+the pick used (a decode step or a verify row): no extra forward pass, the sampling is unchanged. The smallest margin
+of the call sets the band: >= 0.80 run, 0.25-0.80 run and log, < 0.25 ask `[confidence] ... Run it? [y/N]` first for
+set_setting, remember, write_file, mkdir, run_code, run_wasm (rm, forget, poweroff, reboot ask y/N anyway) and run
+with a notice for read-only tools. Thresholds picked on 120 tune tasks of `tools/confeval.py`; on the 120 held-out:
+AUROC 0.80 against wrong calls (0.89 against wrong tools), 0 of 8 wrong calls in the low band, 5 in the logged band,
+0 false escalations. 0.74 ms per call. Every call prints a `[confidence]` line; `!set confidence on|off` (default on).
+Results: [docs/T28_RESULT.md](docs/T28_RESULT.md).
+
 Hibernation (M4.7b): `/hibernate`, and every `!poweroff` (also the agent's poweroff tool), writes the current
 conversation and its whole snapshot tree to `/sys/hib/image.bin`: the point and name tables, the questions
 and answers, the KV rows of every point, the DeltaNet state of the current point (the others come back
@@ -286,6 +298,7 @@ Tool-call grammar and hibernation:
 
 ```
 !set constrain off       # A/B: the grammar only checks tool calls (default on: it constrains them)
+!set confidence off      # T28: no [confidence] line and no low-confidence question (default on)
 !set spec off            # one token per pass (default on: prompt-lookup drafts, verified in one pass; N = longest draft)
 /spec 9                  # verifier check: 9 positions per token vs one verify pass (bit-identical logits, times)
 /hibernate               # save the conversation + snapshot tree now (!poweroff does it too)
@@ -353,7 +366,8 @@ Memory index, from the shell:
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
 | `tools/manvec.py` | T38 pass 1: boots an ISO headless, `/man dump`, checks and writes `build/manvec.bin` (the manual's vectors linked into the kernel) |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot; `"CMD ^C3"` sends Ctrl-C 3 s after CMD) |
-| `tools/tooleval.py` | tool-call A/B (M4.7a): the spike prompts + in-OS prompts with `!set constrain on|off`, scored (calls, malformed, schema errors, grammar lines, decode speed) |
+| `tools/tooleval.py` | tool-call A/B (M4.7a): the spike prompts + in-OS prompts with `!set constrain on|off`, scored (calls, malformed, schema errors, grammar lines, decode speed); T28: answers y to a `[confidence]` question, `CONF=on|off` |
+| `tools/confeval.py` | T28: 240 tool tasks with a known right first call, `run` (first call only) and `analyze` (thresholds on the tune split, AUROC and bands on the held-out split) |
 | `tools/accept.py` | drives the shell over TCP (answers y/N prompts, sends Ctrl-C, waits idle, powers off), saves a transcript |
 | `tools/uxtest.py` | types steps byte by byte over TCP (Tab completion, suggestions, long pasted lines), waits for a quiet prompt |
 | `tools/fetch_model.sh` | `make model`: Hugging Face download (uvx hf, curl fallback) + export, skipped when the .asmbin exists |
