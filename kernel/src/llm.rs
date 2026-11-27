@@ -184,8 +184,10 @@ pub fn prefill_bench(arg: &str, toks: &[u32]) {
     smp::park_phase(false);
     let (a, f) = rate(toks.len() as u64, us);
     let (all, mm) = unsafe { (smp::tsc_to_us(pf_tsc_all) / 1000, smp::tsc_to_us(pf_tsc_mm) / 1000) };
+    print!("{}", crate::console::sgr(crate::console::DIM));
     println!("[prefill] block {} ({}): {} tok in {}.{:03} s ({}.{:02} tok/s), next token {}, batched passes {} ms (matmuls {} ms)",
         prefill_block(), if unsafe { bmm_vnni } != 0 { "vnni" } else { "avx2" }, toks.len(), us / 1_000_000, us / 1000 % 1000, a, f, pick_next(), all, mm);
+    print!("{}", crate::console::sgr(crate::console::RESET));
     print_state(toks.len() as u64);
 }
 
@@ -274,6 +276,7 @@ fn run(prompt: &[u8], o: &Opts) -> Stats {
 pub fn print_speed(s: &Stats) {
     let (pa, pb) = rate(s.n_prompt, s.prefill_us);
     let (da, db) = rate(s.n_gen.saturating_sub(1).max(1), s.decode_us);
+    print!("{}", crate::console::sgr(crate::console::DIM)); // T46: statistics in gray, reset at the end of the line
     print!(
         "[prefill] {} tok in {}.{:02} ms ({}.{:02} tok/s)  [decode] {} tok in {}.{:02} ms ({}.{:02} tok/s, output {} ms)  cores {}  ctx {}/{} ({}%)",
         s.n_prompt, s.prefill_us / 1000, s.prefill_us % 1000 / 10, pa, pb,
@@ -284,13 +287,12 @@ pub fn print_speed(s: &Stats) {
     // M4.8b: the speculative counters of the generate() call this line reports (taken: printed once)
     let x = unsafe { core::ptr::addr_of_mut!(SPEC_ST).replace(SPEC0) };
     if x.used && x.on {
-        println!("  spec {}/{} accepted ({}%) in {} verify, {} rollback, verify {} ms, grammar {}/{}, ids {:#x}", x.accepted, x.drafted,
+        print!("  spec {}/{} accepted ({}%) in {} verify, {} rollback, verify {} ms, grammar {}/{}, ids {:#x}", x.accepted, x.drafted,
             x.accepted as u64 * 100 / (x.drafted as u64).max(1), x.verifies, x.rollbacks, x.verify_us / 1000, x.gaccepted, x.gdrafted, x.ids);
     } else if x.used {
-        println!("  spec off, ids {:#x}", x.ids);
-    } else {
-        println!("");
+        print!("  spec off, ids {:#x}", x.ids);
     }
+    println!("{}", crate::console::sgr(crate::console::RESET));
 }
 
 /// KV cache element type of this build.
@@ -918,7 +920,9 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
 /// compute_logits = 2 pass; prints how many rows are bit-identical and the state hashes. Overwrites the live state.
 pub fn spec_check(toks: &[u32], rows: usize) {
     if !spec_ok() {
+        print!("{}", crate::console::sgr(crate::console::DIM));
         println!("[spec] not available (no batched prefill buffers)");
+        print!("{}", crate::console::sgr(crate::console::RESET));
         return;
     }
     let n = rows.clamp(1, SPEC_ROWS).min(toks.len() / 2);
@@ -960,8 +964,10 @@ pub fn spec_check(toks: &[u32], rows: usize) {
         same_am += (unsafe { argmax_f32(ctx(CTX_BUF_LOGITS) as *const f32, ctx(CTX_SAMPLE_N)) } == am[i]) as usize;
     }
     smp::park_phase(false);
+    print!("{}", crate::console::sgr(crate::console::DIM));
     println!("[spec] {} positions after {} tokens: logits bit-identical {}/{}, argmax {}/{}, kv+deltanet {:#018x} vs {:#018x} ({}); {} x transformer_forward {} ms, one verify pass {} ms; DeltaNet state copy {} KiB: save {} us, restore {} us",
         n, m, same, n, same_am, n, h1, h2, if h1 == h2 { "same" } else { "DIFFER" },
         n, smp::tsc_to_us(t1 - t0) / 1000, smp::tsc_to_us(t3 - t2) / 1000,
         ctx(CTX_DN_ZERO_BYTES) >> 10, smp::tsc_to_us(ts), smp::tsc_to_us(t2 - tc));
+    print!("{}", crate::console::sgr(crate::console::RESET));
 }

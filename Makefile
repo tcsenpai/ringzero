@@ -194,7 +194,7 @@ run-uefi: iso $(DISK)
 # build/remote-monitor.sock. VNC_KEYMAP: keysym -> scancode map for VNC clients without the QEMU
 # extended key event (macOS Screen Sharing); match it to the guest layout (`kbd`).
 REMOTE_SMP ?= 8
-VNC_PASS   ?= aios
+VNC_PASS   ?= ringzero
 # a second (test) instance: make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test
 REMOTE_PORT ?= 4555
 REMOTE_VNC  ?= 1

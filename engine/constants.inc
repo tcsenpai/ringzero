@@ -1,6 +1,6 @@
 ; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/constants.inc).
 ; Do not edit here: change upstream and re-vendor. Unmodified below this header except the ringzero M7 lines marked
-; "AIOS" (.asmbin v4: Q4_0 slot types, untied lm_head, Hv = k * Hk DeltaNet).
+; "ringzero" (.asmbin v4: Q4_0 slot types, untied lm_head, Hv = k * Hk DeltaNet).
 ; ============================================================================
 ; constants.inc — Linux x86-64 syscalls, .asmbin header layout, Runtime struct
 ; Pure x86-64 NASM assembly (zero libc, zero external dependencies)
@@ -49,7 +49,7 @@
 %define ASMBIN_MAGIC        0x4C4D5341  ; "ASML"
 %ifdef QWEN35
 %define ASMBIN_VERSION_V3   3
-%define ASMBIN_VERSION_V4   4           ; AIOS (M7): v3 + descriptor slot quant types + HDR_OFF_LM_HEAD
+%define ASMBIN_VERSION_V4   4           ; ringzero (M7): v3 + descriptor slot quant types + HDR_OFF_LM_HEAD
 %else
 %define ASMBIN_VERSION      1
 %define ASMBIN_VERSION_V2   2
@@ -104,7 +104,7 @@
 %define HDR_TOK_NL          204
 %define HDR_TOK_NL2         208
 %define HDR_ARGMAX_LIMIT    212         ; valid token ids are < this (0 -> vocab_size)
-%define HDR_OFF_LM_HEAD     216         ; AIOS (M7), v4: u64 untied lm_head (Q8_0) offset, 0 = tied to embed
+%define HDR_OFF_LM_HEAD     216         ; ringzero (M7), v4: u64 untied lm_head (Q8_0) offset, 0 = tied to embed
 ; 224..255 reserved (zero)
 %endif
 
@@ -112,7 +112,7 @@
 ; --- Per-layer descriptor table (HDR_OFF_LAYER_TABLE, n_layers entries) ---
 %define DESC_STRIDE         136         ; u32 type, u32 reserved, 16 x u64 absolute file offsets
 %define DESC_TYPE           0
-%define DESC_QTYPES         4           ; AIOS (M7), v4: 2 bits per slot i at bit 2i: 0 f32/none, 1 Q8_0, 2 Q4_0
+%define DESC_QTYPES         4           ; ringzero (M7), v4: 2 bits per slot i at bit 2i: 0 f32/none, 1 Q8_0, 2 Q4_0
 %define QTYPE_Q4_0          2
 %define DESC_OFFS           8
 %define LAYER_TYPE_FULL_ATTN 0          ; Qwen3 full attention (only type the kernel runs)
@@ -234,7 +234,7 @@
 %define CTX_N_LIN           424         ; number of DeltaNet layers
 %define CTX_ROT_DIM         432
 %define CTX_FLAGS2          440
-%define CTX_LIN_HEADS       448         ; Hv (AIOS M7: Hk = Hv / CTX_LIN_RATIO)
+%define CTX_LIN_HEADS       448         ; Hv (ringzero M7: Hk = Hv / CTX_LIN_RATIO)
 %define CTX_LIN_DIM         456         ; Dk == Dv == 128 (asserted)
 %define CTX_CONV_DIM        464         ; 2*Hk*Dk + Hv*Dv
 %define CTX_VAL_DIM         472         ; Hv*Dv
@@ -251,9 +251,9 @@
 %define CTX_TOK_NL          560
 %define CTX_TOK_NL2         568
 %define CTX_TPL_THINK_NL    576         ; 1: think=1 appends "<think>\n" (Qwen3.5 template); 0: nothing (Qwen3)
-%define CTX_LM_HEAD_PTR     584         ; AIOS (M7): lm_head rows (= CTX_EMB_PTR when tied)
-%define CTX_LIN_RATIO       592         ; AIOS (M7): Hv / Hk (V head h uses K head h / ratio)
-%define CTX_KEY_DIM         600         ; AIOS (M7): Hk * Dk (q and k regions of the conv output)
+%define CTX_LM_HEAD_PTR     584         ; ringzero (M7): lm_head rows (= CTX_EMB_PTR when tied)
+%define CTX_LIN_RATIO       592         ; ringzero (M7): Hv / Hk (V head h uses K head h / ratio)
+%define CTX_KEY_DIM         600         ; ringzero (M7): Hk * Dk (q and k regions of the conv output)
 %define CTX_SIZE            640
 %else
 %define CTX_SIZE            384

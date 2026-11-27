@@ -1,7 +1,7 @@
 ; VENDORED from llm.asm by Alexey Fateev (alesha-pro), https://github.com/alesha-pro/llm.asm (MIT); taken via our fork github.com/tcsenpai/llm.asm, branch qwen35-kernel, commit 1c73255 (adds Qwen3.5) (shared/matmul.asm).
-; Do not edit here: change upstream and re-vendor. AIOS changes (M4.8 batched prefill), all marked "AIOS":
+; Do not edit here: change upstream and re-vendor. ringzero changes (M4.8 batched prefill), all marked "ringzero":
 ; quantize_x_q8_0_to (caller buffers), matmul_q8_0_batch_range, quantize_batch_q8_0 and the bmm_* job.
-; AIOS (M7): Q4_0 weights (W4A8). A weight pointer with bit 0 set (transformer.asm desc_tag_q4) is a Q4_0 split-row
+; ringzero (M7): Q4_0 weights (W4A8). A weight pointer with bit 0 set (transformer.asm desc_tag_q4) is a Q4_0 split-row
 ; tensor [K/2 nibble bytes][K/32 fp16 d]: matmul_q8_0_range jumps to matmul_q4_0_range, and the batch kernels unpack
 ; each Q4_0 row once into a per-thread Q8_0 row (q - 8 as int8, same fp16 scales) and run unchanged on it. The integer
 ; block dots and the float sequence are the Q8 kernel's, so a Q4_0 row gives bit for bit what the Q8 kernel gives on
@@ -50,16 +50,16 @@ default rel
 %endif
 
 %define Q8_MAX_K 16384
-%define Q4_ROWBUF (Q8_MAX_K + Q8_MAX_K / 16)  ; AIOS (M7)
+%define Q4_ROWBUF (Q8_MAX_K + Q8_MAX_K / 16)  ; ringzero (M7)
 
 section .text
 
 global matmul_set_fp16
 %if FAST_Q8
 global quantize_x_q8_0
-global quantize_x_q8_0_to                ; AIOS
-global matmul_q8_0_batch_range           ; AIOS
-global quantize_batch_q8_0               ; AIOS
+global quantize_x_q8_0_to                ; ringzero
+global matmul_q8_0_batch_range           ; ringzero
+global quantize_batch_q8_0               ; ringzero
 global bmm_w
 global bmm_out
 global bmm_k
@@ -72,7 +72,7 @@ global bmm_vnni
 %endif
 global dequant_row_q8_0
 global matmul_q8_0_range
-global matmul_q4_0_range                 ; AIOS (M7)
+global matmul_q4_0_range                 ; ringzero (M7)
 global dot_f32_avx2
 global saxpy_f32_avx2
 
@@ -149,7 +149,7 @@ dequant_row_q8_0:
 quantize_x_q8_0:
     lea     rdx, [rel q8_xq]
     lea     rcx, [rel q8_xs]
-; AIOS (batched prefill): void quantize_x_q8_0_to(const float *x, uint64 K, int8 *xq /*32B aligned*/, float *xs)
+; ringzero (batched prefill): void quantize_x_q8_0_to(const float *x, uint64 K, int8 *xq /*32B aligned*/, float *xs)
 ; the same quantizer with caller buffers (one call per prompt token, identical bytes)
 quantize_x_q8_0_to:
     mov     r9, rdx
@@ -292,7 +292,7 @@ quantize_x_q8_0_to:
 ;   - 100% bit-for-bit identical per row for ANY partitioning (1T..64T)
 ; ----------------------------------------------------------------------------
 matmul_q8_0_range:
-    test    dil, 1                      ; AIOS (M7): Q4_0-tagged weight pointer
+    test    dil, 1                      ; ringzero (M7): Q4_0-tagged weight pointer
     jnz     matmul_q4_0_range
     push    rbx
     push    rbp
@@ -468,7 +468,7 @@ align 16
     pop     rbx
     ret
 
-; Macro (AIOS M7): 1-row x 4-block Q4_0 x INT8 body, the INT8_1ROW_4BLK sequence with the weight loads replaced by
+; Macro (ringzero M7): 1-row x 4-block Q4_0 x INT8 body, the INT8_1ROW_4BLK sequence with the weight loads replaced by
 ; a nibble unpack (llama.cpp bytes_from_nibbles_32 order: low nibbles = elements 0-15, high = 16-31, minus 8).
 ;   rax = w (nibbles of the current row), r8 = s_cur = w + K/2, r10 = nibble offset (= rbx / 2), rbx = xq offset
 ;   ymm13 = 32 x 0x0F, ymm14 = 32 x 8, ymm12 / ymm15 / ymm0..3 as in INT8_1ROW_4BLK
@@ -531,7 +531,7 @@ align 16
 %endmacro
 
 ; ----------------------------------------------------------------------------
-; AIOS (M7): void matmul_q4_0_range(const void *W /*bit 0 set*/, const float *x, float *out, uint64 K, uint64 r0, uint64 r1)
+; ringzero (M7): void matmul_q4_0_range(const void *W /*bit 0 set*/, const float *x, float *out, uint64 K, uint64 r0, uint64 r1)
 ; Q4_0 split rows, row_stride = K/2 + K/16, K % 128 == 0 (the exporter writes Q4_0 only for K % 512 == 0), fp16 d.
 ; Same activations (q8_xq / q8_xs), accumulators, scale products and reduction as .row_f16 of matmul_q8_0_range.
 ; ----------------------------------------------------------------------------
@@ -614,7 +614,7 @@ align 16
     pop     rbx
     ret
 
-; Macro (AIOS M7): unpack the Q4_0 row at rax into the Q8_0 row layout at %1 (K int8 = q - 8, then the K/32 fp16
+; Macro (ringzero M7): unpack the Q4_0 row at rax into the Q8_0 row layout at %1 (K int8 = q - 8, then the K/32 fp16
 ; scales), so the Q8 batch kernels run on it unchanged. K % 512 == 0. Clobbers rbx, r9, rcx, ymm4..ymm9; r15 = K.
 %macro Q4_UNPACK_ROW 1
     vpbroadcastb ymm8, [rel q4_m0f]
@@ -670,12 +670,12 @@ align 16
 %endmacro
 
 ; ----------------------------------------------------------------------------
-; AIOS (batched prefill): void matmul_q8_0_batch_range(uint64 r0, uint64 r1, uint64 tid)
+; ringzero (batched prefill): void matmul_q8_0_batch_range(uint64 r0, uint64 r1, uint64 tid)
 ; Rows [r0, r1) of W against bmm_b quantized activation rows (bmm_xq: stride K bytes, bmm_xs: stride
 ; K/8 bytes), out[b * bmm_ostride + r * 4]. FP16 scales only (prefill_init refuses v1 files).
 ; Each weight row is read from DRAM once and stays in L1 for the B tokens; per (row, token) the
 ; instruction sequence is exactly .row_f16 above, so every output is bit-identical to the
-; per-token matmul_q8_0_range result. AIOS (M7): a Q4_0 W (bit 0) is unpacked row by row into
+; per-token matmul_q8_0_range result. ringzero (M7): a Q4_0 W (bit 0) is unpacked row by row into
 ; q4_rowbuf[tid] first (tid = SMP worker id, 0 on the BSP).
 ; ----------------------------------------------------------------------------
 matmul_q8_0_batch_range:
@@ -792,7 +792,7 @@ align 16
     ret
 
 ; ----------------------------------------------------------------------------
-; AIOS (batched prefill): AVX-VNNI variant of matmul_q8_0_batch_range (bmm_vnni != 0, set by prefill_init
+; ringzero (batched prefill): AVX-VNNI variant of matmul_q8_0_batch_range (bmm_vnni != 0, set by prefill_init
 ; from CPUID). Activations are stored as x + 128 (u8, quantize_batch_q8_0 flips the sign bit), and per
 ; weight row C = -128 * sum(w) over each 4-byte group is computed once into a stack buffer; then
 ; vpdpbusd(C, x + 128, w) = sum(x * w) per int32 lane, the exact integer the AVX2 path gets from
@@ -810,7 +810,7 @@ matmul_q8_0_batch_vnni:
     mov     r8, rdi                     ; r0
     sub     rsi, rdi                    ; rows_left
     jle     .exit_nf
-    lea     r9, [rel q4_rowbuf]         ; AIOS (M7): this thread's Q4 row buffer
+    lea     r9, [rel q4_rowbuf]         ; ringzero (M7): this thread's Q4 row buffer
     imul    rdx, rdx, Q4_ROWBUF
     add     r9, rdx
     mov     r15, [rel bmm_k]            ; K
@@ -947,7 +947,7 @@ align 16
     pop     rbx
     ret
 
-; AIOS (batched prefill): void quantize_batch_q8_0(const float *x /*rdi*/)
+; ringzero (batched prefill): void quantize_batch_q8_0(const float *x /*rdi*/)
 ; quantize bmm_b rows of K floats (row b at x + b * bmm_xstride) into bmm_xq / bmm_xs
 quantize_batch_q8_0:
     push    rbx
@@ -1332,9 +1332,9 @@ q8_f127:      dd 127.0
 q8_inv_127:   dd 0.007874015748031496       ; 1.0f / 127.0f
 q8_one16:     dw 1
 q8_min_i8:    db -127
-q8_b80:       db 0x80                   ; AIOS
-q4_m0f:       db 0x0F                   ; AIOS (M7)
-q4_b8:        db 8                      ; AIOS (M7)
+q8_b80:       db 0x80                   ; ringzero
+q4_m0f:       db 0x0F                   ; ringzero (M7)
+q4_b8:        db 8                      ; ringzero (M7)
 %endif
 
 section .bss
@@ -1345,7 +1345,7 @@ alignb 64
 q8_xq:        resb Q8_MAX_K
 alignb 64
 q8_xs:        resb (Q8_MAX_K / 32) * 4
-; AIOS: batched matmul job (written by the BSP before dispatch, read by every worker)
+; ringzero: batched matmul job (written by the BSP before dispatch, read by every worker)
 alignb 64
 bmm_w:        resq 1
 bmm_out:      resq 1
@@ -1356,7 +1356,7 @@ bmm_xs:       resq 1                    ; B x K/32 f32
 bmm_xstride:  resq 1                    ; input row stride (bytes) for quantize_batch_q8_0
 bmm_ostride:  resq 1                    ; output row stride (bytes)
 bmm_vnni:     resd 1                    ; 1: AVX-VNNI batch kernel (prefill_init, CPUID 7.1:EAX[4])
-; AIOS (M7): one Q8_0-layout row per SMP worker for the batch kernels' Q4_0 unpack (K + K/16 bytes, K <= Q8_MAX_K)
+; ringzero (M7): one Q8_0-layout row per SMP worker for the batch kernels' Q4_0 unpack (K + K/16 bytes, K <= Q8_MAX_K)
 alignb 64
 q4_rowbuf:    resb 64 * Q4_ROWBUF
 %endif

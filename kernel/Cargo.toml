@@ -1,6 +1,6 @@
 [package]
 name = "ringzero-kernel"
-version = "0.0.1"
+version = "0.1.0-beta"
 edition = "2021"
 license = "GPL-2.0-or-later"
 
@@ -13,7 +13,7 @@ bench = false
 limine = "0.5.0"
 uart_16550 = "0.9.0"
 raw-cpuid = "11.6.0"
-noto-sans-mono-bitmap = { version = "0.4.0", default-features = false, features = ["size_16", "regular", "unicode-basic-latin", "unicode-latin-1-supplement", "unicode-specials"] }
+noto-sans-mono-bitmap = { version = "0.4.0", default-features = false, features = ["size_16", "regular", "bold", "unicode-basic-latin", "unicode-latin-1-supplement", "unicode-specials"] }
 spin = "0.10.0"
 linked_list_allocator = "0.10.6"
 virtio-drivers = { version = "0.13.0", default-features = false }

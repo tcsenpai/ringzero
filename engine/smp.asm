@@ -405,7 +405,7 @@ tp_gqa_attn:
     jmp     gqa_attn_range
 
 ; ----------------------------------------------------------------------------
-; AIOS (M4.8): void tp_matmul_q8_0_batch(const void *W, const float *x, float *out, uint64 M, uint64 K, uint64 B)
+; ringzero (M4.8): void tp_matmul_q8_0_batch(const void *W, const float *x, float *out, uint64 M, uint64 K, uint64 B)
 ; B rows of x (stride bmm_xstride bytes, set by the caller) -> B rows of out (stride bmm_ostride).
 ; Quantizes every row once (same bytes as tp_matmul_q8_0), then one SMP job over the M weight rows.
 ; ----------------------------------------------------------------------------

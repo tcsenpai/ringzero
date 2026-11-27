@@ -112,7 +112,7 @@ make beta                                    # build/beta: both ISOs, disk.img, 
   the pool is full the oldest unnamed conversations are dropped; `/save NAME` keeps a point.
 - kibi needs a terminal that answers the cursor-position query (a real terminal emulator over `nc` or the
   QEMU serial on stdio) and saves only into an existing directory.
-- `make run-remote` listens on all interfaces with a fixed VNC password (`aios`) and an open serial port: use it
+- `make run-remote` listens on all interfaces with a fixed VNC password (`ringzero`) and an open serial port: use it
   on a trusted network only.
 - A hibernation image resumes only on the same edition (model, prompt and engine); another ISO boots fresh.
 - Files written by the agent's tools are at most 64 KiB; `cat` returns at most 8 KiB.

@@ -100,7 +100,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "confidence", "seed"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec", "gramdraft", "confidence", "seed", "color"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -109,7 +109,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), confidence (on|off: margin of a tool call's decision tokens, low ones ask first), seed (sampler RNG)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft), gramdraft (on|off: tool-call text the grammar implies as a draft), confidence (on|off: margin of a tool call's decision tokens, low ones ask first), seed (sampler RNG), color (on|off: role colors on both consoles)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
@@ -201,8 +201,13 @@ fn erase(buf: &[u8]) {
     }
 }
 
+/// The prompt in its role color (T46).
+fn show_prompt(prompt: &str) {
+    print!("\n{}{}{}", console::sgr(console::PROMPT), prompt, console::sgr(console::RESET));
+}
+
 fn redraw(prompt: &str, buf: &[u8]) {
-    print!("\n{}", prompt);
+    show_prompt(prompt);
     console::write_bytes(buf);
 }
 
@@ -386,7 +391,7 @@ pub fn readline(buf: &mut [u8], prompt: Option<&str>) -> usize {
 
 /// Ask the human at the shell. Only an explicit y/yes confirms.
 pub fn confirm(question: &str) -> bool {
-    print!("{} [y/N] ", question);
+    print!("{}{} [y/N]{} ", console::sgr(console::ERR), question, console::sgr(console::RESET));
     let mut b = [0u8; 16];
     let n = readline(&mut b, None);
     let a = core::str::from_utf8(&b[..n]).unwrap_or("").trim();
@@ -395,9 +400,22 @@ pub fn confirm(question: &str) -> bool {
     yes
 }
 
+/// on/1/true or off/0/false (T52: a typo is an error, it no longer turns the setting off).
+fn onoff(v: &str) -> Option<bool> {
+    match v {
+        "on" | "1" | "true" => Some(true),
+        "off" | "0" | "false" => Some(false),
+        _ => None,
+    }
+}
+
 /// Settings shared by the `!set`/`!kbd`/`!cores`/`/temp`/`/think` commands and the agent's set_setting tool.
 pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> bool {
     let ok = match key {
+        "think" | "constrain" | "confidence" | "gramdraft" | "color" if onoff(val).is_none() => {
+            let _ = write!(o, "error: {} must be on or off", key);
+            false
+        }
         "temperature" | "temp" => match val.parse::<f32>() {
             Ok(t) if (0.0..=2.0).contains(&t) => {
                 unsafe { llm::TEMP_BITS = if t > 0.0 { t.to_bits() } else { 0 } };
@@ -431,13 +449,13 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             ok
         }
         "constrain" => {
-            let on = matches!(val, "on" | "1" | "true");
+            let on = onoff(val) == Some(true);
             unsafe { crate::gram::ON = on };
             let _ = write!(o, "constrain = {}", if on { "on (tool calls follow the tool schemas)" } else { "off (the grammar only checks tool calls)" });
             true
         }
         "confidence" => {
-            let on = matches!(val, "on" | "1" | "true");
+            let on = onoff(val) == Some(true);
             unsafe { crate::gram::CONF_ON = on };
             if on {
                 let _ = write!(o, "confidence = on (a [confidence] line per tool call; a margin below {:.2} asks first on tools that change the machine)", crate::agent::CONF_LO);
@@ -458,10 +476,19 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             }
         },
         "spec" => {
-            match val.parse::<usize>() {
-                Ok(k) if (1..llm::SPEC_ROWS).contains(&k) => unsafe { (llm::SPEC_ON, llm::SPEC_K) = (true, k) },
-                _ => unsafe { llm::SPEC_ON = matches!(val, "on" | "true") },
-            }
+            let on = match val.parse::<usize>() {
+                Ok(k) if (1..llm::SPEC_ROWS).contains(&k) => {
+                    unsafe { llm::SPEC_K = k };
+                    Some(true)
+                }
+                Ok(_) => None,
+                Err(_) => onoff(val),
+            };
+            let Some(on) = on else {
+                let _ = write!(o, "error: spec must be on, off or the longest draft from 1 to {}", llm::SPEC_ROWS - 1);
+                return false;
+            };
+            unsafe { llm::SPEC_ON = on };
             let _ = write!(o, "spec = {}", if !unsafe { llm::SPEC_ON } { "off (one token per pass)" } else if llm::spec_ok() { "on" } else { "on, but not available on this build" });
             if unsafe { llm::SPEC_ON } {
                 let _ = write!(o, " (prompt lookup, drafts up to {} tokens)", unsafe { llm::SPEC_K });
@@ -469,15 +496,21 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             true
         }
         "gramdraft" => {
-            unsafe { llm::GRAM_DRAFT = matches!(val, "on" | "1" | "true") };
+            unsafe { llm::GRAM_DRAFT = onoff(val) == Some(true) };
             let _ = write!(o, "gramdraft = {} (inside a tool call the grammar's continuation is the speculative draft)",
                 if unsafe { llm::GRAM_DRAFT } { "on" } else { "off" });
             true
         }
         "think" => {
-            let on = matches!(val, "on" | "1" | "true");
+            let on = onoff(val) == Some(true);
             unsafe { llm::THINK = on as u64 };
             let _ = write!(o, "think = {}", if on { "on" } else { "off" });
+            true
+        }
+        "color" => {
+            let on = onoff(val) == Some(true);
+            console::COLOR.store(on, Relaxed);
+            let _ = write!(o, "color = {}", if on { "on (role colors on serial and the framebuffer)" } else { "off (plain text)" });
             true
         }
         "snappool" => match val.parse::<usize>() {
@@ -524,7 +557,11 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             }
         },
         _ => {
-            let _ = write!(o, "error: unknown setting '{}' (temperature, cores, keyboard, think, compact, snappool, consolidate, slot)", key);
+            let _ = write!(o, "error: unknown setting '{}' (", key);
+            for (i, k) in SETTINGS.iter().enumerate() {
+                let _ = write!(o, "{}{}", if i > 0 { ", " } else { "" }, k);
+            }
+            let _ = write!(o, ")");
             false
         }
     };
@@ -687,8 +724,13 @@ fn fs_cmd(name: &str, arg: &str) {
         Ok(())
     })();
     if let Err(e) = r {
-        println!("[fs] {}: {}", name, e);
+        err(&alloc::format!("[fs] {}: {}", name, e));
     }
+}
+
+/// An error line in its role color (T46).
+pub fn err(msg: &str) {
+    println!("{}{}{}", console::sgr(console::ERR), msg, console::sgr(console::RESET));
 }
 
 fn show(f: fn(&mut SBuf<1024>)) {
@@ -703,7 +745,7 @@ pub fn run() -> ! {
     loop {
         let mut prompt = SBuf::<64>::new();
         snap::prompt(&mut prompt);
-        print!("\n{}", prompt.as_str());
+        show_prompt(prompt.as_str());
         let line = unsafe { &mut *core::ptr::addr_of_mut!(LINE) };
         let n = readline(line, Some(prompt.as_str()));
         let s = core::str::from_utf8(&line[..n]).unwrap_or("").trim();
@@ -736,7 +778,7 @@ pub fn run() -> ! {
             match find(other, cmd) {
                 Some(_) => println!("'{}' is a {} command: try {}{}", cmd, if other == BANG { "machine" } else { "session" },
                     if other == BANG { '!' } else { '/' }, cmd),
-                None => println!("unknown command '{}'. Type /help, or type without {} to ask the agent.", s, &s[..1]),
+                None => err(&alloc::format!("unknown command '{}'. Type /help, or type without {} to ask the agent.", s, &s[..1])),
             }
             continue;
         };
@@ -753,8 +795,7 @@ pub fn run() -> ! {
             "uptime" => show(sys::uptime),
             "cores" => {
                 if !arg.is_empty() {
-                    set_setting("cores", arg, &mut o);
-                    println!("{}", o.as_str());
+                    if set_setting("cores", arg, &mut o) { println!("{}", o.as_str()) } else { err(o.as_str()) }
                 }
                 show(sys::cores);
             }
@@ -811,9 +852,10 @@ pub fn run() -> ! {
                 };
                 if c.name == "kbd" && v.is_empty() {
                     println!("keyboard layout {} (available: us, it)", kbd::layout());
-                } else {
-                    set_setting(k, v, &mut o);
+                } else if set_setting(k, v, &mut o) {
                     println!("{}", o.as_str());
+                } else {
+                    err(o.as_str());
                 }
             }
             "park" => {

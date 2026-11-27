@@ -22,7 +22,7 @@ flowchart TB
         MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept;<br/>T38: + their Q8_0 rows (include_bytes!, build/manvec.bin from a headless<br/>pass-1 boot: /man dump), used at boot when the key matches"]
         MST["mstore.rs: /sys/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
-        CON["console.rs<br/>COM1 + framebuffer glyphs"]
+        CON["console.rs<br/>COM1 + framebuffer glyphs,<br/>ANSI SGR colors on both"]
         KBD["kbd.rs<br/>PS/2 set 1, layouts us / it, AltGr, Ctrl"]
         LOG["log.rs<br/>ring of 256 lines, level + timestamp"]
         SYS["sys.rs<br/>meminfo, cpuinfo, cores, uptime, CMOS RTC,<br/>poweroff, reboot"]
@@ -360,7 +360,7 @@ Legend:
    `/boot/model.asmbin` and `/boot/embed.asmbin` as modules (found by path), sets a GOP/VBE framebuffer, builds 4-level paging with the
    HHDM (base revision 3), starts every AP and parks it, then jumps to `kmain` on the BSP in
    long mode with a Limine stack. The IDT is undefined at this point.
-3. `kmain` (kernel/src/main.rs): console on COM1 + framebuffer, IDT, CPUID check, `enable_avx_fpu`,
+3. `kmain` (kernel/src/main.rs): console on COM1 + framebuffer, boot banner, IDT, CPUID check, `enable_avx_fpu`,
    TSC calibration (PIT ch2), memory map log, arena + model + embedder identity maps, AP release, `model_init`
    (2B), `embed::init` (embedder context) + boot embedding, `agentd::init` (stores recovered, index loaded or
    rebuilt, files compared with the index table), golden self-test, bench, agent prefix from the boot snapshot
@@ -520,7 +520,7 @@ before Rust can call them. `enable_avx_fpu` must run on every core that executes
 
 | Part | Language |
 |---|---|
-| Inference engine (math, matmul, tokenizer, transformer), vendored; AIOS changes marked in transformer.asm: FP16 KV store/read, max_seq override, rope_heads / g_dn_job exported; in matmul.asm: quantize_x_q8_0_to, batch kernels | NASM |
+| Inference engine (math, matmul, tokenizer, transformer), vendored; ringzero changes marked in transformer.asm: FP16 KV store/read, max_seq override, rope_heads / g_dn_job exported; in matmul.asm: quantize_x_q8_0_to, batch kernels | NASM |
 | Batched prefill (engine/prefill.asm, M4.8) and the batch matmul job kind (engine/smp.asm) | NASM |
 | `enable_avx_fpu` (engine/cpu.asm, from the old boot.asm) | NASM |
 | Boot, paging, AP startup | Limine |

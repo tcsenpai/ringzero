@@ -86,6 +86,81 @@ const EDITION: &str = match option_env!("RINGZERO_EDITION") {
     None => "ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)",
 };
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// T47: the boot banner (14 lines, at most 70 columns): the R0 die and the name, then version, edition, models and
+/// the machine. Colors go through console::sgr (plain text when color is off); the kernel log gets one plain line.
+fn banner(fb: Option<(usize, usize, usize)>) {
+    use console::{sgr, DIM, PROMPT, RESET, TOOL};
+    const RED: &str = "\x1b[31m";
+    // package and pins (gold) and die (red) pieces alternate, package first; the name sits to the right
+    const DIE: [&[&str]; 7] = [
+        &["  |  |  |  |  "],
+        &[" .+--+--+--+. "],
+        &["-|  ", " ____ ", "  |-"],
+        &["-|  ", "| R0 |", "  |-"],
+        &["-|  ", "|____|", "  |-"],
+        &[" '+--+--+--+' "],
+        &["  |  |  |  |  "],
+    ];
+    const NAME: [&str; 7] = [
+        "",
+        r"        _",
+        r"  _ __ (_)_ __   __ _ _______ _ __ ___",
+        r" | '__|| | '_ \ / _` |_  / _ \ '__/ _ \",
+        r" | |   | | | | | (_| |/ /  __/ | | (_) |",
+        r" |_|   |_|_| |_|\__, /___\___|_|  \___/",
+        r"                |___/",
+    ];
+    println!("");
+    for (die, name) in DIE.iter().zip(NAME) {
+        for (i, part) in die.iter().enumerate() {
+            let c = if i % 2 == 0 { TOOL } else if part.contains("R0") { PROMPT } else { RED };
+            print!("{}{}{}", sgr(c), part, sgr(RESET));
+        }
+        match name {
+            "" => println!(""),
+            _ => println!(" {}{}{}", sgr(PROMPT), name, sgr(RESET)),
+        }
+    }
+    // models: the edition's names ("ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)") next to the module sizes
+    let mods = MODULES.get_response().map(|r| r.modules()).unwrap_or(&[]);
+    let mib = |s: &[u8]| mods.iter().find(|m| m.path().to_bytes().ends_with(s)).map_or(0, |m| m.size() / MIB);
+    let agent_mib = match mib(b"/model.asmbin") {
+        0 => mods.first().map_or(0, |m| m.size() / MIB),
+        n => n,
+    };
+    let names = EDITION.strip_prefix("ringzero ").unwrap_or("").split(" (").next().unwrap_or("");
+    let mut nm = names.split('-').filter(|n| !n.is_empty() && !n.starts_with('('));
+    let ram = MEMMAP.get_response().map_or(0, |m| m.entries().iter()
+        .filter(|e| matches!(e.entry_type, EntryType::USABLE | EntryType::BOOTLOADER_RECLAIMABLE | EntryType::EXECUTABLE_AND_MODULES))
+        .map(|e| e.length).sum::<u64>() / MIB);
+    let cores = MP.get_response().map_or(1, |m| m.cpus().len());
+    let fw = match FIRMWARE.get_response().map(|f| f.firmware_type()) {
+        Some(f) if f == FirmwareType::UEFI_64 => "UEFI",
+        Some(f) if f == FirmwareType::X86_BIOS => "BIOS",
+        _ => "other firmware",
+    };
+    let (d, r) = (sgr(DIM), sgr(RESET));
+    println!("");
+    println!("  {}version{}  {}{}{}   {}", d, r, sgr(PROMPT), VERSION, r, EDITION);
+    print!("  {}models{}   agent {} ({} MiB)", d, r, nm.next().unwrap_or("model"), agent_mib);
+    match mib(b"/embed.asmbin") {
+        0 => println!(", no embedder"),
+        e => println!(", embedder {} ({} MiB)", nm.next().unwrap_or("model"), e),
+    }
+    print!("  {}machine{}  {} cores, {} MiB RAM, {}", d, r, cores, ram, fw);
+    match fb {
+        Some((w, h, _)) => println!(", framebuffer {}x{}", w, h),
+        None => println!(", no framebuffer"),
+    }
+    println!("  {}Rust no_std kernel + NASM LLM engine in ring 0. Boot log below and in !log.{}", d, r);
+    println!("");
+    let mut l = log::SBuf::<200>::new();
+    let _ = core::fmt::Write::write_fmt(&mut l, format_args!("ringzero {} {}, {} cores, {} MiB RAM, {}", VERSION, EDITION, cores, ram, fw));
+    log::record(b'I', l.as_str());
+}
+
 fn xgetbv0() -> u64 {
     let (lo, hi): (u32, u32);
     unsafe { asm!("xgetbv", in("ecx") 0, out("eax") lo, out("edx") hi, options(nomem, nostack)) };
@@ -108,9 +183,7 @@ extern "C" fn kmain() -> ! {
     console::init(fb);
     idt::init();
 
-    klog!(b'I', "==============================================");
-    klog!(b'I', " {}  (Rust no_std kernel + NASM LLM engine in ring 0)", EDITION);
-    klog!(b'I', "==============================================");
+    banner(fb_desc);
     if let Some(b) = BOOTLOADER.get_response() {
         klog!(b'I', "boot: {} {}, base revision {:?}", b.name(), b.version(), BASE_REVISION.loaded_revision());
     }

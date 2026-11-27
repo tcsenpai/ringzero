@@ -252,7 +252,7 @@ make model               # Qwen/Qwen3.5-2B (~4.5 GB) -> models/qwen35-2b-q8_0-v3
 make iso                 # kernel + Limine + both models -> build/ringzero.iso
 make disk                # build/disk.img, 512 MiB FAT32 (mkfs.vfat, mtools fallback); never overwrites it
 make wasm-apps           # WASI programs -> build/wasm -> /bin on the disk (guest stopped; keeps every other file)
-make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[main]>), VNC HOST:5901 (password aios)
+make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[main]>), VNC HOST:5901 (password ringzero)
 make run-local           # or: the same VM in a QEMU window on the box's desktop (own disk build/disk-local.img)
 ```
 
@@ -277,7 +277,7 @@ from another machine (HOST = the build box's address):
 ```sh
 nc HOST 4555                         # serial shell: press Enter to get "ringzero[main]> "
 stty -echo -icanon; nc HOST 4555; stty sane    # without the double local echo (Tab works too)
-open vnc://HOST:5901                 # framebuffer + PS/2 keyboard, password: aios
+open vnc://HOST:5901                 # framebuffer + PS/2 keyboard, password: ringzero
 tail -f build/remote-serial.log      # on the build box: everything on serial
 make run-local                       # at the build box's desktop: the same VM in a QEMU window
 ```
@@ -308,16 +308,38 @@ Tool-call grammar and hibernation:
 /snap                    # point, pool, timings and the state hash of the live state
 ```
 
-Machine and session basics (`/help` or `!help` prints every command with its arguments):
+Machine commands and the other settings (`!help` and `/help` print the same table; every `!set` key, its values and
+default are in [openspec/specs/settings/spec.md](openspec/specs/settings/spec.md)):
 
 ```
-!cpu                     # CPU model, clock and the features the engine uses (AVX2 FMA F16C, VNNI)
+!cpu                     # CPU model, clock, features
 !uptime                  # time since boot
-!stats                   # threads, parking, arena, context (/stats is the same)
-!park off|idle|USEC      # worker core parking between passes
-!reboot                  # reboot now (!poweroff: hibernate and power off)
-/temp 0.7                # sampling temperature (0 = greedy); /think on|off: model thinking
+!stats                   # threads, parking, arena, heap, context fill, KV type, keyboard (also /stats)
+!park off|idle|<usec>    # worker core parking: always spin, park between requests (default), or after a spin window
+!reboot                  # reboot now (!poweroff powers off and writes the hibernation image)
+!set temperature 0.7     # 0..2, 0 = greedy (default); /temp 0.7 is the same
+!set cores 4             # cores used for inference, 1..online (default all); !cores 4 is the same
+!set keyboard us         # PS/2 layout us|it (default it); !kbd us is the same
+!set think on            # model thinking on|off (default off); /think on is the same
+!set compact 60          # context fill percent that triggers a compaction, 1..95 (default 75)
+!set snappool 512        # MiB the snapshot pool may use, 64..pool size (default the whole pool)
+!set seed 7              # sampler RNG state, positive integer (default 42; stored with every snapshot point)
+!set color off           # role colors on serial and the framebuffer on|off (default on)
 ```
+
+On/off settings (think, constrain, confidence, gramdraft, color) take on/1/true or off/0/false; any other value is
+refused with `error: <key> must be on or off` and the setting keeps its value. `!set spec` takes on, off or a
+longest draft from 1 to 15 and refuses anything else. An unknown key prints the list of every key. Saved in the
+hibernation image: temperature, think, constrain, compact, color (and the snapshot pool cap with the tree).
+
+Console colors (T46, palette in [assets/branding/README.md](assets/branding/README.md)): the prompt is bold red,
+`[tool]` lines gold (ANSI yellow), `[memory]`, `[grammar]`, `[confidence]` and the `[prefill]`/`[decode]` statistics
+gray, y/N questions and errors bright red; user input and answers keep the default color. Serial gets ANSI SGR codes;
+the framebuffer parses SGR itself (0, 1 bold glyphs, 2 dim, 22, 30-37, 39, 90-97, 38;5;N, 38;2;R;G;B; other escapes
+are skipped), so WASI programs' own colors (`!run jq -C . /demo/data.json`) show on VNC too. `!set color off` gives
+plain text (programs' own escapes still pass). The serial test drivers in tools/ strip SGR codes before matching.
+The boot banner (R0 die, name, version 0.1.0-beta from kernel/Cargo.toml, edition, models, machine) uses the same
+colors.
 
 More:
 
@@ -330,7 +352,7 @@ make iso CONF_ASK=25         # T28: ask y/N below a 0.25 confidence margin inste
 make run-bios            # QEMU/KVM, q35, 6 GiB (GUEST_MEM=6G), 8 CPUs, serial on stdio (Ctrl-C to quit)
 make run-uefi            # same, with OVMF
 make run-uefi QEMU_DISPLAY=gtk   # to see the framebuffer in a window
-make run-remote          # headless: serial on TCP 4555 (nc HOST 4555), VNC on :1 (5901, password aios),
+make run-remote          # headless: serial on TCP 4555 (nc HOST 4555), VNC on :1 (5901, password ringzero),
                          # serial output appended to build/remote-serial.log, monitor on build/remote-monitor.sock
 make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test DISK=build/disk-test.img   # a second instance
                          # (its own disk: QEMU's image lock refuses two guests writing one image)
@@ -375,7 +397,7 @@ Memory index, from the shell:
 | `tools/wasm/c/`, `tools/demo/`, `tools/m8test.py` | M8: setjmp/longjmp over Binaryen's Asyncify (`setjmp.h`, `rzsjlj.c`) and libc stubs (`nosys.c`) for the C programs; the `/demo` inputs of docs/DEMOS.md; a boot test that types steps when a regex matches (REPLs, the editor) |
 | `kernel/src/upy.rs`, `kernel/upy/` | MicroPython (M5): Rust side (`!py`, `run_code`, budget, stdout capture); C glue, mini libc headers, `mpconfigport.h`; `make upy` fetches MicroPython and generates the embed package into `build/upy/`, `build.rs` compiles it |
 | `kernel/` | Rust kernel crate (`x86_64-unknown-none`, higher-half linker script, `build.rs` assembles the engine) |
-| `engine/` | vendored NASM engine (transformer.asm has marked AIOS changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
+| `engine/` | vendored NASM engine (transformer.asm has marked ringzero changes: FP16 KV, max_seq override; matmul.asm: batch kernels) + `prefill.asm` (batched prefill, M4.8) + `cpu.asm` (`enable_avx_fpu`, float shim) + `smp.asm` (thread-pool dispatch and worker loop, adapted from the asm OS) |
 | `limine.conf` | boot entry: kernel + model and embedder as Limine modules |
 | `tools/manvec.py` | T38 pass 1: boots an ISO headless, `/man dump`, checks and writes `build/manvec.bin` (the manual's vectors linked into the kernel) |
 | `tools/boottest.py` | headless QEMU boot test (serial with timestamps, screenshot; `"CMD ^C3"` sends Ctrl-C 3 s after CMD) |

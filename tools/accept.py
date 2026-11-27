@@ -5,6 +5,7 @@ or '^C<sec>:' + line (send Ctrl-C <sec> seconds after the line), or 'w<sec>:' + 
 until the guest closes the connection, e.g. x:!poweroff). Saves the transcript to OUT."""
 import re, socket, sys, time
 PROMPT = re.compile(rb"ringzero(?:\[[^\]\n]*\])?> ")  # ringzero> or ringzero[branch~N]>
+SGR = re.compile(rb"\x1b\[[0-9;]*m")  # T46: the shell's role colors, stripped before matching
 host, port, out, steps = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4:]
 s = socket.create_connection((host, port)); s.settimeout(0.2)
 buf = b""
@@ -17,7 +18,7 @@ def read_until(pat, timeout=3600):
         if m:
             seen, buf = buf[:m.start()], buf[m.end():]
             return seen.decode(errors="replace"), m.group(0).decode()
-        try: buf += s.recv(65536)
+        try: buf = SGR.sub(b"", buf + s.recv(65536))
         except socket.timeout: pass
     return buf.decode(errors="replace") + "\n<<timeout>>", ""
 log = []
@@ -34,7 +35,7 @@ for st in steps:
             try:
                 d = s.recv(65536)
                 if not d: break
-                buf += d
+                buf = SGR.sub(b"", buf + d)
             except socket.timeout: pass
             except OSError: break
         log.append(f"{prompt}{buf.decode(errors='replace').rstrip()}\n    (guest gone after {time.time()-t0:.1f} s)\n")
