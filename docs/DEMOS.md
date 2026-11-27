@@ -14,7 +14,7 @@ same programs with its `run_wasm` tool, without a terminal (stdin is empty) and 
 Some blocks use a note file and a JSON file; create them first:
 
 ```
-!write /notes/casa.txt comprare il latte\npagare la bolletta della luce\nchiamare l idraulico per il bagno\nportare fuori il cane\nlavare la macchina\naggiustare la porta della cucina\ninnaffiare le piante\n
+!write /notes/home.txt buy milk\npay the electricity bill\ncall the plumber about the bathroom\ntake the dog out\nwash the car\nfix the kitchen door\nwater the plants\n
 !run cp /demo/data.json /data.json
 ```
 
@@ -22,22 +22,22 @@ Some blocks use a note file and a JSON file; create them first:
 
 ```
 !run ls -l /bin
-!run wc -l /notes/casa.txt
-!run sort -r /notes/casa.txt
+!run wc -l /notes/home.txt
+!run sort -r /notes/home.txt
 !run head -n 3 /demo/people.csv
 !run cut -d , -f 1,2 /demo/people.csv
 !run sha256sum /demo/people.csv
 !run ls /lib/python3.15/json
 ```
 
-There are no pipes in the shell: one program per command, `< FILE` for stdin (`!run sort < /notes/casa.txt`).
+There are no pipes in the shell: one program per command, `< FILE` for stdin (`!run sort < /notes/home.txt`).
 `/bin/coreutils.wasm` is the uutils `feat_wasm` set: `du`, `df`, `chown` and the other tools that need missing
 WASI calls are not in it (`coreutils: unknown program 'du'`).
 
 ## ripgrep (15.2.0)
 
 ```
-!run rg -n latte /notes
+!run rg -n milk /notes
 !run rg -i -c roma /demo
 !run rg -l "def |import " /demo
 ```
@@ -58,7 +58,7 @@ WASI calls are not in it (`coreutils: unknown program 'du'`).
 A database file on the disk, one command per run:
 
 ```
-!run sqlite3 /demo/shop.db "create table if not exists items(name text, price real); insert into items values('pane', 2.5), ('latte', 1.2), ('caffe', 4.8);"
+!run sqlite3 /demo/shop.db "create table if not exists items(name text, price real); insert into items values('bread', 2.5), ('milk', 1.2), ('coffee', 4.8);"
 !run sqlite3 /demo/shop.db "select name, price from items order by price desc;"
 !run sqlite3 -json /demo/shop.db "select count(*) as n, round(avg(price), 2) as avg from items;"
 ```
@@ -127,44 +127,49 @@ shows twice (ours and its echo); Ctrl-D does not end it.
 ## kibi (0.3.2, a small terminal editor)
 
 ```
-!run kibi /notes/todo.txt
+!run kibi /notes/home.txt
 ```
 
-Ctrl-S saves, Ctrl-Q quits, Ctrl-F finds. kibi needs an ANSI terminal: use it from the serial console (`nc`, a
+Ctrl-S saves, Ctrl-Q quits, Ctrl-F finds. kibi saves only into a directory that exists (`/notes` exists after the
+setup block above). It needs an ANSI terminal: use it from the serial console (`nc`, a
 terminal emulator), not from the QEMU window (the framebuffer console does not interpret escape sequences).
 
 ## The agent
 
-The agent picks the program with `run_wasm`. Requests that worked on the 2B model (Qwen3.5-2B Q8, greedy, one per
-conversation: `/clear` between them; the answers are in [M8_RESULT.md](M8_RESULT.md)):
+The agent picks the program with `run_wasm`. Requests checked on the 4B q4 beta (`ringzero-beta-4b-q4.iso`, a
+fresh disk after the setup block above, greedy, one per conversation: `/clear` between them; 2026-11-27):
 
 ```
-crea un db sqlite /spesa.db con una tabella prodotti (nome, prezzo) con pane 2.5, latte 1.2, caffe 4.8 e dimmi qual e il prodotto piu caro
-```
-
-```
-quali tabelle ci sono nel database sqlite /demo/shop.db?
+use sqlite3 to create /shop2.db with a table products (name, price) holding bread 2.5, milk 1.2, coffee 4.8, and tell me the most expensive product
 ```
 
 ```
-conta le righe di /notes/casa.txt con wc
+which tables are in the sqlite database /demo/shop.db?
 ```
 
 ```
-usa run_wasm per eseguire seq 1 3000
+count the lines of /notes/home.txt with wc
+```
+
+```
+use run_wasm to run seq 1 3000
 ```
 
 The last one shows the output cap: about 1500 tokens (and 6 KiB) are kept, with a note on what was dropped.
-`quante righe ha /notes/casa.txt?` and `estrai il campo version da /data.json` get the right answer through the
-`cat` tool. Asking for python3 or lua by name sends the 2B to MicroPython's `run_code` instead.
+`how many lines does /notes/home.txt have?` (through `wc`) and `extract the version field from /data.json` (through
+`cat`) get the right answer too, and so do:
 
-The 4B q4 (the working model, `make iso MODEL=4b QUANT=q4`) also gets these right through `run_wasm`:
 ```
-esegui lo script /demo/stats.py con python3
-```
-```
-esegui /demo/hello.lua con lua
+run the script /demo/stats.py with python3
 ```
 ```
-estrai il campo version da /data.json con jq
+run /demo/hello.lua with lua
 ```
+```
+extract the version field from /data.json with jq
+```
+
+`create a sqlite db /shopping.db with a table products ... and tell me the most expensive product` (without "use
+sqlite3") sent the 4B to MicroPython's `run_code` first, which has no `sqlite3` module, and it did not recover
+within the 4 tool rounds. After a tool result the answer is sometimes in Italian even for an English request (3 of
+these 10). The 2B results, with the Italian wordings of the M8 run, are in [M8_RESULT.md](M8_RESULT.md).

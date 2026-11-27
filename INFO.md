@@ -256,20 +256,20 @@ make run-remote          # then: nc HOST 4555 (serial shell, prompt ringzero[mai
 make run-local           # or: the same VM in a QEMU window on the box's desktop (own disk build/disk-local.img)
 ```
 
-Try at the prompt: `!write /notes/todo.txt comprare il latte`, `!cat /notes/todo.txt`, `!ls /`, then ask
-"crea un file /notes/idea.txt con scritto ciao" or "cosa devo comprare?" (after a few seconds of idle the file
-is in the memory index). Tell it "mi chiamo Cris e il mio numero preferito e 4711", run `/consolidate`, then
-`/facts`; `!poweroff`, boot again and ask "come mi chiamo?": the facts and the memory index are still there, and
+Try at the prompt: `!write /notes/todo.txt buy milk`, `!cat /notes/todo.txt`, `!ls /`, then ask
+"create a file /notes/idea.txt that says hello" or "what do I need to buy?" (after a few seconds of idle the file
+is in the memory index). Tell it "my name is Anna and my favourite number is 4711", run `/consolidate`, then
+`/facts`; `!poweroff`, boot again and ask "what is my name?": the facts and the memory index are still there, and
 the second boot loads the prompt state from the disk cache, and resumes the conversation from the
 hibernation image (`/snap` shows the same state hash before the poweroff and after the boot). Python: `!py 17*23`,
-`!write /hello.py print("ciao", 2**64)` then `!py -f /hello.py`, or ask "quanto fa 17*23? usa python". WASI (after
+`!write /hello.py print("hello", 2**64)` then `!py -f /hello.py`, or ask "what is 17*23? use python". WASI (after
 `make wasm-apps`): `!wasm rztest check A "B C"` (the runtime's checks), `!run ls -l /bin`, `!run wc -l < /notes/todo.txt`,
-`!wasm rg -n latte /notes`, `!write /a.js console.log(6*7)` then `!wasm qjs /a.js`, or ask "usa run_wasm per
-contare le righe di /notes/todo.txt con wc".
+`!wasm rg -n milk /notes`, `!write /a.js console.log(6*7)` then `!wasm qjs /a.js`, or ask "use run_wasm to
+count the lines of /notes/todo.txt with wc".
 M8 (common software, one block per tool in [docs/DEMOS.md](docs/DEMOS.md)): `!run python3 /demo/stats.py`,
 `!run sqlite3 /demo/shop.db "select 1+1;"`, `!run jq .version /demo/data.json`, `!run lua /demo/hello.lua`, the REPLs
 `!run python3` / `!run lua` / `!run sqlite3 FILE` (Ctrl-D ends them), `!run kibi /notes/todo.txt` on the serial
-console, or ask "quali tabelle ci sono nel database sqlite /demo/shop.db?" (after the sqlite3 demo created it).
+console, or ask "which tables are in the sqlite database /demo/shop.db?" (after the sqlite3 demo created it).
 
 A headless instance on the build box (`make run-remote`, for example with `MODEL=4b QUANT=q4` on an 8G guest), used
 from another machine (HOST = the build box's address):
