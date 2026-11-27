@@ -338,7 +338,7 @@ gray, y/N questions and errors bright red; user input and answers keep the defau
 the framebuffer parses SGR itself (0, 1 bold glyphs, 2 dim, 22, 30-37, 39, 90-97, 38;5;N, 38;2;R;G;B; other escapes
 are skipped), so WASI programs' own colors (`!run jq -C . /demo/data.json`) show on VNC too. `!set color off` gives
 plain text (programs' own escapes still pass). The serial test drivers in tools/ strip SGR codes before matching.
-The boot banner (R0 die, name, version 0.1.0-beta from kernel/Cargo.toml, edition, models, machine) uses the same
+The boot banner (R0 die, name, version 0.1.0 and the channel "beta", release name QweQwe from the edition tag, edition, models, machine) uses the same
 colors.
 
 More:

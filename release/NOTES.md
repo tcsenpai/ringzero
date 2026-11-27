@@ -1,4 +1,4 @@
-# ringzero 0.1.0-beta
+# ringzero 0.1.0 "QweQwe" (beta)
 
 First public beta of ringzero, an experimental x86-64 operating system where a language model (Qwen3.5) and an
 embedding model (Qwen3-Embedding-0.6B) run in ring 0 on one inference engine written in assembly.

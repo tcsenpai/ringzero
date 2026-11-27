@@ -12,7 +12,7 @@ Source: kernel/src/main.rs banner, VERSION, EDITION, kmain; kernel/Cargo.toml
 
 #### Scenario: 2B edition
 - **WHEN** the default 2B ISO boots
-- **THEN** the banner shows `version  0.1.0-beta   ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)` and a models line `agent Qwen35@2b (... MiB), embedder Qwen3@0.6b (... MiB)`
+- **THEN** the banner shows `version  0.1.0 beta   ringzero Qwen35@2b-Qwen3@0.6b (QweQwe)` and a models line `agent Qwen35@2b (... MiB), embedder Qwen3@0.6b (... MiB)`
 
 ### Requirement: Banner colors and log line
 The banner SHALL color the pins and package gold, the die red, `R0` and the name bold red and the labels gray, only through the color setting, so it is plain text when color is off. The kernel log SHALL get one plain line with version, edition, cores, RAM and firmware.
@@ -20,7 +20,7 @@ Source: kernel/src/main.rs banner; kernel/src/console.rs sgr, COLOR
 
 #### Scenario: Kernel log
 - **WHEN** the user types `!log 300` after boot
-- **THEN** a plain line `ringzero 0.1.0-beta ringzero Qwen35@2b-Qwen3@0.6b (QweQwe), 8 cores, ... MiB RAM, ...` is in it
+- **THEN** a plain line `ringzero 0.1.0 beta ringzero Qwen35@2b-Qwen3@0.6b (QweQwe), 8 cores, ... MiB RAM, ...` is in it
 
 ### Requirement: Framebuffer reads ANSI SGR
 The framebuffer console SHALL apply ANSI SGR sequences (`ESC [ ... m`): 0 reset, 1 bold (Noto Sans Mono Bold glyphs), 2 dim (5/8 of the color), 22 normal intensity, 30-37 and 90-97 foreground, 39 default foreground, 38;5;N (xterm 256 colors) and 38;2;R;G;B. Other SGR parameters and every other escape sequence SHALL be skipped without drawing. Serial output SHALL carry the same bytes unchanged.

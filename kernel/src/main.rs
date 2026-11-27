@@ -87,6 +87,8 @@ const EDITION: &str = match option_env!("RINGZERO_EDITION") {
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
+/// release channel shown next to the version (the release name is the edition tag, e.g. QweQwe)
+const CHANNEL: &str = "beta";
 
 /// T47: the boot banner (14 lines, at most 70 columns): the R0 die and the name, then version, edition, models and
 /// the machine. Colors go through console::sgr (plain text when color is off); the kernel log gets one plain line.
@@ -143,7 +145,7 @@ fn banner(fb: Option<(usize, usize, usize)>) {
     };
     let (d, r) = (sgr(DIM), sgr(RESET));
     println!("");
-    println!("  {}version{}  {}{}{}   {}", d, r, sgr(PROMPT), VERSION, r, EDITION);
+    println!("  {}version{}  {}{} {}{}   {}", d, r, sgr(PROMPT), VERSION, CHANNEL, r, EDITION);
     print!("  {}models{}   agent {} ({} MiB)", d, r, nm.next().unwrap_or("model"), agent_mib);
     match mib(b"/embed.asmbin") {
         0 => println!(", no embedder"),
@@ -157,7 +159,7 @@ fn banner(fb: Option<(usize, usize, usize)>) {
     println!("  {}Rust no_std kernel + NASM LLM engine in ring 0. Boot log below and in !log.{}", d, r);
     println!("");
     let mut l = log::SBuf::<200>::new();
-    let _ = core::fmt::Write::write_fmt(&mut l, format_args!("ringzero {} {}, {} cores, {} MiB RAM, {}", VERSION, EDITION, cores, ram, fw));
+    let _ = core::fmt::Write::write_fmt(&mut l, format_args!("ringzero {} {} {}, {} cores, {} MiB RAM, {}", VERSION, CHANNEL, EDITION, cores, ram, fw));
     log::record(b'I', l.as_str());
 }
 

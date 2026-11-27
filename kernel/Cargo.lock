@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "ringzero-kernel"
-version = "0.1.0-beta"
+version = "0.1.0"
 dependencies = [
  "fatfs",
  "limine",
