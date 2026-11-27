@@ -1,9 +1,9 @@
 // agentd (M4.5): the deterministic kernel subsystem that owns the agent's context and memory. The 2B model is
 // small, so the OS does the bookkeeping; the model reads and writes memory only through typed tools (remember,
 // forget, recall). Every decision is logged: kernel log lines at level D, and /agentd log.
-//  - stores (mstore.rs, /sys/mem): journal of turns and tool results, facts (key -> value, source, time),
+//  - stores (mstore.rs, /var/lib/ringzero/mem): journal of turns and tool results, facts (key -> value, source, time),
 //    episodes (session summaries); torn tails are cut at boot
-//  - memory index persistence: memidx saved to /sys/mem/index.bin with the indexed-file table and the store
+//  - memory index persistence: memidx saved to /var/lib/ringzero/mem/index.bin with the indexed-file table and the store
 //    offsets it covers; at boot it is loaded, and only what changed is embedded again
 //  - idle scheduler: one priority queue on the BSP, run in slices from the shell's line editor that stop
 //    between engine steps on any input: 1 embed memory texts, 2 embed file chunks, 3 save the index,
@@ -23,7 +23,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Write;
 
-pub const INDEX: &str = "/sys/mem/index.bin";
+pub use crate::layout::INDEX;
 const STORES: [&str; 3] = [JOURNAL, FACTS, EPISODES];
 /// index text prefix of each store's entries
 const KIND: [&str; 3] = ["[said] ", "[fact] ", "[episode "];
@@ -338,8 +338,15 @@ pub fn init() {
         }
         return;
     }
+    if let Some(why) = crate::layout::pending() {
+        crate::dlog!("layout migration pending ({}): memory stores and index persistence are off this boot (RAM only)", why);
+        if embed::ready() {
+            queue_manual();
+        }
+        return;
+    }
     s.on = true;
-    let _ = fs::mkdir("/sys/mem");
+    let _ = fs::mkdir("/var/lib/ringzero/mem");
     let t0 = smp::rdtsc();
     let mut why: Option<&str> = None;
     if !embed::ready() {
@@ -1263,12 +1270,139 @@ pub fn consolidate_now() {
         s.facts.len(), s.facts.len() as i64 - n0.0 as i64, s.n_ep);
 }
 
+// ---- T55: data an older kernel wrote after the migration ----
+
+/// `/agentd merge-legacy [DIR]`: merge the stores layout.rs kept in /var/lib/ringzero/legacy/DIR/mem (every folder
+/// not merged yet when DIR is empty) into the current ones: facts through the same validation as /remember (the
+/// newer value of a key wins, by record time), episodes and journal records the stores do not hold yet; the merged
+/// records are queued for the index (it embeds them again). A store that does not parse with this kernel's record
+/// codec is refused and nothing of that folder is merged. A folder is marked `merged` and never merged twice.
+pub fn merge_legacy(arg: &str) {
+    let s = st();
+    if !s.on {
+        crate::println!("[agentd] merge-legacy: the stores are off this boot ({}), nothing merged",
+            crate::layout::pending().unwrap_or("no disk"));
+        return;
+    }
+    let dirs: Vec<String> = if arg.is_empty() {
+        fs::list(crate::layout::LEGACY).unwrap_or_default().into_iter()
+            .filter(|(n, d, _)| *d && fs::entry(&format!("{}/{}/mem", crate::layout::LEGACY, n)).is_ok_and(|e| e.0)
+                && fs::entry(&format!("{}/{}/merged", crate::layout::LEGACY, n)).is_err())
+            .map(|(n, ..)| format!("{}/{}", crate::layout::LEGACY, n)).collect()
+    } else if arg.starts_with('/') {
+        alloc::vec![String::from(arg)]
+    } else {
+        alloc::vec![format!("{}/{}", crate::layout::LEGACY, arg)]
+    };
+    if dirs.is_empty() {
+        crate::println!("[agentd] merge-legacy: nothing to merge in {} (every folder with a mem/ is merged already, or there is none)",
+            crate::layout::LEGACY);
+    }
+    for d in dirs {
+        match merge_one(&d) {
+            Ok(m) => {
+                crate::dlog!("merge-legacy {}: {}", d, m);
+                crate::println!("[agentd] merge-legacy {}: {}", d, m);
+            }
+            Err(e) => crate::println!("[agentd] merge-legacy {}: {}", d, e),
+        }
+    }
+}
+
+fn merge_one(dir: &str) -> Result<String, String> {
+    let s = st();
+    if fs::entry(&format!("{}/merged", dir)).is_ok() {
+        return Err(String::from("already merged (its `merged` file says when); nothing done"));
+    }
+    let names = ["journal.log", "facts.log", "episodes.log"];
+    let mut b: [Vec<u8>; 3] = Default::default();
+    let mut torn = 0;
+    for (i, n) in names.iter().enumerate() {
+        let p = format!("{}/mem/{}", dir, n);
+        let Ok((v, _)) = fs::read(&p, 0, usize::MAX) else { continue };
+        let good = mstore::parse(&v, |_| {});
+        if good == 0 && !v.is_empty() {
+            return Err(format!("{} is not in this kernel's record format (not compatible): nothing merged", p));
+        }
+        torn += v.len() - good;
+        b[i] = v[..good].to_vec();
+    }
+    if b.iter().all(|v| v.is_empty()) {
+        return Err(format!("no record stores in {}/mem: nothing merged", dir));
+    }
+    // facts: the legacy store's end state, then one /remember per key (validation and dedup), the newer value wins
+    let mut lf: Vec<(String, String, u64)> = Vec::new();
+    mstore::parse(&b[1], |r| match r.kind {
+        b'S' => {
+            let mut it = r.p.splitn(3, '\t');
+            let (k, v) = (it.next().unwrap_or(""), it.next().unwrap_or(""));
+            lf.retain(|f| f.0 != k);
+            lf.push((k.into(), v.into(), r.ts));
+        }
+        b'X' => lf.retain(|f| f.0 != r.p),
+        _ => {}
+    });
+    let (mut fnew, mut fkept, mut fbad) = (0, 0, 0);
+    for (k, v, ts) in &lf {
+        if s.facts.iter().any(|f| f.key == *k && (f.value == *v || f.ts >= *ts)) {
+            fkept += 1;
+            continue;
+        }
+        match remember(k, v, "merge-legacy", false) {
+            Ok(_) => fnew += 1,
+            Err(_) => fbad += 1,
+        }
+    }
+    // episodes and journal: the records the current store does not hold (same kind, time and text)
+    let key = |r: &mstore::Rec| mstore::fnv(mstore::fnv(mstore::fnv(mstore::FNV0, &[r.kind]), &r.ts.to_le_bytes()), r.p.as_bytes());
+    let have = |path: &str| {
+        let cur = fs::read(path, 0, usize::MAX).map(|x| x.0).unwrap_or_default();
+        let mut h = Vec::new();
+        mstore::parse(&cur, |r| h.push(key(&r)));
+        h
+    };
+    let mut added = [0usize; 3];
+    for (i, path) in [(0, JOURNAL), (2, EPISODES)] {
+        let h = have(path);
+        let mut out = Vec::new();
+        let mut recs: Vec<(u8, u64, String)> = Vec::new();
+        mstore::parse(&b[i], |r| {
+            if !h.contains(&key(&r)) {
+                mstore::encode(r.kind, r.ts, r.p.as_bytes(), &mut out);
+                recs.push((r.kind, r.ts, r.p.into()));
+            }
+        });
+        if out.is_empty() {
+            continue;
+        }
+        let n = fs::append(path, &out).map_err(|e| format!("append to {} failed ({}): merged so far is kept", path, e))?;
+        s.size[i] = n;
+        s.n_rec[i] += recs.len() as u64;
+        added[i] = recs.len();
+        for (kind, ts, p) in &recs {
+            if i == 2 && *kind == b'E' {
+                s.n_ep += 1;
+            }
+            apply(i, &mstore::Rec { kind: *kind, ts: *ts, off: 0, p }, false, embed::ready(), s.n_ep);
+        }
+        said_end();
+    }
+    let m = format!("facts {} merged, {} kept (same or newer here), {} rejected; {} episodes and {} journal records added{}; \
+        queued for the index", fnew, fkept, fbad, added[2], added[0], if torn > 0 { format!(", {} B of torn tail skipped", torn) } else { String::new() });
+    let _ = fs::write(&format!("{}/merged", dir), format!("merged at {}: {}\n", crate::sys::unix_time(), m).as_bytes());
+    Ok(m)
+}
+
 // ---- status ----
 
 pub fn status() {
     let s = st();
     crate::println!("[agentd] stores {}: journal {} records ({} KiB), {} facts, {} episodes",
-        if s.on { "/sys/mem" } else { "off (no disk)" }, s.n_rec[0], s.size[0] >> 10, s.facts.len(), s.n_ep);
+        match (s.on, crate::layout::pending()) {
+            (true, _) => String::from("/var/lib/ringzero/mem"),
+            (false, Some(w)) => format!("off (layout migration pending: {})", w),
+            _ => String::from("off (no disk)"),
+        }, s.n_rec[0], s.size[0] >> 10, s.facts.len(), s.n_ep);
     crate::println!("[agentd] index {} entries, {}; queue: {} memory texts, files {}",
         memidx::len(), if memidx::gen() == s.saved_gen { "saved" } else { "changed since the last save" }, s.memq.len(),
         if fidx::pending() { "pending" } else { "none" });

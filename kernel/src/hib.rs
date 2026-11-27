@@ -1,5 +1,5 @@
 // Hibernation (M4.7b): `/hibernate` and every `!poweroff` write the conversation, its snapshot tree and the
-// agent's transcript and settings to /sys/hib/image.bin (snap::hib_save); the next boot resumes it when the
+// agent's transcript and settings to /var/lib/ringzero/hib/image.bin (snap::hib_save); the next boot resumes it when the
 // key matches (the boot snapshot key: model, prefix ids, engine build, KV geometry), with the same state
 // hash, so the next answer at temperature 0 is the one the machine would have given before the poweroff.
 // The image stays until the next hibernation replaces it or `/hibernate discard` deletes it (and turns the
@@ -8,7 +8,7 @@ use crate::log::SBuf;
 use crate::{agent, fs, gram, klog, llm, println, smp, snap};
 use alloc::vec::Vec;
 
-const PATH: &str = "/sys/hib/image.bin";
+use crate::layout::HIB as PATH;
 const XVER: u8 = 3;
 static mut READY: bool = false;
 /// `/hibernate discard`: the next poweroff does not write an image either (a plain `/hibernate` clears it).
@@ -62,8 +62,8 @@ fn apply(e: &[u8]) {
 
 /// Write the image. `why`: "hibernate" or "poweroff".
 pub fn save(why: &str) -> bool {
-    if !unsafe { READY } || !fs::mounted() {
-        println!("[hib] no disk or not booted yet: nothing saved");
+    if !unsafe { READY } || !fs::mounted() || crate::layout::pending().is_some() {
+        println!("[hib] no disk, not booted yet or the layout migration is pending: nothing saved");
         return false;
     }
     let t0 = smp::rdtsc();
@@ -92,8 +92,11 @@ pub fn boot() {
     }
     let t0 = smp::rdtsc();
     match snap::hib_load(PATH, key()) {
-        Err("no image") => {}
-        Err(e) => klog!(b'W', "hib: image {} not resumed ({}), fresh conversation; /hibernate discard deletes it", PATH, e),
+        Err("no image") => crate::layout::tmp_clean(),
+        Err(e) => {
+            klog!(b'W', "hib: image {} not resumed ({}), fresh conversation; /hibernate discard deletes it", PATH, e);
+            crate::layout::tmp_clean();
+        }
         Ok((stored, e)) => {
             apply(&e);
             let us = smp::tsc_to_us(smp::rdtsc() - t0);
@@ -105,6 +108,13 @@ pub fn boot() {
             agent::note("[hibernation] resumed after a poweroff");
         }
     }
+}
+
+/// T55: `echo disk > /sys/power/state` (sysfs.rs): hibernate and power off, as /hibernate then !poweroff.
+pub fn power_disk() -> ! {
+    unsafe { SKIP = false };
+    klog!(b'I', "hib: disk written to /sys/power/state: hibernate and power off");
+    crate::sys::poweroff()
 }
 
 /// sys::poweroff, before the disk sync.

@@ -16,6 +16,9 @@ mod engine;
 mod fidx;
 mod fs;
 mod procfs; // T54 /proc
+mod sysfs; // T55 /sys
+mod devfs; // T55 /dev
+mod layout; // T55 /var/lib/ringzero, /etc, /tmp
 mod idt;
 mod kbd;
 mod llm;

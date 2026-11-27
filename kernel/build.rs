@@ -39,6 +39,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=RINGZERO_MANVEC");
     println!("cargo:rerun-if-env-changed=RINGZERO_CONF_ASK"); // T28: agent.rs CONF_LO (make iso CONF_ASK=N)
     println!("cargo:rerun-if-env-changed=RINGZERO_ROUNDS"); // T54: agent.rs ROUNDS (make iso ROUNDS=N)
+    println!("cargo:rerun-if-env-changed=RINGZERO_LAYOUT_STOP"); // T55: layout.rs crash test builds
     // T52: every other RINGZERO_* option_env! of the kernel (mem.rs heap, wasm.rs memory slot)
     println!("cargo:rerun-if-env-changed=RINGZERO_HEAP_MIB");
     println!("cargo:rerun-if-env-changed=RINGZERO_WASM_MIB");

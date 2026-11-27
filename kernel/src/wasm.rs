@@ -4,7 +4,8 @@
 // wasm slot (mem.rs), capped at RINGZERO_WASM_MIB (build time, default 256). The program runs in fuel slices:
 // between two slices the kernel checks the time budget and Ctrl-C and stops the call (no hard abort needed,
 // the interpreter state is simply dropped). The host functions map WASI onto fs.rs: one preopened dir "/" as
-// fd 3, paths resolved under it ('..' above / is refused), /sys (agentd's files) read-only. stdout/stderr go
+// fd 3, paths resolved under it ('..' above / is refused), /var/lib/ringzero (ringzero's data, T55) read-only
+// (EACCES), the virtual /proc, /sys and /etc files EROFS; /dev is Fd::Dev and Fd::Tty. stdout/stderr go
 // to the console, or into a buffer for the agent. WASI calls we do not implement return ENOSYS, logged once.
 // M8: a shell run has the console as its terminal: stdin is typed lines (REPLs), /dev/tty is raw input (editors),
 // isatty() is true. Open files keep their fatfs handle. The agent's output is cut to TOK_CAP tokens. A kernel
@@ -148,6 +149,8 @@ enum Fd {
     Tty(bool),      // M8: console input, from the shell only: fd 0 (line mode) or /dev/tty (raw = true)
     Dir(String, bool), // path, preopened
     File(OpenFile),
+    Dev(u8, u64),   // T55: /dev/null (b'n'), zero, urandom and random (b'r'), vda (b'v'): kind, read position
+    Power,          // T55: /sys/power/state opened for writing
 }
 
 struct Host {
@@ -390,20 +393,23 @@ fn tty_wait(h: &mut Host, raw: bool, want: usize) -> Option<Vec<u8>> {
     Some(h.line.drain(..k).collect())
 }
 
-/// /sys holds agentd's stores and the boot snapshot: a wasm program may read it, never change it. /proc (T54) is
-/// virtual and read-only: EROFS.
-fn sys_ro(p: &str) -> R {
-    let first = p.trim_start_matches('/').split('/').next().unwrap_or("");
-    if first.eq_ignore_ascii_case("sys") { Err(ACCES) } else if first == "proc" { Err(ROFS) } else { Ok(()) }
+/// T55: /var/lib/ringzero holds agentd's stores, the hibernation image and the boot cache: a wasm program may read
+/// it, never change it (EACCES). The virtual mounts (/proc, /sys, /dev, /etc/os-release, /etc/passwd) are EROFS.
+fn data_ro(p: &str) -> R {
+    let rel = fs::check(p).map_err(|_| INVAL)?;
+    let lib = "var/lib/ringzero";
+    if fs::mount_of(rel).0 != fs::Mount::Fat {
+        Err(ROFS)
+    } else if rel.len() >= lib.len() && rel[..lib.len()].eq_ignore_ascii_case(lib) && matches!(rel.as_bytes().get(lib.len()), None | Some(b'/')) {
+        Err(ACCES)
+    } else {
+        Ok(())
+    }
 }
 
 /// FAT mtime (fs.rs packing, local time from the RTC) -> ns since the epoch.
 fn ns(mt: u32) -> u64 {
-    if mt == 0 {
-        return 0;
-    }
-    let d = crate::sys::days((mt >> 25) + 1980, mt >> 21 & 15, mt >> 16 & 31);
-    ((d * 86_400) as u64 + (mt >> 11 & 31) as u64 * 3600 + (mt >> 5 & 63) as u64 * 60 + (mt & 31) as u64 * 2) * 1_000_000_000
+    fs::unix_of(mt) * 1_000_000_000
 }
 
 fn filestat(m: &mut [u8], p: u32, ft: u8, size: u64, mt: u32) -> R {
@@ -419,7 +425,8 @@ fn filestat(m: &mut [u8], p: u32, ft: u8, size: u64, mt: u32) -> R {
 
 fn stat_path(m: &mut [u8], p: u32, path: &str) -> R {
     let (dir, size, mt) = fs::entry(path).map_err(errno)?;
-    filestat(m, p, if dir { 3 } else { 4 }, size, mt)?;
+    let dev = fs::check(path).map(fs::mount_of).is_ok_and(|(m, r)| m == fs::Mount::Dev && !r.is_empty());
+    filestat(m, p, if dir { 3 } else if dev { dev_type(path) } else { 4 }, size, mt)?;
     // M8: dev 1, inode = FNV-1a of the lowercased path (FAT has no inodes, its names are case-insensitive). With
     // 0 for every file, `cp /a /b` said "'/a' and '/b' are the same file"
     let ino = path.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, c| (h ^ c.to_ascii_lowercase() as u64).wrapping_mul(0x100_0000_01b3));
@@ -427,11 +434,17 @@ fn stat_path(m: &mut [u8], p: u32, path: &str) -> R {
     put(m, p + 8, &ino.to_le_bytes())
 }
 
+/// T55: WASI filetype of a /dev file: block device for the disk, else character device.
+fn dev_type(path: &str) -> u8 {
+    if path.ends_with("/vda") { 1 } else { 2 }
+}
+
 // ---- WASI preview1 ----
 
 fn fd_write(c: &mut C, fd: i32, iov: u32, n: u32, nw: u32, off: Option<u64>) -> R {
     let (m, h) = mh(c)?;
     let data = gather(m, iov, n)?;
+    let tty = h.tty;
     let path = match h.fd(fd)? {
         Fd::Con | Fd::Tty(_) => {
             out(&data);
@@ -450,6 +463,15 @@ fn fd_write(c: &mut C, fd: i32, iov: u32, n: u32, nw: u32, off: Option<u64>) -> 
                 f.pos = o + data.len() as u64;
             }
             Some(f.path.clone())
+        }
+        Fd::Dev(k, _) if *k != b'v' => None, // null, zero, random: accepted and discarded
+        Fd::Power => {
+            // T55: a program the agent runs asks first, like the poweroff tool; a shell run is the human
+            if !tty && !shell::confirm("\n[agent] a program wants to HIBERNATE and power off the machine (disk to /sys/power/state). Proceed?") {
+                return Err(ACCES);
+            }
+            crate::sysfs::power_write(&data).map_err(errno)?;
+            None
         }
         _ => return Err(BADF),
     };
@@ -494,14 +516,57 @@ fn fd_read(c: &mut C, fd: i32, iov: u32, n: u32, nr: u32, off: Option<u64>) -> R
             }
             Ok(k)
         })(),
+        Ok(Fd::Dev(k, pos)) => {
+            let (k, at) = (*k, off.unwrap_or(*pos));
+            dev_read(h, k, at, want).and_then(|b| {
+                if off.is_none() {
+                    if let Ok(Fd::Dev(_, pos)) = h.fd(fd) {
+                        *pos += b.len() as u64;
+                    }
+                }
+                scatter(m, iov, n, &b).map(|_| b.len())
+            })
+        }
         Ok(Fd::Dir(..)) => Err(ISDIR),
-        Ok(Fd::Con) => Err(BADF),
+        Ok(Fd::Con | Fd::Power) => Err(BADF),
     };
     Ok(r.and_then(|k| w32(m, nr, k as u32)))
 }
 
+/// T55: a read of a /dev data device (at most 64 KiB per call: the fuel slices and Ctrl-C bound an endless one).
+fn dev_read(h: &mut Host, k: u8, at: u64, want: usize) -> R<Vec<u8>> {
+    let mut buf = vec![0u8; want.min(64 << 10)];
+    match k {
+        b'n' => buf.clear(),
+        b'z' => {}
+        b'r' => {
+            for c in buf.chunks_mut(8) {
+                let v = h.rand().to_le_bytes();
+                c.copy_from_slice(&v[..c.len()]);
+            }
+        }
+        _ => {
+            let n = crate::blk::read_raw(at, &mut buf).map_err(|_| IO)?;
+            buf.truncate(n);
+        }
+    }
+    Ok(buf)
+}
+
 fn fd_seek(c: &mut C, fd: i32, off: i64, whence: i32, p: u32) -> R {
     let (m, h) = mh(c)?;
+    if let Fd::Dev(k, pos) = h.fd(fd)? {
+        // T55: devices keep a position (the disk is read at it; the others ignore it)
+        let size = if *k == b'v' { crate::blk::size().unwrap_or(0) } else { 0 };
+        let base = match whence {
+            0 => 0,
+            1 => *pos as i64,
+            2 => size as i64,
+            _ => return Err(INVAL),
+        };
+        *pos = base.checked_add(off).filter(|&x| x >= 0).ok_or(INVAL)? as u64;
+        return w64(m, p, *pos);
+    }
     let f = h.file(fd)?;
     let base = match whence {
         0 => 0,
@@ -523,6 +588,8 @@ fn fd_fdstat_get(c: &mut C, fd: i32, p: u32) -> R {
         Fd::Null | Fd::Con | Fd::Tty(_) => (2, 0, RIGHTS),
         Fd::Dir(..) => (3, 0, RIGHTS),
         Fd::File(f) => (4, f.append as u8, RIGHTS),
+        Fd::Dev(k, _) => (if *k == b'v' { 1 } else { 2 }, 0, RIGHTS),
+        Fd::Power => (4, 0, RIGHTS),
     };
     let mut b = [0u8; 24];
     b[0] = ft;
@@ -536,6 +603,8 @@ fn fd_filestat_get(c: &mut C, fd: i32, p: u32) -> R {
     let (m, h) = mh(c)?;
     match h.fd(fd)? {
         Fd::Null | Fd::Con | Fd::Tty(_) => filestat(m, p, 2, 0, 0),
+        Fd::Dev(k, _) => filestat(m, p, if *k == b'v' { 1 } else { 2 }, if *k == b'v' { crate::blk::size().unwrap_or(0) } else { 0 }, 0),
+        Fd::Power => filestat(m, p, 4, 5, 0),
         Fd::Dir(path, _) | Fd::File(OpenFile { path, .. }) => {
             let path = path.clone();
             stat_path(m, p, &path)
@@ -600,12 +669,25 @@ fn path_open(c: &mut C, dirfd: i32, pp: u32, pl: u32, oflags: i32, rights: u64, 
     let (creat, dir_only, excl, trunc) = (oflags & 1 != 0, oflags & 2 != 0, oflags & 4 != 0, oflags & 8 != 0);
     let append = fdflags & 1 != 0;
     let write = rights & FD_WRITE != 0 || trunc || append;
-    if path.eq_ignore_ascii_case("/dev/tty") {
-        // M8: the terminal, raw (editors open it: kibi); only a shell run has one
-        if !h.tty {
-            return Err(NOENT);
-        }
-        let n = h.new_fd(Fd::Tty(true));
+    let rel = fs::check(&path).map_err(|_| INVAL)?;
+    let dev = match fs::mount_of(rel) {
+        (fs::Mount::Dev, r) if !r.is_empty() => Some(match r {
+            // M8: the terminal, raw (editors open it: kibi); only a shell run has one. T55: /dev/console is the same
+            "tty" | "console" if h.tty => Fd::Tty(true),
+            "tty" | "console" => return Err(NOENT),
+            "null" => Fd::Dev(b'n', 0),
+            "zero" => Fd::Dev(b'z', 0),
+            "random" | "urandom" => Fd::Dev(b'r', 0),
+            "vda" if write => return Err(ROFS),
+            "vda" if crate::blk::size().is_some() => Fd::Dev(b'v', 0),
+            _ if creat => return Err(ROFS),
+            _ => return Err(NOENT),
+        }),
+        (fs::Mount::Sys, crate::sysfs::POWER) if write => Some(Fd::Power), // T55: echo disk > /sys/power/state
+        _ => None,
+    };
+    if let Some(f) = dev {
+        let n = h.new_fd(f);
         return w32(m, fdp, n);
     }
     if trunc {
@@ -618,12 +700,13 @@ fn path_open(c: &mut C, dirfd: i32, pp: u32, pl: u32, oflags: i32, rights: u64, 
         Ok(_) if dir_only => return Err(NOTDIR),
         Ok(_) => {
             if write {
-                sys_ro(&path)?;
+                data_ro(&path)?;
             }
             if trunc {
                 fs::truncate(&path, 0).map_err(errno)?;
             }
-            let virt = if path.starts_with("/proc/") { Some(fs::proc_read(&path[1..]).map_err(errno)?) } else { None };
+            let virtual_file = fs::mount_of(fs::check(&path).map_err(|_| INVAL)?).0 != fs::Mount::Fat;
+            let virt = if virtual_file { Some(fs::virt_read(&path).map_err(errno)?) } else { None };
             let mut f = OpenFile::new(path, append, write);
             if let Fd::File(o) = &mut f {
                 o.virt = virt;
@@ -631,7 +714,7 @@ fn path_open(c: &mut C, dirfd: i32, pp: u32, pl: u32, oflags: i32, rights: u64, 
             f
         }
         Err("not found") if creat && !dir_only => {
-            sys_ro(&path)?;
+            data_ro(&path)?;
             fs::touch(&path, false).map_err(errno)?;
             OpenFile::new(path, append, true)
         }
@@ -644,7 +727,7 @@ fn path_open(c: &mut C, dirfd: i32, pp: u32, pl: u32, oflags: i32, rights: u64, 
 fn path_op(c: &mut C, fd: i32, pp: u32, pl: u32, what: u8) -> R {
     let (m, h) = mh(c)?;
     let path = h.resolve(fd, guest_str(m, pp, pl)?)?;
-    sys_ro(&path)?;
+    data_ro(&path)?;
     h.drop_handles(&path, None);
     match (what, fs::entry(&path)) {
         (b'm', Ok(_)) => Err(EXIST),
@@ -668,8 +751,8 @@ fn path_rename(c: &mut C, fd: i32, op: u32, ol: u32, fd2: i32, np: u32, nl: u32)
     let (m, h) = mh(c)?;
     let from = h.resolve(fd, guest_str(m, op, ol)?)?;
     let to = h.resolve(fd2, guest_str(m, np, nl)?)?;
-    sys_ro(&from)?;
-    sys_ro(&to)?;
+    data_ro(&from)?;
+    data_ro(&to)?;
     h.drop_handles(&from, None);
     h.drop_handles(&to, None);
     let src_dir = fs::entry(&from).map_err(errno)?.0;

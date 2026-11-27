@@ -53,7 +53,7 @@ pub fn forget(path: &str) -> usize {
 /// Queue a file written through the shell or the agent (text files only, checked here).
 pub fn enqueue(path: &str, data: &[u8]) {
     forget(path);
-    if !embed::ready() || !fs::is_text(data) || data.iter().all(|b| b.is_ascii_whitespace()) {
+    if !embed::ready() || !fs::indexed(path) || !fs::is_text(data) || data.iter().all(|b| b.is_ascii_whitespace()) {
         return;
     }
     push(path, data.len() as u64);

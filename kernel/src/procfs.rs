@@ -1,6 +1,6 @@
-// T54: /proc, a read-only virtual directory generated at read time (fs.rs routes every path under /proc here),
-// so the shell, the agent's ls/cat tools and WASI programs see the same files. Familiar Linux names, plain
-// "key: value" content (not byte-exact Linux formats: the model reads it).
+// T54: /proc, a read-only virtual directory generated at read time (fs.rs mount_of routes every path under /proc
+// here, as the path inside /proc), so the shell, the agent's ls/cat tools and WASI programs see the same files.
+// Familiar Linux names, plain "key: value" content (not byte-exact Linux formats: the model reads it).
 use crate::{fs, smp, sys};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -8,52 +8,39 @@ use core::fmt::Write;
 use core::sync::atomic::Ordering::Relaxed;
 
 /// Every entry under /proc; a trailing '/' is a directory.
-const ENTRIES: [&str; 8] = ["cpuinfo", "meminfo", "uptime", "version", "devices", "bus/", "bus/pci/", "bus/pci/devices"];
+const ENTRIES: [&str; 10] = ["cpuinfo", "meminfo", "uptime", "version", "devices", "kmsg", "mounts", "bus/", "bus/pci/", "bus/pci/devices"];
 
-/// `rel` is under /proc ("proc" or "proc/..."), relative to / as fs::check returns it.
-pub fn is_proc(rel: &str) -> bool {
-    rel == "proc" || rel.starts_with("proc/")
-}
-
-/// (is_dir, size) of a /proc path, or None if it does not exist.
-pub fn entry(rel: &str) -> Option<(bool, u64)> {
-    let r = rel.strip_prefix("proc").unwrap_or(rel).trim_start_matches('/');
-    if r.is_empty() || ENTRIES.iter().any(|e| e.strip_suffix('/') == Some(r)) {
-        return Some((true, 0));
-    }
-    read(rel).map(|v| (false, v.len() as u64))
+/// (is_dir, size) of a path inside /proc ("" = /proc), or None if it does not exist.
+pub fn entry(r: &str) -> Option<(bool, u64)> {
+    fs::tree_entry(&ENTRIES, r, read)
 }
 
 /// The entries of a /proc directory as (name, is_dir, size).
-pub fn list(rel: &str) -> Option<Vec<(String, bool, u64)>> {
-    if entry(rel)? != (true, 0) {
-        return None;
-    }
-    let r = rel.strip_prefix("proc").unwrap_or(rel).trim_start_matches('/');
-    let pre = if r.is_empty() { String::new() } else { alloc::format!("{}/", r) };
-    Some(ENTRIES.iter().filter_map(|e| {
-        let rest = e.strip_prefix(pre.as_str())?;
-        let (name, dir) = match rest.strip_suffix('/') {
-            Some(d) => (d, true),
-            None => (rest, false),
-        };
-        if name.is_empty() || name.contains('/') {
-            return None;
-        }
-        let size = if dir { 0 } else { read(&alloc::format!("proc/{}", e)).map_or(0, |v| v.len() as u64) };
-        Some((String::from(name), dir, size))
-    }).collect())
+pub fn list(r: &str) -> Option<Vec<(String, bool, u64)>> {
+    fs::tree_list(&ENTRIES, r, read)
 }
 
 /// The content of a /proc file, generated now.
-pub fn read(rel: &str) -> Option<Vec<u8>> {
+pub fn read(r: &str) -> Option<Vec<u8>> {
     let mut o = String::new();
-    match rel.strip_prefix("proc/")? {
+    match r {
         "cpuinfo" => cpuinfo(&mut o),
         "meminfo" => meminfo(&mut o),
         "uptime" => {
+            // T55: the seconds stay the first field for programs, the rest is for the model
             let ms = crate::log::ms_since_boot();
-            let _ = writeln!(o, "{}.{:02}", ms / 1000, ms % 1000 / 10);
+            let s = ms / 1000;
+            let _ = writeln!(o, "{}.{:02} seconds ({} h {} min {} s)", s, ms % 1000 / 10, s / 3600, s / 60 % 60, s % 60);
+        }
+        "kmsg" => crate::log::last(usize::MAX, |l| {
+            o.push_str(l);
+            o.push('\n');
+        }),
+        "mounts" => {
+            if fs::mounted() {
+                o.push_str("/dev/vda / vfat rw\n");
+            }
+            o.push_str("proc /proc proc ro\nsysfs /sys sysfs ro\ndevfs /dev devfs rw\n");
         }
         "version" => {
             let _ = writeln!(o, "ringzero version {} {} ({}), Rust kernel, x86_64, not Linux", crate::VERSION, crate::CHANNEL,
@@ -89,9 +76,10 @@ fn cpuinfo(o: &mut String) {
     let mut fl = String::new();
     flags(&mut fl);
     for i in 0..n {
+        // T55: the flags once (about 70 tokens per core in a cat)
         let _ = writeln!(o, "processor\t: {}\nmodel name\t: {}\ncpu MHz\t\t: {}.{:03}\ncpu cores\t: {}\nrole\t\t: {}\nflags\t\t:{}\n",
-            i, unsafe { (*core::ptr::addr_of!(sys::BRAND)).as_str() }, mhz / 1000, mhz % 1000, n,
-            if i == 0 { "BSP: shell, agent loop, engine slice" } else { "engine worker" }, fl);
+            i, unsafe { (*core::ptr::addr_of!(sys::BRAND)).as_str() }, mhz / 1000, mhz % 1000, n, crate::sysfs::role(i),
+            if i == 0 { fl.as_str() } else { " as processor 0" });
     }
 }
 
@@ -133,7 +121,8 @@ fn devices(o: &mut String) {
         let _ = writeln!(o, "filesystem   fatfs: {} on virtio-blk, mounted at /", d);
     }
     let _ = writeln!(o, "filesystem   proc: this directory, read-only, generated at read time");
-    let _ = writeln!(o, "\nPCI devices: /proc/bus/pci/devices");
+    let _ = writeln!(o, "filesystem   sysfs: /sys, read-only (but /sys/power/state); devfs: /dev");
+    let _ = writeln!(o, "\nPCI devices: /proc/bus/pci/devices and /sys/bus/pci/devices");
 }
 
 fn class(c: u8, s: u8) -> &'static str {
@@ -151,27 +140,39 @@ fn class(c: u8, s: u8) -> &'static str {
     }
 }
 
-/// PCI bus 0 through the legacy config ports: "bus:dev.fn vendor:device class, driver".
-fn pci(o: &mut String) {
+/// One function on PCI bus 0: (device, function, vendor, device id, class, subclass, prog-if, driver).
+pub type Pci = (u8, u8, u16, u16, u8, u8, u8, &'static str);
+
+/// PCI bus 0 through the legacy config ports (also /sys/bus/pci/devices, sysfs.rs).
+pub fn pci_scan() -> Vec<Pci> {
     use virtio_drivers::transport::pci::bus::PciRoot;
     use virtio_drivers::transport::pci::virtio_device_type;
     let blk = crate::blk::location();
     let root = PciRoot::new(crate::blk::PortCam);
-    for (df, info) in root.enumerate_bus(0) {
+    root.enumerate_bus(0).map(|(df, info)| {
         let drv = match virtio_device_type(&info) {
             Some(virtio_drivers::transport::DeviceType::Block) if blk.is_some_and(|(d, f, _)| (d, f) == (df.device, df.function)) => "virtio-blk",
             Some(_) => "virtio, no driver",
             None => "no driver",
         };
-        let _ = writeln!(o, "{:02x}:{:02x}.{} {:04x}:{:04x} {} (class {:02x}{:02x}), {}", df.bus, df.device, df.function,
-            info.vendor_id, info.device_id, class(info.class, info.subclass), info.class, info.subclass, drv);
+        (df.device, df.function, info.vendor_id, info.device_id, info.class, info.subclass, info.prog_if, drv)
+    }).collect()
+}
+
+/// "bus:dev.fn vendor:device class, driver".
+fn pci(o: &mut String) {
+    for (d, f, v, id, c, sc, _, drv) in pci_scan() {
+        let _ = writeln!(o, "00:{:02x}.{} {:04x}:{:04x} {} (class {:02x}{:02x}), {}", d, f, v, id, class(c, sc), c, sc, drv);
     }
 }
 
 /// Boot self-check of the path table (no hardware involved).
 pub fn selftest() -> bool {
-    entry("proc") == Some((true, 0)) && entry("proc/bus/pci") == Some((true, 0)) && entry("proc/nope").is_none()
-        && list("proc").is_some_and(|v| v.iter().any(|e| e.0 == "bus" && e.1) && v.iter().any(|e| e.0 == "uptime" && !e.1))
-        && list("proc/bus").is_some_and(|v| v.len() == 1 && v[0].0 == "pci")
-        && list("proc/uptime").is_none() && read("proc/version").is_some()
+    entry("") == Some((true, 0)) && entry("bus/pci") == Some((true, 0)) && entry("nope").is_none()
+        && list("").is_some_and(|v| v.iter().any(|e| e.0 == "bus" && e.1) && v.iter().any(|e| e.0 == "uptime" && !e.1))
+        && list("bus").is_some_and(|v| v.len() == 1 && v[0].0 == "pci")
+        && list("uptime").is_none() && read("version").is_some() && read("mounts").is_some()
+        && fs::mount_of("proc/bus") == (fs::Mount::Proc, "bus") && fs::mount_of("SYS") == (fs::Mount::Sys, "")
+        && fs::mount_of("etc/passwd").0 == fs::Mount::Etc && fs::mount_of("etc/hostname").0 == fs::Mount::Fat
+        && fs::mount_of("system").0 == fs::Mount::Fat && crate::sysfs::selftest()
 }

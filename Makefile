@@ -96,8 +96,10 @@ $(MANVEC): docs/MANUAL.md $(EMBED) $(wildcard engine/*.asm engine/*.inc) kernel/
 CONF_ASK ?=
 # T54: tool rounds per question before the agent answers without tools (1..20, clamped; default 10; !set rounds N)
 ROUNDS ?=
+# T55 crash test builds only: halt after migration step N of an old disk (layout.rs); empty = never
+LAYOUT_STOP ?=
 kernel: upy
-	cd kernel && RINGZERO_EDITION="$(EDITION)" RINGZERO_MANVEC="$(MANVEC_PATH)" RINGZERO_CONF_ASK="$(CONF_ASK)" RINGZERO_ROUNDS="$(ROUNDS)" cargo build --release -j 8
+	cd kernel && RINGZERO_EDITION="$(EDITION)" RINGZERO_MANVEC="$(MANVEC_PATH)" RINGZERO_CONF_ASK="$(CONF_ASK)" RINGZERO_ROUNDS="$(ROUNDS)" RINGZERO_LAYOUT_STOP="$(LAYOUT_STOP)" cargo build --release -j 8
 
 # M5: MicroPython (MIT), fetched at a pinned tag + commit and turned into the ports/embed package that
 # kernel/build.rs compiles freestanding (config: kernel/upy/mpconfigport.h). Needs python3 on the build box.
