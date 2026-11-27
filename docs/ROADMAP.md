@@ -16,7 +16,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   ├── ○ 🟠 M4.8a Multi-mind batched decode [E1]
 │               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
-│               │       │   │   └── ○ 🟠 Beta release gate [E1]
+│               │       │   │   └── ○ 🟠 Beta release gate [E1] [blocked by T46, T47]
 │               │       │   │       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T34]
 │               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1] [blocked by T34]
 │               │       │   │       └── ○ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1] [blocked by T34]
@@ -37,6 +37,11 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
 │                           └── T34: Beta release gate (circular)
+○ 🟠 Branding: boot banner overhaul, logo palette, VNC password ringzero [E1]
+│   ├── T34: Beta release gate (circular)
+│   ├── ○ 🟠 Shell colors by role (serial + framebuffer), !set color [E1] [blocked by T47]
+│   │   └── T34: Beta release gate (circular)
+│   └── ✓ 🟠 GitHub Pages site from the branding kit [E1] [blocked by T47]
 ✓ 🟠 agentd memory slot relevance fix (before beta) [E1]
 │   └── T34: Beta release gate (circular)
 ✓ 🟠 Compaction recall [E1]
@@ -61,5 +66,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 45 task(s) shown
+ℹ️ 48 task(s) shown
 ```
