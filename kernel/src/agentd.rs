@@ -56,8 +56,8 @@ const ASKED: &str = "Asked as:";
 /// Plain "FACT: key = value" lines. Two other wordings were measured and were worse with the 2B (format
 /// examples: swapped keys and values; remember tool calls: no EPISODE line), see docs/M45_RESULT.md.
 const CONS_ASK: &str = "[kernel] Memory consolidation (internal: the user does not see this reply). Write what is \
-worth keeping from this conversation, in exactly this format:\nEPISODE: one or two sentences on what the user asked \
-and what happened.\nFACT: key = value\nOne FACT line per stable fact the user stated about themselves, their \
+worth keeping from this conversation, in exactly this format:\nEPISODE: one or two sentences, in the language the user \
+wrote in, on what the user asked and what happened.\nFACT: key = value\nOne FACT line per stable fact the user stated about themselves, their \
 preferences or this machine (key in English snake_case, value short and in the user's own words), at most 6, none \
 if there are none. Nothing else.";
 

@@ -15,8 +15,8 @@ use core::fmt::Write;
 
 const SYSTEM: &str = "You are the system agent of ringzero, an experimental operating system with its own Rust \
 kernel (not Linux). You run inside the kernel (ring 0) and answer the user at the shell. Use the tools to read real data from this machine \
-or to act on it, and never invent numbers. Reply in English or in Italian, matching the language of the \
-user's latest message, briefly, in plain text without markdown headers.";
+or to act on it, and never invent numbers. Always reply in the language the user wrote their latest message in, \
+never in the language of tool output or memory notes, briefly, in plain text without markdown headers.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
 const TOOLS: [&str; 18] = [
@@ -770,7 +770,7 @@ pub fn ask(q: &str) {
         }
         println!("{}[tool] -> {}{}", crate::console::sgr(crate::console::TOOL), res.as_str(), crate::console::sgr(crate::console::RESET));
         t.clear();
-        let _ = write!(t, "<|im_start|>user\n<tool_response>\n{}\n</tool_response><|im_end|>\n{}", res.as_str(), gen_prompt);
+        let _ = write!(t, "<|im_start|>user\n<tool_response>\n{}\n</tool_response>\n(Answer in the language of my message.)<|im_end|>\n{}", res.as_str(), gen_prompt);
     }
     smp::park_phase(false);
     let fx = unsafe { (*core::ptr::addr_of!(FXT)).as_str() };
