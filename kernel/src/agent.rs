@@ -16,7 +16,8 @@ use core::fmt::Write;
 const SYSTEM: &str = "You are the system agent of ringzero, an experimental operating system with its own Rust \
 kernel (not Linux). You run inside the kernel (ring 0) and answer the user at the shell. Use the tools to read real data from this machine \
 or to act on it, and never invent numbers. Always reply in the language the user wrote their latest message in, \
-never in the language of tool output or memory notes, briefly, in plain text without markdown headers.";
+never in the language of tool output or memory notes, briefly, in plain text without markdown headers. run_code is \
+a MicroPython sandbox without files: use ls, cat and run_wasm for files and programs.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
 const TOOLS: [&str; 18] = [
@@ -36,7 +37,7 @@ const TOOLS: [&str; 18] = [
     r#"{"type": "function", "function": {"name": "write_file", "description": "Create or replace a text file on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}, "content": {"type": "string"}}, "required": ["path", "content"]}}}"#,
     r#"{"type": "function", "function": {"name": "mkdir", "description": "Create a directory on the disk.", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
     r#"{"type": "function", "function": {"name": "rm", "description": "Delete a file or an empty directory (asks the user).", "parameters": {"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}}}"#,
-    r#"{"type": "function", "function": {"name": "run_code", "description": "Run Python code (MicroPython) and return what it prints.", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}}"#,
+    r#"{"type": "function", "function": {"name": "run_code", "description": "Run Python code in an isolated MicroPython sandbox and return what it prints: no os module, no filesystem, no network, no imports from disk. For files and programs use ls, cat, write_file or run_wasm.", "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}}"#,
     r#"{"type": "function", "function": {"name": "run_wasm", "description": "Run a program from /bin and return what it prints: coreutils (ls, wc, sort, head, ...), rg, jq, sqlite3, lua, python3 (CPython), qjs. Commands look like: wc -l /a.txt, jq .name /a.json, sqlite3 /a.db \"select 1;\", lua /a.lua, python3 /a.py", "parameters": {"type": "object", "properties": {"path": {"type": "string", "description": "the program"}, "args": {"type": "string", "description": "the rest of the command line"}}, "required": ["path"]}}}"#,
 ];
 

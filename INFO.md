@@ -122,7 +122,9 @@ runs a script from the disk; each run is a fresh interpreter and ends with a sta
 Exceptions print a traceback (long ones cut to the first and last 5 frames) and the kernel goes on. The time
 budget (10 s at the shell, 5 s for the agent) and Ctrl-C raise `KeyboardInterrupt`; a program that swallows it
 is aborted 1 s later. The agent has a `run_code` tool: it gets the captured output, the traceback and the
-status line (6 KiB cap). Included: builtins, f-strings, big ints, double floats, `math`, `cmath`, `sys`, `gc`,
+status line (6 KiB cap). Its description and the system prompt say it is an isolated sandbox (no `os`, no
+filesystem, no network, no imports from disk) and point the model at ls, cat, write_file and run_wasm for files and
+programs (T54: the 4B tried `import os` for a file question). Included: builtins, f-strings, big ints, double floats, `math`, `cmath`, `sys`, `gc`,
 `array`, `collections`, `struct`, `errno`; no `import` from files, no `input()`, no I/O modules yet. Results:
 [docs/M5_MICROPYTHON_RESULT.md](docs/M5_MICROPYTHON_RESULT.md).
 
