@@ -284,8 +284,8 @@ pub fn print_speed(s: &Stats) {
     // M4.8b: the speculative counters of the generate() call this line reports (taken: printed once)
     let x = unsafe { core::ptr::addr_of_mut!(SPEC_ST).replace(SPEC0) };
     if x.used && x.on {
-        println!("  spec {}/{} accepted ({}%) in {} verify, {} rollback, verify {} ms, ids {:#x}", x.accepted, x.drafted,
-            x.accepted as u64 * 100 / (x.drafted as u64).max(1), x.verifies, x.rollbacks, x.verify_us / 1000, x.ids);
+        println!("  spec {}/{} accepted ({}%) in {} verify, {} rollback, verify {} ms, grammar {}/{}, ids {:#x}", x.accepted, x.drafted,
+            x.accepted as u64 * 100 / (x.drafted as u64).max(1), x.verifies, x.rollbacks, x.verify_us / 1000, x.gaccepted, x.gdrafted, x.ids);
     } else if x.used {
         println!("  spec off, ids {:#x}", x.ids);
     } else {
@@ -641,6 +641,8 @@ const TODO_MAX: usize = 48;
 pub static mut SPEC_ON: bool = true;
 /// Longest draft (1..SPEC_ROWS-1).
 pub static mut SPEC_K: usize = 8;
+/// T39: inside a tool call, draft the text the grammar implies (gram::draft) before the prompt lookup.
+pub static mut GRAM_DRAFT: bool = true;
 static mut SPEC_OK: bool = false;
 static mut DN_BAK: *mut u8 = core::ptr::null_mut();
 
@@ -653,9 +655,11 @@ struct SpecStats {
     accepted: u32,
     rollbacks: u32,
     verify_us: u64,
+    gdrafted: u32, // T39: of drafted / accepted, the grammar's
+    gaccepted: u32,
     ids: u64, // FNV-1a of the emitted ids (the equality check of spec on vs off)
 }
-const SPEC0: SpecStats = SpecStats { used: false, on: false, verifies: 0, drafted: 0, accepted: 0, rollbacks: 0, verify_us: 0, ids: 0 };
+const SPEC0: SpecStats = SpecStats { used: false, on: false, verifies: 0, drafted: 0, accepted: 0, rollbacks: 0, verify_us: 0, gdrafted: 0, gaccepted: 0, ids: 0 };
 static mut SPEC_ST: SpecStats = SPEC0;
 const FNV0: u64 = 0xcbf2_9ce4_8422_2325;
 
@@ -821,7 +825,13 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         todo[nt] = next as u32;
         nt += 1;
         let mut k = 0;
-        if spec && cool == 0 && *pos + (nt + k_cur) as u64 + 4 < max_seq {
+        // T39: inside a call the grammar's own continuation first (it does not touch the lookup's gate)
+        if spec && unsafe { GRAM_DRAFT } && crate::gram::active() && *pos + (nt + SPEC_ROWS) as u64 + 4 < max_seq {
+            let room = (SPEC_ROWS - 1).min(TODO_MAX - nt);
+            k = crate::gram::draft(&mut blk[nt..nt + room]);
+        }
+        let gd = k > 0;
+        if k == 0 && spec && cool == 0 && *pos + (nt + k_cur) as u64 + 4 < max_seq {
             let room = k_cur.min(TODO_MAX - nt);
             k = lookup(lo, *pos as usize, &todo[..nt], &mut blk[nt..nt + room]);
         }
@@ -859,10 +869,15 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
             break p; // the correction (r < k) or the token after a fully accepted draft
         };
         st().accepted += r as u32;
+        if gd {
+            (st().gdrafted, st().gaccepted) = (st().gdrafted + k as u32, st().gaccepted + r as u32);
+        }
         if r == k {
             *pos += (nt + k) as u64;
             nt = 0;
-            k_cur = (k_cur + 2).min(kmax);
+            if !gd {
+                k_cur = (k_cur + 2).min(kmax);
+            }
         } else {
             let t1 = smp::rdtsc();
             dn_copy(false);
@@ -870,7 +885,12 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
             st().rollbacks += 1;
             todo[nt..nt + r].copy_from_slice(&blk[nt..nt + r]); // fed again in front of the next pass
             nt += r;
-            k_cur = (k_cur - 1).max(1);
+            if !gd {
+                k_cur = (k_cur - 1).max(1);
+            }
+        }
+        if gd {
+            continue;
         }
         if r == 0 {
             fails += 1;

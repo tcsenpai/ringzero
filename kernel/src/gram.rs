@@ -398,6 +398,96 @@ pub fn fix(t: u64) -> u64 {
     pick
 }
 
+// ---- T39: the grammar as a draft source for the speculative verify (llm.rs generate) ----
+
+enum Next {
+    Bytes,  // the piece in `o` is the only way on (the format puts one '\n' between parts)
+    Choice, // the model chooses (a name, a value, which parameter, ...): the piece so far ends the draft
+}
+
+/// The only name of `cands` that starts with w, if there is exactly one.
+fn unique<'a>(w: &[u8], cands: impl Iterator<Item = &'a str>) -> Option<&'a str> {
+    let mut it = cands.filter(|c| c.as_bytes().starts_with(w));
+    let a = it.next()?;
+    it.next().is_none().then_some(a)
+}
+
+/// The next piece the grammar implies from g, in the canonical layout `<function=NAME>\n<parameter=KEY>\nVALUE\n
+/// </parameter>\n...</function>\n`.
+fn canon(g: &G, o: &mut SBuf<48>) -> Next {
+    let w = &g.buf[..g.n as usize];
+    let nl = |o: &mut SBuf<48>| if g.n == 0 && g.ws == 0 { o.push(b"\n") };
+    match g.st {
+        St::Func | St::Close => {
+            nl(o);
+            o.push(&(if g.st == St::Func { FUNC } else { CLOSE_P })[g.n as usize..]);
+            Next::Bytes
+        }
+        St::Name | St::Key => {
+            let c = if g.st == St::Name {
+                unique(w, SPECS.iter().map(|s| s.0))
+            } else {
+                unique(w, g.params().iter().enumerate().filter(|(j, _)| g.used & 1 << j == 0).map(|(_, x)| x.0))
+            };
+            let Some(c) = c else { return Next::Choice };
+            o.push(&c.as_bytes()[w.len()..]);
+            o.push(if g.st == St::Key { b">\n" } else { b">" });
+            Next::Bytes
+        }
+        St::Tag => {
+            let p = g.params();
+            let left = (0..p.len()).any(|j| g.used & 1 << j == 0);
+            let done = p.iter().enumerate().all(|(j, x)| !x.2 || g.used & 1 << j != 0);
+            nl(o);
+            let (p_ok, f_ok) = (left && PARAM.starts_with(w), done && CLOSE_F.starts_with(w));
+            match (p_ok, f_ok) {
+                (true, false) => o.push(&PARAM[w.len()..]),
+                (false, true) => o.push(&CLOSE_F[w.len()..]),
+                _ => return Next::Choice, // another parameter or the end: the model's choice
+            }
+            Next::Bytes
+        }
+        St::Free if g.n > 0 && CLOSE_P.starts_with(w) => {
+            o.push(&CLOSE_P[w.len()..]);
+            Next::Bytes
+        }
+        St::Enum => {
+            let Ty::Str(a) = g.params()[g.key as usize].1 else { return Next::Choice };
+            let Some(c) = unique(w, a.iter().copied()) else { return Next::Choice };
+            o.push(&c.as_bytes()[w.len()..]);
+            o.push(b"\n");
+            Next::Bytes
+        }
+        St::Done => {
+            nl(o); // then </tool_call>: not drafted, it comes as the pick after a fully accepted draft
+            Next::Choice
+        }
+        St::Free | St::Int => Next::Choice,
+    }
+}
+
+/// The tokens the grammar implies after the call so far (structural text up to the model's next choice), at
+/// most out.len(); 0 outside a call or with the grammar in check-only mode. Only a draft: the verify pass picks.
+pub fn draft(out: &mut [u32]) -> usize {
+    if !unsafe { ACTIVE && ON } || out.is_empty() {
+        return 0;
+    }
+    let mut g = unsafe { CUR };
+    let mut b = SBuf::<160>::new();
+    for _ in 0..8 {
+        let mut o = SBuf::<48>::new();
+        let r = canon(&g, &mut o);
+        if o.n == 0 || b.n + o.n > b.b.len() || !o.b[..o.n].iter().all(|&c| g.step(c)) {
+            break;
+        }
+        b.push(&o.b[..o.n]);
+        if matches!(r, Next::Choice) {
+            break;
+        }
+    }
+    llm::encode_plain(&b.b[..b.n], out)
+}
+
 /// generate() is done: one line about the call (if there was one), also in the kernel log.
 pub fn finish(ended: bool) {
     if !unsafe { ACTIVE } && s().toks == 0 {
@@ -466,5 +556,28 @@ pub fn selftest() -> bool {
         b"\n<function=cat>\n<parameter=path>\n/a</function>",                                        // value not closed
         b"\n<function=cat>\n\n\n\n\n\n<parameter=path>",                                             // whitespace run
     ];
-    good.iter().all(|s| run(s)) && !bad.iter().any(|s| run(s))
+    // T39: the canonical pieces from a few states (no tokenizer involved)
+    let chain = |pre: &[u8]| {
+        let mut g = G0;
+        pre.iter().for_each(|&c| { g.step(c); });
+        let mut b = SBuf::<160>::new();
+        for _ in 0..8 {
+            let mut o = SBuf::<48>::new();
+            let r = canon(&g, &mut o);
+            if o.n == 0 || !o.b[..o.n].iter().all(|&c| g.step(c)) {
+                break;
+            }
+            b.push(&o.b[..o.n]);
+            if matches!(r, Next::Choice) {
+                break;
+            }
+        }
+        b
+    };
+    let d = chain(b"\n<function=ca").as_str() == "t>\n<parameter=path>\n"
+        && chain(b"\n<function=cat>\n<parameter=path>\n/a.txt\n</").as_str() == "parameter>\n</function>\n"
+        && chain(b"\n<function=meminfo").as_str() == ">\n</function>\n"
+        && chain(b"\n<function=set_setting>\n<parameter=key>\ncor").as_str() == "es\n</parameter>\n<parameter=value>\n"
+        && chain(b"").as_str() == "\n<function=";
+    good.iter().all(|s| run(s)) && !bad.iter().any(|s| run(s)) && d
 }

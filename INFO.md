@@ -31,6 +31,14 @@ overwritten later. 4B q4: quoting answers decode at 2.0-2.5x (20.8 -> 53.2 tok/s
 chat and tool calls within the run-to-run noise. `!set spec on|off|N`, `/spec [N]` checks the verifier against
 the per-token path. Results: [docs/M48B_RESULT.md](docs/M48B_RESULT.md).
 
+Grammar drafts (T39): inside a tool call the speculative draft comes first from the M4.7a grammar: from its state
+the kernel writes the text the call format implies up to the model's next choice (the rest of a tool or parameter
+name once only one fits, `>`, `\n`, `<parameter=` while a required parameter is missing, `</parameter>`,
+`</function>`, a unique enum value), tokenizes it and verifies it in the same pass; the prompt lookup runs when
+that text is empty. Same picks, so the same output token for token. 4B q4: the call rounds of 12 tool prompts
+decode at 35.8 tok/s instead of 20.4 (1.76x), 96% of the grammar tokens accepted. `!set gramdraft off` turns it off (lookup
+drafts only). Results: [docs/T39_RESULT.md](docs/T39_RESULT.md).
+
 Embedder: Qwen3-Embedding-0.6B runs on the same asm engine by swapping the engine context (`g_ctx`) between
 whole forward calls, so the 2B's state is never touched. `/embed [-q] TEXT` prints a vector (dim 1024, about
 6 ms per token, 0.61 s per 100 tokens; cosine >= 0.9986 against the HF fp32 model), `/index add TEXT` stores a

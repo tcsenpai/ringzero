@@ -44,8 +44,8 @@ ringzero[main]> count the lines of /demo/stats.py with wc
   one-liners (`!py 17*23`).
 - **Fast where it matters.** The prompt is read in blocks (about 230 tokens/s on the 2B), the boot state is
   cached on disk, and the system does its housekeeping (indexing, summarizing) while you are idle. When the
-  answer copies text from the conversation (a file, a tool result), it is written about 2.5x faster, with the
-  same output.
+  answer copies text from the conversation (a file, a tool result), it is written about 2.5x faster, and tool
+  calls about 1.8x faster (the format's own text is drafted from the grammar), with the same output.
 
 ## Try it
 
