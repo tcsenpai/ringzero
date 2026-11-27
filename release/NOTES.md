@@ -55,7 +55,7 @@ For a window replace `-display none` with `-vga std -display gtk`. For the 2B us
 - Semantic memory: notes, files and past sessions indexed by the embedding model; facts survive a reboot.
 - Snapshots of the model state with undo, redo and branches; hibernation to disk and exact resume.
 - Tool calls held to the tool schemas by a grammar while they are generated; a confidence check asks before an
-  uncertain call that changes the machine.
+  uncertain call that writes (a file, a directory, a setting, a fact).
 - Programs from `/bin` (WASI) and built-in MicroPython.
 - Built-in manual (`/man`), speculative decoding for copied text and for tool calls.
 
@@ -63,7 +63,7 @@ For a window replace `-display none` with `-vga std -display gtk`. For the 2B us
 
 - QEMU/KVM only, no network, no real-hardware support yet.
 - The model can pick the wrong tool or wrong values with high confidence. Tool calls are always well formed; the
-  confidence check asks before about 5 of 8 wrong calls that change the machine.
+  confidence check sees about 5 of 8 wrong calls and asks before those that write.
 - After a tool result the 4B sometimes answers in Italian to an English request.
 - The 2B edition calls tools less often and may answer from its own guesses.
 - `make run-remote` exposes a serial port and VNC on all interfaces: trusted networks only.

@@ -55,7 +55,7 @@ ringzero[main]> count the lines of /demo/stats.py with wc
   The next boot picks it up exactly where it was, checked by a state hash.
 - **Tool calls that cannot break.** While the model writes a tool call, the kernel only lets through tokens
   that keep it valid against the tool's schema. In the tests: zero malformed calls.
-- **Unsure calls ask first.** Each tool call shows how sure the model was; unsure ones that change the machine ask.
+- **Unsure calls ask first.** Each tool call shows how sure the model was; unsure ones that write (a file, a folder, a setting, a fact) ask.
 - **Real software.** python3 (CPython 3.15), sqlite3, jq, Lua, QuickJS, ripgrep, the coreutils and a text
   editor run from `/bin` in a WASI sandbox, from the shell and for the agent. MicroPython is built in for quick
   one-liners (`!py 17*23`).

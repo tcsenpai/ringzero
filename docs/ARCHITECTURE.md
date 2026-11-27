@@ -441,8 +441,8 @@ T28: every pick inside a call goes through `gram::fix`, in a decode step or a ve
 decision (tool name, a parameter with an optional one among the candidates, optional parameter or end, enum value,
 integer), `margin` walks the vocab trie from the state before the pick and takes P(best) - P(second) of the softmax
 over the allowed tokens, grouped by outcome. The logits are only read. agent.rs prints the call's smallest margin as
-a `[confidence]` line and picks the band (`CONF_LO` = `make CONF_ASK`, default 0.80; `CONF_HI` = max(0.80, `CONF_LO`)): run, run and log, or y/N first for tools
-that change the machine. Results: docs/T28_RESULT.md.
+a `[confidence]` line and picks the band (`CONF_LO` = `make CONF_ASK`, default 0.80; `CONF_HI` = max(0.80, `CONF_LO`)): run, run and log, or y/N first for the tools
+that write (write_file, mkdir, set_setting, remember; T54). Results: docs/T28_RESULT.md.
 
 ## Memory
 

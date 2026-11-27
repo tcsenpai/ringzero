@@ -458,7 +458,7 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             let on = onoff(val) == Some(true);
             unsafe { crate::gram::CONF_ON = on };
             if on {
-                let _ = write!(o, "confidence = on (a [confidence] line per tool call; a margin below {:.2} asks first on tools that change the machine)", crate::agent::CONF_LO);
+                let _ = write!(o, "confidence = on (a [confidence] line per tool call; a margin below {:.2} asks first on write_file, mkdir, set_setting and remember)", crate::agent::CONF_LO);
             } else {
                 let _ = write!(o, "confidence = off");
             }

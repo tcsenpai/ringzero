@@ -215,4 +215,4 @@ Source: tools/wasm_apps.sh fetch, crate, cc_init; Makefile target disk, target w
 - docs/M5B_WASI_RESULT.md says one 10 M fuel slice takes 5 to 10 ms: the slice size is in code, its duration is not.
 - poll_oneoff reports fd_read and fd_write subscriptions as always ready (kernel/src/wasm.rs:679), so a REPL that polls stdin does not block there; whether any shipped program relies on real readiness was not checked.
 - Whether a given data disk holds all listed programs depends on `make wasm-apps` having run; the kernel only checks the file at run time.
-- `run_code` and `run_wasm` are tools that change the machine for the confidence check (see the decoding spec); no other confirmation applies to them.
+- `run_code` and `run_wasm` are tools that change the machine (steered and declined calls), but a low-confidence call of either runs with a notice instead of a question (see the decoding spec, T54); no other confirmation applies to them.

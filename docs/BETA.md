@@ -100,7 +100,8 @@ make beta                                    # build/beta: both ISOs, disk.img, 
   are driven. No network.
 - The model can be wrong. Tool calls follow the tool schemas (0 malformed calls in the evals), but the model can
   pick the wrong tool or wrong values with high confidence: the `[confidence]` line catches about 5 of 8 wrong calls
-  at the 0.80 line and asks on about 13% of right calls (docs/T28_RESULT.md).
+  at the 0.80 line (docs/T28_RESULT.md); below it the tools that write ask y/N, program runs and reads run with a
+  notice.
 - Language: the system prompt asks for the language of the user's message, but after a tool result the 4B
   sometimes answers in Italian to an English request (3 of 10 in the DEMOS agent set on a fresh disk), and on a
   disk with Italian memories more often.

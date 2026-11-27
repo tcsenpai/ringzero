@@ -113,6 +113,15 @@ moved. Build time: `make iso CONF_ASK=N` (percent integer, clamped to 0..100, en
 ones measured above. One variable instead of two keeps the build option simple; the middle band only logs, so
 nothing is lost when it is empty. `!set confidence on` prints the line in use (`a margin below 0.80 asks first`).
 
+## Beta: only the tools that write ask (user decision, 2026-11-27, T54)
+
+The maintainer's manual test of the beta build asked y/N on 7 of 8 calls: run_code and run_wasm had margins of 0.56
+to 0.70, split between `run` and `ls` or between `_code` and `_w`, tokens of the tool names rather than doubt about
+the action. The threshold stays at 0.80; below it only write_file, mkdir, set_setting and remember ask. run_code and
+run_wasm run with the notice in the `[confidence]` line, like the read-only tools (`-> run (low-confidence notice:
+check the result)`); rm, forget, poweroff and reboot keep their own y/N, and after a declined call every later call
+of a tool that changes the machine in the same turn still asks. Measured on the T54 build: docs/T54_RESULT.md.
+
 ## tooleval (M45 protocol, final build)
 
 `tools/tooleval.py`, `SLOT=200`, constrain on, temperature 0, a fresh copy of the user's disk without `/sys` for

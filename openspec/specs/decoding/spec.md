@@ -150,8 +150,8 @@ Source: kernel/src/agent.rs fs_tool, CONF_HI, conf_ask, conf_line
 - **THEN** the call is in the Low band
 
 ### Requirement: Agent action per band
-The system SHALL run High and Mid band calls. For a Low band call it SHALL ask `[confidence] the agent is not sure about this call. Run it? [y/N]` before set_setting, remember, write_file, mkdir, run_code and run_wasm, add no second question for rm, poweroff, reboot and forget (they ask themselves), and run read-only tools with a notice in the `[confidence]` line.
-Source: kernel/src/agent.rs fs_tool, ASKS, conf_line, ask
+The system SHALL run High and Mid band calls. For a Low band call it SHALL ask `[confidence] the agent is not sure about this call. Run it? [y/N]` before set_setting, remember, write_file and mkdir, add no second question for rm, poweroff, reboot and forget (they ask themselves), and run every other tool (run_code, run_wasm and the read-only tools) with a notice in the `[confidence]` line.
+Source: kernel/src/agent.rs ASK_LOW, ASKS, conf_line, ask
 
 #### Scenario: low-confidence write
 - **WHEN** a write_file call is in the Low band and the user answers `n`
@@ -159,7 +159,11 @@ Source: kernel/src/agent.rs fs_tool, ASKS, conf_line, ask
 
 #### Scenario: low-confidence read
 - **WHEN** a cat call is in the Low band
-- **THEN** it runs without a question and the line ends `run (read-only tool, low-confidence notice: check the result)`
+- **THEN** it runs without a question and the line ends `run (low-confidence notice: check the result)`
+
+#### Scenario: low-confidence code run
+- **WHEN** a run_code call is in the Low band
+- **THEN** it runs without a question and the line ends `run (low-confidence notice: check the result)`
 
 ## Open questions
 

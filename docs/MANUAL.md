@@ -105,7 +105,7 @@ Asked as: is there a manual, c'e un manuale, documentation, documentazione, man 
 
 ## Confidence of tool calls
 Asked as: what is the confidence line, cosa vuol dire confidence, why does it ask Run it, perche chiede conferma, turn off the confidence question
-Every tool call prints a `[confidence]` line: the smallest margin (0 to 1) between the model's best and second choice at the call's decisions (tool name, parameters, values), where it was, and what the kernel does. Below 0.80 a tool that changes the machine (write_file, mkdir, remember, set_setting, run_code, run_wasm) asks `Run it? [y/N]` first; only y runs it, any other answer tells the model the call was not run. A read-only tool runs with a notice to check its result. `!set confidence off` turns the line and the question off, `!set confidence on` back on (on at every boot). The 0.80 line is set when the system is built (`make iso CONF_ASK=N`, a percent).
+Every tool call prints a `[confidence]` line: the smallest margin (0 to 1) between the model's best and second choice at the call's decisions (tool name, parameters, values), where it was, and what the kernel does. Below 0.80 a tool that writes (write_file, mkdir, remember, set_setting) asks `Run it? [y/N]` first; only y runs it, any other answer tells the model the call was not run. Any other tool, run_code and run_wasm included, runs with a notice to check its result. `!set confidence off` turns the line and the question off, `!set confidence on` back on (on at every boot). The 0.80 line is set when the system is built (`make iso CONF_ASK=N`, a percent).
 
 ## Speed and benchmarks
 Asked as: how fast is it, quanto e veloce, benchmark, tokens per second, speculative decoding

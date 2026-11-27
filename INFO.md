@@ -168,8 +168,9 @@ value, an integer digit) the kernel takes P(best) - P(second) of the softmax ove
 grouped by outcome (tokens leading to the same name are summed, tokens that narrow nothing left out), from the logits
 the pick used (a decode step or a verify row): no extra forward pass, the sampling is unchanged. The smallest margin
 of the call sets the band: below `CONF_ASK` (default 0.80) ask `[confidence] ... Run it? [y/N]` first for
-set_setting, remember, write_file, mkdir, run_code, run_wasm (rm, forget, poweroff, reboot ask y/N anyway) and run
-with a notice for read-only tools; at or above it run. `make iso CONF_ASK=N` (percent, 0..100) moves the line; the
+set_setting, remember, write_file and mkdir (rm, forget, poweroff, reboot ask y/N anyway) and run with a notice for
+every other tool (run_code, run_wasm and the read-only tools; T54: program runs asked on 7 of 8 calls in a manual
+test); at or above it run. `make iso CONF_ASK=N` (percent, 0..100) moves the line; the
 logged middle band runs from `CONF_ASK` to 0.80 and is empty at the default. On the 120 held-out tasks of
 `tools/confeval.py`: AUROC 0.80 against wrong calls (0.89 against wrong tools); below 0.80 sit 5 of the 8 wrong
 calls and 12 of the 90 right ones (the tune-split pick, `CONF_ASK=25`, catches 0 of 8). 0.74 ms per call. Every call prints a `[confidence]` line; `!set confidence on|off` (default on).

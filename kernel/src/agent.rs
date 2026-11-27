@@ -579,9 +579,12 @@ const DECLINED: &str = "NOT RUN: the user declined this call. Nothing was change
 const FX: [&str; 10] = ["set_setting", "remember", "forget", "write_file", "mkdir", "rm", "poweroff", "reboot", "run_code", "run_wasm"];
 /// Of FX, the ones that ask the human y/N themselves (the confidence band adds no second question).
 const ASKS: [&str; 4] = ["rm", "poweroff", "reboot", "forget"];
+/// Of FX, the ones a Low band call asks y/N for (T54, user 2026-11-27: run_code and run_wasm asked on 7 of 8 calls
+/// in a manual test, their names split the margin; below the line they now run with the notice like read-only tools).
+const ASK_LOW: [&str; 4] = ["write_file", "mkdir", "set_setting", "remember"];
 
 /// T28 bands of a call's smallest decision margin (gram.rs, docs/T28_RESULT.md): at or above CONF_HI run, from
-/// CONF_LO run and log, below CONF_LO ask first (FX) or run with a notice (read-only tools). Beta default (user,
+/// CONF_LO run and log, below CONF_LO ask first (ASK_LOW) or run with a notice (the other tools). Beta default (user,
 /// 2026-11-27): ask below 0.80 (held-out: 5 of 8 wrong calls asked, 12 of 90 right ones); `make iso CONF_ASK=25` is
 /// the tune-split pick. CONF_HI = max(0.80, CONF_LO), so the logged middle band is empty at the default.
 pub const CONF_LO: f32 = conf_ask(option_env!("RINGZERO_CONF_ASK")) as f32 / 100.0;
@@ -618,8 +621,8 @@ fn conf_line(name: &str) -> Option<Band> {
     let act = match band {
         Band::High => "run",
         Band::Mid => "run (middle band, logged)",
-        Band::Low if !FX.contains(&name) => "run (read-only tool, low-confidence notice: check the result)",
         Band::Low if ASKS.contains(&name) => "ask (the tool asks y/N itself)",
+        Band::Low if !ASK_LOW.contains(&name) => "run (low-confidence notice: check the result)",
         Band::Low => "ask y/N",
     };
     let mut l = SBuf::<240>::new();
@@ -742,8 +745,9 @@ pub fn ask(q: &str) {
                     // M4.7a: a value the grammar had to choose is a guess; tools that change the machine do not run it
                     if crate::gram::last_steered() && FX.contains(&c.name) {
                         let _ = write!(res, "error: not run: a tool name, parameter or value was not in the schema and the kernel had to replace it. Call {} again with values from its schema, or answer without the tool", c.name);
-                    } else if (band == Some(Band::Low) || declined) && FX.contains(&c.name) && !ASKS.contains(&c.name)
-                        && !shell::confirm(if band == Some(Band::Low) {
+                    } else if ((band == Some(Band::Low) && ASK_LOW.contains(&c.name)) || (declined && FX.contains(&c.name)))
+                        && !ASKS.contains(&c.name)
+                        && !shell::confirm(if band == Some(Band::Low) && ASK_LOW.contains(&c.name) {
                             "\n[confidence] the agent is not sure about this call. Run it?"
                         } else {
                             "\n[agent] you declined a call in this turn; the agent calls a tool again. Run it?"
