@@ -47,7 +47,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
 │                           └── T34: Beta release gate (circular)
-○ 🟠 Evaluate NeoHorse-1-4B and QwenPaw-Flash-4B (Q4) [E1]
+✓ 🟠 Evaluate NeoHorse-1-4B and QwenPaw-Flash-4B (Q4) [E1]
 ✓ 🟠 Fixes found by the OpenSpec baseline (before release) [E1]
 │   └── T51: Beta release (today, 2026-11-27) (circular)
 ✓ 🟠 GitHub Pages site from the branding kit [E1]
