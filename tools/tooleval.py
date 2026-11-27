@@ -14,6 +14,9 @@ SLOT=N (env) sets `!set slot N` instead of 0 and keeps `/agentd log 12` (the slo
 T28: a [confidence] y/N question (a low-margin call of a tool that changes the machine) is answered y, so the eval
 runs the same calls as without it; every other y/N is answered n. CONF=on|off (env) sends `!set confidence ...`.
 T54: `round_limit` counts the turns that hit the tool round limit and answered without tools.
+T55: an expected entry "cat /proc/uptime" is the tool cat (or ls) with a path that starts with that path, so reading
+the right file counts as a right call; `alias` counts the calls of the hidden aliases (meminfo, cpuinfo, list_cores,
+uptime: not in the prompt since T55); INFO is the 8 system-information prompts of the T55 gate (also in inos).
 SETS: comma list of spike, inos, it (default spike,inos). `it`: 10 short Italian knowledge / reasoning questions
 (docs/MODEL_CHOICE.md); `auto` is a substring pre-check of the answer, the verdict is by hand."""
 import json, os, re, socket, sys, time
@@ -39,16 +42,31 @@ INOS = [
     ("usa 4 core per l'inferenza", [{"set_setting"}]),
     ("set the keyboard layout to us", [{"set_setting"}]),
     ("set the screen brightness to 80", [{"set_setting"}, set()]),  # no such setting: a call or an answer
-    ("da quanto tempo e acceso il sistema?", [{"uptime"}]),
+    ("da quanto tempo e acceso il sistema?", [{"uptime", "cat /proc/uptime"}]),
     ("mostra le ultime 5 righe del log", [{"read_log"}]),
     ("show the last ten log lines", [{"read_log"}]),
-    ("quanti core ha la CPU?", [{"cpuinfo", "list_cores"}]),
+    ("quanti core ha la CPU?", [{"cpuinfo", "list_cores", "cat /proc/cpuinfo", "cat /sys/devices/system/cpu", "ls /sys/devices/system/cpu"}]),
     ("what is on the disk root?", [{"ls"}]),
     ("cerca nei file qualcosa sul latte", [{"recall"}]),
     ("spegni il computer", [{"poweroff"}]),
     ("hi, how are you?", []),
     ("che cos'e un kernel? una frase", []),
 ]
+# T55: system information that files answer (the D5 gate): memory, cores, uptime, cpu model, drivers / PCI, disk size,
+# hostname, version
+CORES = {"cpuinfo", "list_cores", "cat /proc/cpuinfo", "cat /sys/devices/system/cpu", "ls /sys/devices/system/cpu"}
+DRIVERS = {"cat /proc/devices", "cat /proc/bus/pci", "ls /proc/bus/pci", "ls /sys/bus/pci", "cat /sys/bus/pci", "ls /proc", "ls /sys"}
+INFO = [
+    ("quanta RAM libera c'e?", [{"meminfo", "cat /proc/meminfo"}]),
+    ("how many CPU cores does this machine have?", [CORES]),
+    ("quanto uptime?", [{"uptime", "cat /proc/uptime"}]),
+    ("what CPU model is this?", [{"cpuinfo", "cat /proc/cpuinfo"}]),
+    ("che driver abbiamo?", [DRIVERS]),
+    ("how big is the disk?", [{"cat /sys/class/block/vda", "ls /sys/class/block", "cat /proc/devices", "ls /sys/block"}]),
+    ("come si chiama questa macchina?", [{"cat /etc/hostname"}]),
+    ("which version of ringzero is running?", [{"cat /proc/version", "cat /etc/os-release"}]),
+]
+INOS += INFO
 # (question, accepted answers: lowercase substrings, any one); no tool expected
 IT = [
     ("Qual è la capitale dell'Australia? Rispondi in una parola.", ["canberra"]),
@@ -121,19 +139,26 @@ def drive(host, port, mode, prompts, first=False):
 SCHEMA = re.compile(r"\[tool\] -> error: (unknown tool|\S+ has no parameter|bad value|\S+ needs parameter)")
 
 
+def hit(call, args, e):
+    """T55: "cat /path" = that tool with a path under /path; else the tool name."""
+    name, _, path = e.partition(" ")
+    return call == name and (not path or args.get("path", "").strip('"').startswith(path))
+
+
 def score(r):
     o = r["out"]
     calls = re.findall(r"^\[tool\] ([a-z_]+)\(", o, re.M)
     # shortcut: args split on ", " (a value containing ", k=" would split wrong; the spike values do not)
     cargs = [dict(kv.split("=", 1) for kv in re.split(r", (?=[a-z_]+=)", a) if "=" in kv)
              for a in re.findall(r"^\[tool\] [a-z_]+\((.*)\)$", o, re.M)]
+    inset = lambda i, e: any(hit(calls[i], cargs[i] if i < len(cargs) else {}, x) for x in e)
     gl = re.findall(r"^\[grammar\] .*$", o, re.M)
     exp = r["expect"]
     if exp and exp[-1] == set():  # optional call
-        ok = len(calls) <= 1 and (not calls or calls[0] in exp[0])
+        ok = len(calls) <= 1 and (not calls or inset(0, exp[0]))
     else:
-        ok = len(calls) == len(exp) and all(c in e for c, e in zip(calls, exp))
-    first = bool(calls) and bool(exp) and bool(exp[0]) and calls[0] in exp[0]
+        ok = len(calls) == len(exp) and all(inset(i, e) for i, e in enumerate(exp))
+    first = bool(calls) and bool(exp) and bool(exp[0]) and inset(0, exp[0])
     args = None
     if r.get("spike_expect") is not None:
         se = r["spike_expect"]
@@ -154,6 +179,7 @@ def score(r):
         "conf": re.findall(r"^\[confidence\] min.*$", o, re.M),
         "conf_ask": len(re.findall(r"^\[confidence\] the agent is not sure.*\[y/N\] y$", o, re.M)),
         "round_limit": len(re.findall(r"^\[agent\] tool round limit", o, re.M)),  # T54: answered without tools
+        "alias": len(re.findall(r"^\[tool\] [a-z_]+ \(hidden alias of ", o, re.M)),  # T55
     }
 
 
@@ -186,7 +212,9 @@ def main():
                    "no_tool_ok": sum(1 for r, x in zip(rs, sc) if not r["expect"] and not x["calls"]),
                    "auto_ok": sum(bool(x["auto_ok"]) for x in sc),
                    "conf_lines": sum(len(x["conf"]) for x in sc), "conf_asked_y": sum(x["conf_ask"] for x in sc),
-                   "round_limit": sum(x["round_limit"] for x in sc),
+                   "round_limit": sum(x["round_limit"] for x in sc), "alias_hits": sum(x["alias"] for x in sc),
+                   "info_correct": sum(x["correct"] for r, x in zip(rs, sc) if any(r["text"] == t for t, _ in INFO)),
+                   "info_first_right": sum(x["first_right"] for r, x in zip(rs, sc) if any(r["text"] == t for t, _ in INFO)),
                    "conf_low_mid": [c for x in sc for c in x["conf"] if not c.endswith("-> run")],
                    "call_round_decode_tok_s": round(ntok / (ms / 1000), 2) if ms else None}
     print(json.dumps(summ, indent=1))

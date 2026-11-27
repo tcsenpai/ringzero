@@ -165,8 +165,17 @@ fn main() {
     t("remove_file", fs::remove_file(format!("{}/sub/c.bin", d)).is_ok(), "sub/c.bin".into());
     t("remove_dir", fs::remove_dir(format!("{}/sub", d)).is_ok() && fs::metadata(format!("{}/sub", d)).is_err(), "sub".into());
     t("missing file", fs::read("/no/such/file").is_err_and(|e| e.kind() == std::io::ErrorKind::NotFound), "NotFound".into());
+    // T55: ringzero's data is EACCES (PermissionDenied), the virtual trees EROFS (ReadOnlyFilesystem)
+    let lib = fs::write("/var/lib/ringzero/rztest.txt", b"x");
+    t("/var/lib/ringzero is read-only", lib.as_ref().is_err_and(|e| e.kind() == std::io::ErrorKind::PermissionDenied), format!("{:?}", lib.err().map(|e| e.kind())));
     let sys = fs::write("/sys/rztest.txt", b"x");
-    t("/sys is read-only", sys.is_err(), format!("{:?}", sys.err().map(|e| e.kind())));
+    t("/sys is a read-only file system", sys.as_ref().is_err_and(|e| e.raw_os_error() == Some(69)), format!("{:?}", sys.err()));
+    let vda = fs::OpenOptions::new().write(true).open("/dev/vda");
+    t("/dev/vda is read-only", vda.as_ref().is_err_and(|e| e.raw_os_error() == Some(69)), format!("{:?}", vda.err()));
+    let zero = fs::File::open("/dev/zero").and_then(|mut f| { let mut b = [1u8; 64]; f.read_exact(&mut b).map(|_| b) });
+    t("/dev/zero reads zeros", zero.as_ref().is_ok_and(|b| b.iter().all(|&x| x == 0)), format!("{:?}", zero.err()));
+    let null = fs::write("/dev/null", vec![7u8; 1 << 20]);
+    t("/dev/null takes 1 MiB", null.is_ok() && fs::read("/dev/null").is_ok_and(|v| v.is_empty()), format!("{:?}", null.err()));
     t("sandbox: '..' above / refused", escape(), "see the open lines above".into());
 
     let now = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
