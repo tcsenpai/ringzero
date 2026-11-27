@@ -103,6 +103,9 @@ serial, PS/2, framebuffer.
   [arXiv:2604.11943](https://arxiv.org/abs/2604.11943). Anima OS, a bare-metal x86-64 Rust kernel with LLM
   inference inside, reads the model's next-token logits as a kernel primitive for classifying agent actions.
   ringzero acts on the logits in the kernel too (the tool-call grammar mask, and the planned uncertainty signal).
+- [NIGHTRUN](https://github.com/hardrave/NIGHTRUN), 2026: a UEFI application in Rust that runs Qwen3-4B (Q4_K_M) with its
+  own inference kernels before any OS loads, as a chat. ringzero is a kernel with an agent, tools, memory and programs
+  around the model.
 
 ## Status
 

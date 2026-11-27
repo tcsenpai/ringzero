@@ -17,7 +17,9 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │               │       │   │   └── ○ 🔵 Quorum check on risky tool calls via batched forks [E1] [blocked by T25]
 │               │       │   ├── ✓ 🟠 M4.8b Speculative decoding by prompt lookup [E1]
 │               │       │   │   └── ○ 🟠 Beta release gate [E1] [blocked by T28, T38, T39]
-│               │       │   │       └── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T34]
+│               │       │   │       ├── ○ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1] [blocked by T34]
+│               │       │   │       ├── ○ 🟢 Decode bandwidth A/B: vCPU count, lm_head bytes [E1] [blocked by T34]
+│               │       │   │       └── ○ 🟠 MTP draft head: Qwen3.5-4B's own multi-token prediction layer [E1] [blocked by T34]
 │               │       │   └── ○ 🟠 M4.8c Precomputed document states [E1]
 │               │       ├── ✓ 🟠 M4.7b Hibernate the agent: snapshots to disk [E1]
 │               │       ├── ○ 🟠 Kernel event bus to the agent (deterministic perimeter) [E1]
@@ -59,5 +61,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 43 task(s) shown
+ℹ️ 45 task(s) shown
 ```
