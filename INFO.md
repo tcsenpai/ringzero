@@ -77,7 +77,7 @@ FAT entries.
 | `/etc/hostname` | a FAT file, made as `ringzero` at boot when missing, logged as `host: NAME (/etc/hostname)` | anyone |
 | `/etc/os-release`, `/etc/passwd` | virtual: NAME, ID, ID_LIKE=unix, VERSION, VERSION_ID, PRETTY_NAME (the edition); `root:x:0:0:root:/:/bin/sh` | nobody |
 | `/tmp` | scratch on the disk: emptied at a boot that does not resume a hibernation image, kept when one resumes; not indexed | anyone |
-| `/var/lib/ringzero` | ringzero's own data: `mem/{journal,facts,episodes}.log`, `mem/index.bin`, `hib/image.bin`, `bootsnap.bin`, `layout` (the migration marker), `legacy/` | the kernel; the shell (`!rm` asks); the agent's write_file, mkdir and rm get `permission denied: ringzero's own data (use remember and forget)`, programs EACCES |
+| `/var/lib/ringzero` | ringzero's own data: `mem/{journal,facts,episodes}.log`, `mem/index.bin`, `hib/image.bin`, `bootsnap.bin`, `cache/docs/` (document states), `layout` (the migration marker), `legacy/` | the kernel; the shell (`!rm` asks); the agent's write_file, mkdir and rm get `permission denied: ringzero's own data (use remember and forget)`, programs EACCES |
 
 Every other change under /proc, /sys, /dev and the two virtual /etc files fails with `read-only file system`
 (programs: EROFS 69). `!cat` and the agent's cat refuse a device but /dev/null (`is a device: read it with a
@@ -139,6 +139,18 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   loaded at the next boot in about 0.2 s instead of a prefill (BIOS boot to the prompt 40.6 s cold, 11.9 s
   cached, before M4.8). Since the batched prefill (M4.8) a miss prefills the 1315-token prefix in 5.8 s instead of
   36-40 s, and a cold boot reaches the prompt in about 28 s instead of 71 s (QEMU start to prompt, shared box). The key covers the model, the prefix tokens and the engine build; any change means a prefill.
+- Document states (M4.8c, `/read PATH`): a text file of up to 64 KiB goes into the conversation as a user turn
+  plus a fixed reply (`I have read PATH.`), saved as a snapshot point. For 512 tokens or more the state of its
+  tokens (token ids, the KV rows of their positions, the DeltaNet block R) is written to
+  `/var/lib/ringzero/cache/docs/<key>.bin` (header with the keys, KV geometry, path and a checksum). The key is
+  the boot key, the token ids of the conversation before the file and the file's token ids: the state of a
+  token depends on everything before it, so an entry hits only at the same position after the same context (the
+  first `/read` of a fresh conversation always qualifies), and the loaded state is bit-identical to the prefill.
+  A 4325-token file: 2B prefill 22.9-28.4 s, hit 0.12-0.18 s (69 MiB); 4B prefill 71.7 s, hit 0.56-0.76 s
+  (185 MiB) ([docs/M48C_RESULT.md](docs/M48C_RESULT.md)). blk.rs reads ahead 1 MiB on sequential reads (fatfs
+  asks one 4 KiB cluster per request), which also halves the boot cache load. Cap 512 MiB with LRU eviction (entries of another model or engine
+  first), 64 MiB left free on the disk; a changed file replaces its old entry; a corrupt, truncated or mismatched
+  entry is refused, deleted and the file prefilled. `/read` lists the cache, `/read clear` deletes it.
 - Context compiler: the first message of every conversation, and the first turn after a compaction, gets a
   memory slot of at most 200 tokens: saved facts, then notes recalled for that message (earlier statements of the
   user, episodes, file chunks). This fixes the M2.5 compaction recall failure. Recalled notes are filtered (T35):
@@ -379,6 +391,8 @@ Tool-call grammar and hibernation:
 /spec 9                  # verifier check: 9 positions per token vs one verify pass (bit-identical logits, times)
 /hibernate               # save the conversation + snapshot tree now (!poweroff does it too)
 /prefill 32              # time the boot prefix prefill (block 32; /prefill 1 = per token), print the state hash
+/read /docs/a.txt        # put a text file into the conversation; its state is cached and loaded next time
+/read                    # the document cache (entries, MiB, cap); /read clear deletes it
 /hibernate status        # is there an image; /hibernate discard deletes it and !poweroff skips it (fresh next boot)
 /snap                    # point, pool, timings and the state hash of the live state
 ```
@@ -472,6 +486,7 @@ Memory index, from the shell:
 | `kernel/src/layout.rs` | /var/lib/ringzero paths, the migration of a 0.1 disk, /etc/hostname and the virtual /etc files, /tmp (T55) |
 | `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log, merge-legacy; record stores in /var/lib/ringzero/mem (M4.5, T55) |
 | `kernel/src/gram.rs` | tool-call grammar: byte automaton from the tool schemas, vocab trie, logit mask (M4.7a) |
+| `kernel/src/docstate.rs` | document states: `/read`, the cache in /var/lib/ringzero/cache/docs (keys, load checks, cap, eviction) (M4.8c) |
 | `kernel/src/hib.rs` | hibernation: /hibernate, poweroff hook, resume at boot (image format in snap.rs) (M4.7b) |
 | `kernel/src/wasm.rs` | WASI runtime (M5b): `!wasm`/`!run`, `run_wasm`, wasmi engine per run, fuel slices (budget, Ctrl-C), WASI preview1 host functions over fs.rs; the wasm memory slot is in `mem.rs` |
 | `tools/wasm_apps.sh`, `tools/wasm/rztest/` | `make wasm-apps`: builds rztest (our WASI checks, also `bench`, `loop`, `mem`, `escape`), uutils coreutils and ripgrep for wasm32-wasip1, fetches QuickJS-ng's `qjs-wasi.wasm` |

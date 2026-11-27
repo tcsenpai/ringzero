@@ -31,7 +31,7 @@ flowchart TB
         KMAIN["main.rs kmain<br/>boot sequence"]
         IDT["idt.rs<br/>exceptions, wake IPI, idle timer"]
         MEM["mem.rs<br/>bump arena, lower-half identity map,<br/>uncached MMIO map, 192 MiB kernel heap (linked_list_allocator,<br/>low-heap flag for wasm runs, M8),<br/>wasm slot: one linear memory, realloc in place (M5b)"]
-        BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through"]
+        BLK["blk.rs: virtio-blk (virtio-drivers)<br/>PCI config via 0xCF8, BARs identity-mapped UC,<br/>DMA bounce ring in the arena, polling,<br/>byte stream for fatfs, 1-sector cache, write-through,<br/>1 MiB read-ahead on sequential reads (M4.8c)"]
         FS["fs.rs: FAT32 at / (fatfs 0.4, alloc)<br/>path checks (absolute, no '..', 255 B), 64 KiB writes,<br/>ls cat write mkdir -p rm [-r] df sync (unmount + remount),<br/>append, truncate, streamed read/write, walk, mtime from the RTC"]
         PROC["procfs.rs: /proc (T54)<br/>read-only virtual files generated at read time:<br/>cpuinfo, meminfo, uptime, version, devices, kmsg, mounts,<br/>bus/pci/devices (PCI bus 0 via 0xCF8); writes -> EROFS"]
         SYSFS["sysfs.rs: /sys (T55)<br/>class/block/vda, bus/pci/devices/ADDR,<br/>devices/system/cpu, power/state (disk -> hibernate)"]
@@ -52,6 +52,7 @@ flowchart TB
         LLM["llm.rs<br/>golden self-test, bench, /fill, /gen, /prefill, tokenizer split,<br/>feed / generate, live token array,<br/>forward: prompt in blocks of B (32),<br/>M4.8b: prompt-lookup drafts, one verify pass,<br/>DeltaNet state copy for rollback"]
         SNAP["snap.rs: state snapshots<br/>point tree (delta nodes), 1 GiB pool of 1 MiB chunks,<br/>undo / redo / retry, branches, saves, /tree,<br/>thinning + replay (batched), eviction,<br/>boot snapshot cache (/var/lib/ringzero/bootsnap.bin, 35 MiB),<br/>hibernation image: tree + pool chunks, state hash"]
         GRAM["gram.rs: tool-call grammar (M4.7a)<br/>byte automaton from the tool schemas (names, keys,<br/>enums, integers, required, closing tags),<br/>vocab trie: ids sorted by bytes + prefix lengths (1.2 MiB),<br/>check the pick; on a reject logits -> -inf, pick again;<br/>T39: draft(): the text the grammar implies up to the<br/>model's next choice, tokenized, as the speculative draft;<br/>T28: at a decision token (tool name, optional parameter,<br/>enum, integer) the margin p1 - p2 of the softmax over the<br/>allowed tokens, read from the pick's logits row"]
+        DOC["docstate.rs: document states (M4.8c)<br/>/read PATH: file as a user turn + fixed reply,<br/>state of its tokens (ids, KV rows, R) cached in<br/>/var/lib/ringzero/cache/docs, key = boot key +<br/>context ids + file ids; 512 MiB cap, LRU"]
         HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff, disk to /sys/power/state<br/>-> /var/lib/ringzero/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
         IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/var/lib/ringzero/mem/index.bin)"]
@@ -118,6 +119,10 @@ flowchart TB
     GRAM -- "-inf on rejected logits, vocab bytes" --> TR
     SH -- "!set constrain on|off,<br/>!set confidence on|off" --> GRAM
     GRAM -- "last_conf(): min margin of the call (T28)<br/>-> [confidence] line, band: run / log / y/N first" --> AG
+    SH -- "/read PATH | clear" --> DOC
+    DOC -- "hit: load rows + R (state_parts), commit;<br/>miss: feed, then save" --> SNAP
+    DOC -- "miss: encode, feed (prefill)" --> LLM
+    DOC -- "cache/docs/KEY.bin, free space" --> FS
     SH -- "/hibernate [discard|status]" --> HIB
     SYS -- "poweroff: hibernate first" --> HIB
     KMAIN -- "boot: trie, resume" --> GRAM & HIB
@@ -331,6 +336,21 @@ Legend:
   ids, a sample hash of the model file, an engine build hash from build.rs (asm sources + KV flag), the KV element
   size and the context length. A hit loads it in 0.16-0.24 s; a miss prefills (5.8 s batched since M4.8, 26-40 s per token before) and
   writes it (2 s). The engine hash covers prefill.asm, so the M4.8 build misses once and rewrites the cache.
+- **Document states** (docstate.rs, M4.8c): `/read PATH` encodes a text file (64 KiB at most, without special
+  tokens) between a fixed user-turn head and a fixed assistant reply, closing the system turn first in a fresh
+  conversation, and commits it as a snapshot point. For 512 tokens or more the state of those tokens goes to
+  `/var/lib/ringzero/cache/docs/<fnv>.bin`: a 336-byte header (magic RZDS, version, boot key, context key, document
+  key, base position, token count, row bytes, planes, R bytes, FNV of the rest, the path), the token ids, rows
+  [base, base + n) of every K/V plane (`snap::state_parts`) and R. Context key = FNV over the token ids from the
+  boot prefix to the file, so an entry is valid only at the same position after the same context; then loading
+  the rows and R gives the prefill's state bit for bit. The load checks magic, keys, geometry and size before it
+  reads, the token ids after the first part and a word-wise FNV after R; a failure deletes the entry, restores the
+  current point if R was overwritten, and prefills. Writing a new entry deletes the older one of the same path
+  and context (the file changed) and evicts other-model entries, then the least recently used (a hit rewrites the
+  magic, refreshing the mtime), to stay within 512 MiB and keep 64 MiB free.
+  blk.rs reads ahead for it: fatfs reads a file one cluster per request (4 KiB here); a direct read that continues
+  the previous one fills a 1 MiB buffer in 64 KiB requests and the next reads copy from it, any write over those
+  sectors drops it (the 4B entry, 185 MiB: 1.4-1.7 s before, 0.56-0.76 s after; the boot cache hit halves too).
 - **Memory index** (memidx.rs): up to 4096 texts (2 KiB each, 1 MiB in all) with their embeddings as
   Q8_0 rows (int8 + fp16 block scales, the engine's weight layout; dim 1024 by default, `/index dim N` on an empty
   index). A search embeds the query and scores every row with one `tp_matmul_q8_0` on all cores, ranks by
