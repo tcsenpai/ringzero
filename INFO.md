@@ -86,7 +86,7 @@ Results: [docs/M45_RESULT.md](docs/M45_RESULT.md).
 Built-in manual (T22): [docs/MANUAL.md](docs/MANUAL.md) is a manual written for the model (26 short sections, one
 topic each, English, each with an `Asked as:` line of Italian and English wordings that is embedded but not shown).
 It is compiled into the kernel (`include_str!`) and indexed one section per memory-index entry, `[manual: TITLE]
-...`, in idle time at the first boot (26 entries, about 20 s of idle embedding); the entries are saved with the
+...`, in idle time at the first boot (27 entries, about 20 s of idle embedding); the entries are saved with the
 index, and at every boot (and on `/index clear`) indexed sections that differ from the kernel's manual are dropped
 and missing ones queued, so editing one section re-embeds only that one. Manual sections are ranked apart from the
 user's memory: they never take one of the slot's recalled lines or one of `recall`'s top 3. A message that asks how
@@ -98,7 +98,7 @@ user's message (or the query) is such a how-to question and the section scores c
 section titles. The system prompt and the boot prefix are unchanged. Results:
 [docs/T22_MANUAL_RESULT.md](docs/T22_MANUAL_RESULT.md).
 
-Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 26 sections' Q8_0
+Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 27 sections' Q8_0
 rows into the kernel (`include_bytes!`, 28316 bytes), so a fresh disk has the manual in its index at boot with no
 embedder work. Two passes, both in `make kernel`: pass 1 builds an ISO without vectors (`MANUAL_VECTORS=0
 ISO=build/manvec-pass1.iso`), `tools/manvec.py` boots it headless once (QEMU/KVM, no disk, guest RAM

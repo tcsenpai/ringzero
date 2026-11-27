@@ -103,6 +103,10 @@ Asked as: how do I search my notes, cercare nei file, search memory, indice, fin
 Asked as: is there a manual, c'e un manuale, documentation, documentazione, man page
 `/man TOPIC` searches this manual and prints the best sections, for example `/man ibernare` or `/man python`; `/man` alone lists the section titles. The agent finds the same sections with its `recall` tool.
 
+## Confidence of tool calls
+Asked as: what is the confidence line, cosa vuol dire confidence, why does it ask Run it, perche chiede conferma, turn off the confidence question
+Every tool call prints a `[confidence]` line: the smallest margin (0 to 1) between the model's best and second choice at the call's decisions (tool name, parameters, values), where it was, and what the kernel does. Below 0.80 a tool that changes the machine (write_file, mkdir, remember, set_setting, run_code, run_wasm) asks `Run it? [y/N]` first; only y runs it, any other answer tells the model the call was not run. A read-only tool runs with a notice to check its result. `!set confidence off` turns the line and the question off, `!set confidence on` back on (on at every boot). The 0.80 line is set when the system is built (`make iso CONF_ASK=N`, a percent).
+
 ## Speed and benchmarks
 Asked as: how fast is it, quanto e veloce, benchmark, tokens per second, speculative decoding
 `/bench` runs a 64-token decode benchmark (the conversation is restored after). `/prefill` times the boot prompt prefill. Every answer ends with a `[decode]` line with its tokens per second. `!set spec off` turns speculative decoding off (it speeds up answers that copy text from the conversation), `!set spec N` sets the longest draft.
