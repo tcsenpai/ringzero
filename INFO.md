@@ -64,7 +64,8 @@ same files. Familiar Linux names, plain `key: value` content (not byte-exact Lin
 | `/proc/bus/pci/devices` | PCI bus 0 from the config ports: `bus:dev.fn vendor:device class (code), driver` |
 
 Writes, mkdir, rm and rename under /proc fail with `read-only file system` (WASI: EROFS); `ls /` shows `proc/`.
-The file indexer does not walk it. The ls tool's description names the files.
+The file indexer does not walk it. The ls tool's description names the files. T54 results (also the round limit
+and the confidence change): [docs/T54_RESULT.md](docs/T54_RESULT.md).
 
 Disk (M4): a virtio-blk disk (`build/disk.img`, 512 MiB FAT32, made once by `make disk`) is mounted at `/` at
 boot; the banner prints its size and free space. Shell: `!ls [PATH]`, `!cat PATH`, `!write PATH TEXT` (`\n` =
