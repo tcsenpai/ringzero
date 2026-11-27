@@ -104,6 +104,43 @@ serial, PS/2, framebuffer.
 
 Experimental. It runs in QEMU/KVM with virtio devices; real hardware is on the roadmap. Expect rough edges.
 
+## Special thanks
+
+- **Alexey Fateev ([alesha-pro](https://github.com/alesha-pro))** for [llm.asm](https://github.com/alesha-pro/llm.asm),
+  an LLM inference engine written in assembly that boots on bare metal. ringzero's engine is llm.asm, extended
+  for Qwen3.5 (our fork: [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm)), and its thread pool comes
+  from llm.asm's bare-metal OS. Without it this project would not exist.
+- **Daeyeon Son** for [ProbeLogits](https://arxiv.org/abs/2604.11943) and Anima OS, which show what a kernel
+  can do when it can read the model's logits directly.
+
+## Credits
+
+Code taken from other projects:
+
+| What | From | License |
+|---|---|---|
+| Inference engine (`engine/`), thread-pool dispatch (`engine/smp.asm`), weight exporter (`tools/export_weights.py`) | [llm.asm](https://github.com/alesha-pro/llm.asm) by alesha-pro | MIT |
+| Python interpreter, built into the kernel | [MicroPython](https://github.com/micropython/micropython) 1.29.0 (with musl's libm from its tree) | MIT |
+| WebAssembly interpreter | [wasmi](https://github.com/wasmi-labs/wasmi) 2.0.3 | MIT / Apache-2.0 |
+| Bootloader | [Limine](https://github.com/limine-bootloader/limine) 11.2.1 | BSD-2-Clause |
+| Italian VNC keymap (copied at run time) | QEMU | GPL-2.0-or-later |
+
+Rust crates linked into the kernel: `limine`, `uart_16550`, `raw-cpuid`, `noto-sans-mono-bitmap`, `spin`,
+`linked_list_allocator`, [`virtio-drivers`](https://github.com/rcore-os/virtio-drivers) (rcore-os),
+[`fatfs`](https://github.com/rafalh/rust-fatfs) (rafalh), `wasmi`, and their dependencies.
+
+Programs on the data disk (fetched or built by `make wasm-apps`, not shipped in the repo):
+[uutils coreutils](https://github.com/uutils/coreutils), [ripgrep](https://github.com/BurntSushi/ripgrep),
+[jaq](https://github.com/01mf02/jaq), [SQLite](https://sqlite.org), [Lua](https://www.lua.org),
+[CPython](https://www.python.org) (WASI build by [brettcannon/cpython-wasi-build](https://github.com/brettcannon/cpython-wasi-build)),
+[QuickJS-ng](https://github.com/quickjs-ng/quickjs), [kibi](https://github.com/ilai-deutel/kibi); built with
+[wasi-sdk](https://github.com/WebAssembly/wasi-sdk) and [Binaryen](https://github.com/WebAssembly/binaryen).
+
+Models (downloaded by `make model`, not shipped): [Qwen3.5-2B and Qwen3.5-4B](https://huggingface.co/Qwen),
+[Qwen3-Embedding-0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) by the Qwen team, Apache-2.0.
+
+Versions, licenses and every transitive dependency: [INFO.md](INFO.md#license).
+
 ## License
 
 GPL-2.0-or-later. The vendored engine is MIT. Models are Apache-2.0 and are downloaded, not shipped.
