@@ -1,5 +1,7 @@
 # ringzero architecture (as of M4.7 constrained tool calls + hibernation, with M5 MicroPython, M5b WASI and M7 Q4 + Qwen3.5-4B, editions ringzero Qwen35@2b-Qwen3@0.6b (default), Qwen35@4b.q4-Qwen3@0.6b, ...)
 
+All diagrams of this page as one PDF: [ARCHITECTURE_DIAGRAMS.pdf](ARCHITECTURE_DIAGRAMS.pdf) (regenerate with `tools/arch_pdf.sh`, which also fails on any diagram that does not parse).
+
 ## Diagram
 
 ```mermaid
@@ -179,7 +181,7 @@ sequenceDiagram
     U->>S: "how much free memory?" (Ctrl-C polled between tokens)
     S->>A: ask(q)
     A->>A: fill >= 75% of 32768? compact first (see below)
-    A->>L: live state = current point (restored after /bench, /fill, /gen); at the boot prefix: close the system turn
+    A->>L: live state = current point (restored after /bench, /fill, /gen), at the boot prefix: close the system turn
     A->>L: encode user turn, feed (prefill), generate (stream to console)
     L-->>A: stop at </tool_call>, captured text (markup hidden on screen)
     A->>A: lenient parse + validate against the schema
@@ -187,7 +189,7 @@ sequenceDiagram
     T-->>A: "RAM total 4095 MiB, free 2057 MiB, ..."
     A->>L: <tool_response> turn, feed, generate
     L-->>U: "La memoria libera è di 2057 MiB."
-    A->>A: snap commit: save point #N (rows of the turn + DeltaNet state, ~21 MiB, 1-8 ms); Ctrl-C instead restores the previous point (~0.6 ms)
+    A->>A: snap commit: save point no. N (rows of the turn + DeltaNet state, ~21 MiB, 1-8 ms), Ctrl-C instead restores the previous point (~0.6 ms)
     Note over A: up to 4 tool rounds per user turn, poweroff/reboot ask y/N at the shell first
 ```
 
@@ -205,9 +207,9 @@ sequenceDiagram
     A->>D: slot(q)
     D->>D: facts, newest first, within 120 tok
     D->>X: embed the queued memory texts, then search(q): top 4
-    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...); of the top 4 keep cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars, not q, at most 3, within 200 tok (each candidate logged)
+    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...), of the top 4 keep cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars, not q, at most 3, within 200 tok (each candidate logged)
     D-->>A: "[memory from earlier conversations, ...]\n- user_name: Cris\n- the user said earlier: ...\n\n" (logged: ids, cos, tokens, ms)
-    A->>D: on_user(q): journal 'U' record; "[said] q" queued when the turn ends (statements with a first-person word, and only if no tool but remember / forget / recall ran)
+    A->>D: on_user(q): journal 'U' record, "[said] q" queued when the turn ends (statements with a first-person word, and only if no tool but remember / forget / recall ran)
     A->>L: user turn = slot + q, then the usual tool loop
     A->>D: on_tool / on_answer: journal 'T' / 'A' records
 ```
@@ -244,9 +246,9 @@ sequenceDiagram
     participant L as llm.rs + engine
     A->>L: internal user turn "summarize facts, preferences, open tasks, tool results (<= 120 words)"
     L-->>A: summary (at most 300 tokens, streamed, captured)
-    A->>L: restore root #0 (boot prefix: tools + system prompt, without the closing <|im_end|>); the current point stays as pre-compact-N
+    A->>L: restore root no. 0 (boot prefix: tools + system prompt, without the closing <|im_end|>), the current point stays as pre-compact-N
     A->>L: feed "Summary of the earlier part of this session ... trust them: SUMMARY<|im_end|>" (inside the system turn) + last 2 exchanges verbatim (<= 3000 tok)
-    A->>A: save the rebuilt context as point [compact N] (stored under #0, /undo goes back to pre-compact-N); Ctrl-C restores the current point
+    A->>A: save the rebuilt context as point [compact N] (stored under no. 0, /undo goes back to pre-compact-N), Ctrl-C restores the current point
     Note over A: DeltaNet state cannot be cropped, so the context is rebuilt from the snapshot.<br/>The raw transcript (64 KiB ring) is kept for /history. Every compaction is logged (fill before/after, summary tokens, ms).<br/>agentd journals the summary and puts a memory slot in front of the next user turn (the fix for the M2.5 recall failure).
 ```
 
