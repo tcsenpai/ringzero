@@ -37,11 +37,11 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
 │                           └── T34: Beta release gate (circular)
+✓ 🟠 GitHub Pages site from the branding kit [E1]
 ○ 🟠 Branding: boot banner overhaul, logo palette, VNC password ringzero [E1]
 │   ├── T34: Beta release gate (circular)
-│   ├── ○ 🟠 Shell colors by role (serial + framebuffer), !set color [E1] [blocked by T47]
-│   │   └── T34: Beta release gate (circular)
-│   └── ✓ 🟠 GitHub Pages site from the branding kit [E1] [blocked by T47]
+│   └── ○ 🟠 Shell colors by role (serial + framebuffer), !set color [E1] [blocked by T47]
+│       └── T34: Beta release gate (circular)
 ✓ 🟠 agentd memory slot relevance fix (before beta) [E1]
 │   └── T34: Beta release gate (circular)
 ✓ 🟠 Compaction recall [E1]
