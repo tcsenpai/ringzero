@@ -379,6 +379,7 @@ Memory index, from the shell:
 | `tools/hf_prefix.py` | renders the agent prefix with the HF chat template, compares token ids with the kernel |
 | `tools/kbdtest.py`, `tools/vnckeys.py` | keyboard tests: PS/2 via QEMU `sendkey`, VNC as a keysym-only client |
 | `tools/keymaps/it-altgr` | AltGr entries appended to QEMU's `it` VNC keymap (`make run-remote`) |
+| `site/`, `.github/workflows/pages.yml` | the project web page (static HTML + CSS, images copied from `assets/branding/`); the workflow deploys `site/` to GitHub Pages, run by hand only (`workflow_dispatch`), not published yet |
 
 ## License
 

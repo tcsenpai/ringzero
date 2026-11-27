@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ringzero: an operating system where the AI is part of the kernel</title>
+<meta name="description" content="ringzero boots on bare x86-64 and runs two models in ring 0 on one assembly inference engine: Qwen3.5 as the system agent and Qwen3-Embedding-0.6B as semantic memory.">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="icon" href="img/favicon-64.png" type="image/png">
+<link rel="stylesheet" href="style.css">
+<!-- og:image must be an absolute URL for most crawlers: replace with the final Pages URL when publishing -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="ringzero">
+<meta property="og:description" content="An operating system where the AI is part of the kernel. Two models in ring 0 on one assembly inference engine.">
+<meta property="og:image" content="img/chip-wide.jpg">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="720">
+<meta property="og:image:alt" content="A red R0 chip in the middle of a CPU package">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="ringzero">
+<meta name="twitter:description" content="An operating system where the AI is part of the kernel. Two models in ring 0 on one assembly inference engine.">
+<meta name="twitter:image" content="img/chip-wide.jpg">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <nav class="wrap nav" aria-label="Main">
+    <a class="brand" href="#top"><img src="img/logo-256.png" alt="" width="28" height="28"> ringzero</a>
+    <ul>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#try">Try it</a></li>
+      <li><a href="#editions">Editions</a></li>
+      <li><a href="https://github.com/tcsenpai/ringzero">GitHub</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+
+<section class="hero" id="top">
+  <img class="hero-bg" src="img/chip-wide.jpg" alt="" width="1280" height="720">
+  <div class="wrap hero-inner">
+    <img class="logo" src="img/logo-256.png" alt="ringzero logo: a red R0 die on a CPU package" width="128" height="128">
+    <h1>ringzero</h1>
+    <p class="tagline">An operating system where the AI is part of the kernel.</p>
+    <p class="lede">It boots on bare x86-64, with no Linux underneath, and runs two models in ring 0, next to the
+      scheduler and the drivers, on one shared inference engine written in assembly.</p>
+    <p class="buttons">
+      <a class="btn primary" href="https://github.com/tcsenpai/ringzero">GitHub repo</a>
+      <a class="btn" href="#try">Try it</a>
+    </p>
+  </div>
+</section>
+
+<section id="two-models" class="wrap split">
+  <div>
+    <h2>Two models in ring 0</h2>
+    <p>A <strong>language model</strong> (Qwen3.5) is the system agent you talk to at the shell: it answers, reads and
+      writes your files and runs programs through typed kernel tools.</p>
+    <p>An <strong>embedding model</strong> (Qwen3-Embedding-0.6B) gives the system a semantic memory: it indexes your
+      notes, your files and your past conversations, so the OS can find things by meaning, not by file name.</p>
+    <p>The second model is what lets the first one remember. The language model only sees its context window; the
+      embedder searches everything saved on the disk, and the kernel, not the model, decides which few lines go into
+      the context. The memory stays small and on topic, and it survives a reboot.</p>
+    <p>Both run on the same engine, in the kernel. The question the project asks is what an OS looks like when the
+      models are not apps on top of it, but parts of it.</p>
+  </div>
+  <figure>
+    <img src="img/two-models-layers.jpg" alt="Two dies on one board, a large red one and a small gold one, under stacked glass layers" width="1376" height="768" loading="lazy">
+  </figure>
+</section>
+
+<section id="features" class="wrap">
+  <h2>What it does</h2>
+  <div class="cards">
+    <article class="card">
+      <img src="img/chip-terminal.jpg" alt="A chip connected to a terminal screen" width="1280" height="720" loading="lazy">
+      <h3>Talk to the machine</h3>
+      <p>Plain text goes to the system agent, which calls typed kernel tools: files, memory, CPU cores, logs,
+        settings, power. Anything that deletes or powers off asks you first.</p>
+    </article>
+    <article class="card">
+      <img src="img/memory-constellation.jpg" alt="Points of light joined into a constellation above a chip" width="1280" height="720" loading="lazy">
+      <h3>Semantic memory, built in</h3>
+      <p>The embedding model indexes every text file you write and every session, in the background while you are
+        idle, into an index saved on the disk. "what do I need to buy?" finds the shopping list you wrote last week.
+        <code>/search</code> queries it directly.</p>
+    </article>
+    <article class="card">
+      <img src="img/snapshots-ghosts.jpg" alt="Faded copies of a chip trailing behind it, like snapshots" width="1280" height="720" loading="lazy">
+      <h3>Undo for the AI</h3>
+      <p>Every turn is a snapshot of the model's state: <code>/undo</code>, <code>/redo</code>, <code>/retry</code>,
+        named branches, save and load. Going back takes under a millisecond.</p>
+    </article>
+    <article class="card">
+      <img src="img/hibernate-case.jpg" alt="A chip resting in a closed case" width="1280" height="720" loading="lazy">
+      <h3>Hibernate and resume</h3>
+      <p>Power off and the whole conversation, with its history tree, is written to disk. The next boot picks it up
+        exactly where it was, checked by a state hash.</p>
+    </article>
+  </div>
+  <ul class="facts">
+    <li><h3>It remembers you</h3>
+      <p>Facts you tell it ("my name is Anna") and summaries of past sessions are kept on the disk and come back
+        after a reboot.</p></li>
+    <li><h3>It knows its own manual</h3>
+      <p>"come faccio a ibernare?" is answered from the built-in manual, which the kernel indexes and puts in front
+        of the question. <code>/man TOPIC</code> searches it directly.</p></li>
+    <li><h3>Tool calls that cannot break</h3>
+      <p>While the model writes a tool call, the kernel only lets through tokens that keep it valid against the
+        tool's schema. In the tests: zero malformed calls.</p></li>
+    <li><h3>Unsure calls ask first</h3>
+      <p>Each tool call shows how sure the model was; unsure ones that change the machine ask.</p></li>
+    <li><h3>Real software</h3>
+      <p>python3 (CPython 3.15), sqlite3, jq, Lua, QuickJS, ripgrep, the coreutils and a text editor run from
+        <code>/bin</code> in a WASI sandbox. MicroPython is built in for one-liners (<code>!py 17*23</code>).</p></li>
+    <li><h3>Fast where it matters</h3>
+      <p>The prompt is read in blocks (about 230 tokens/s on the 2B). Text copied from the conversation is written
+        about 2.5x faster, and tool calls about 1.8x faster, with the same output.</p></li>
+  </ul>
+</section>
+
+<section id="shell" class="wrap">
+  <h2>At the shell</h2>
+  <p>Plain text goes to the agent; the kernel prints each tool call and its result.</p>
+  <figure class="term">
+<pre><code><span class="p">ringzero[main]&gt;</span> count the lines of /demo/stats.py with wc
+<span class="t">[tool] run_wasm(path=wc, args=-l /demo/stats.py)</span>
+<span class="t">[tool] -&gt; 24 /demo/stats.py</span>
+<span class="d">[exit 0]</span></code></pre>
+    <figcaption>From the <a href="https://github.com/tcsenpai/ringzero#readme">README</a>.</figcaption>
+  </figure>
+  <p>A call the model was unsure about, on a tool that writes to the disk:</p>
+  <figure class="term">
+<pre><code><span class="p">ringzero[main]&gt;</span> crea il file /notes/x.md con scritto # titolo
+<span class="t">write_file(path=/notes/x.md, content=# titolo)</span>
+<span class="r">[confidence] min margin 0.16 at 'tool name' ('write' vs 'mkdir') -&gt; ask y/N</span></code></pre>
+    <figcaption>Excerpt from the live check in
+      <a href="https://github.com/tcsenpai/ringzero/blob/main/docs/T28_RESULT.md">docs/T28_RESULT.md</a> (4B q4).
+      Answered n: the model gets <code>error: not run</code> and the file is not written.</figcaption>
+  </figure>
+</section>
+
+<section id="editions" class="wrap">
+  <h2>Which model</h2>
+  <p>Pick one at build time with <code>MODEL</code> and <code>QUANT</code>. All of them run on the same engine, with
+    Qwen3-Embedding-0.6B next to them for memory.</p>
+  <div class="table">
+    <table>
+      <thead><tr><th scope="col">Option</th><th scope="col">Good for</th><th scope="col" class="n">Guest RAM</th><th scope="col" class="n">Speed (tokens/s)</th></tr></thead>
+      <tbody>
+        <tr><td data-label="Option"><code>MODEL=4b QUANT=q4</code></td><td data-label="Good for"><strong>recommended</strong>: best tool use per GB</td><td data-label="Guest RAM" class="n">8 GB</td><td data-label="Speed (tokens/s)" class="n">about 20</td></tr>
+        <tr><td data-label="Option"><code>MODEL=4b QUANT=q8</code></td><td data-label="Good for">best quality</td><td data-label="Guest RAM" class="n">8 GB</td><td data-label="Speed (tokens/s)" class="n">about 14</td></tr>
+        <tr><td data-label="Option"><code>MODEL=2b</code> (default)</td><td data-label="Good for">fastest, smaller machines</td><td data-label="Guest RAM" class="n">6 GB</td><td data-label="Speed (tokens/s)" class="n">about 34</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Needs an x86-64 CPU with AVX2, FMA and F16C (most desktop and laptop CPUs since 2015). How the
+    recommendation was measured:
+    <a href="https://github.com/tcsenpai/ringzero/blob/main/docs/MODEL_CHOICE.md">docs/MODEL_CHOICE.md</a>.</p>
+</section>
+
+<section id="built" class="wrap split">
+  <figure>
+    <img src="img/chip-board.jpg" alt="A chip mounted on a circuit board" width="1280" height="720" loading="lazy">
+  </figure>
+  <div>
+    <h2>How it is built</h2>
+    <p>A small Rust <code>no_std</code> kernel booted by Limine, with the inference engine written in assembly
+      (<a href="https://github.com/alesha-pro/llm.asm">llm.asm</a> by alesha-pro, extended for Qwen3.5) linked in as
+      objects. Drivers: virtio-blk, FAT32, serial, PS/2, framebuffer.</p>
+    <ul class="links">
+      <li><a href="https://github.com/tcsenpai/ringzero/blob/main/docs/ARCHITECTURE.md">docs/ARCHITECTURE.md</a>: the architecture diagram</li>
+      <li><a href="https://github.com/tcsenpai/ringzero/blob/main/docs/ARCHITECTURE_DIAGRAMS.pdf">ARCHITECTURE_DIAGRAMS.pdf</a>: all diagrams as one PDF</li>
+      <li><a href="https://github.com/tcsenpai/ringzero/blob/main/INFO.md">INFO.md</a>: every command, the measurements, the source layout, the licenses</li>
+      <li><a href="https://github.com/tcsenpai/ringzero/blob/main/docs/ROADMAP.md">docs/ROADMAP.md</a>: what is done and what comes next</li>
+    </ul>
+  </div>
+</section>
+
+<section id="try" class="wrap">
+  <h2>Try it</h2>
+  <p>You need a Linux machine with KVM and about 16 GB of RAM. The full list of build tools is in
+    <a href="https://github.com/tcsenpai/ringzero/blob/main/INFO.md#build-and-run">INFO.md</a>.</p>
+  <figure class="term cmds">
+<pre><code>make model MODEL=4b QUANT=q4     <span class="d"># download and convert Qwen3.5-4B + the embedder</span>
+make iso MODEL=4b QUANT=q4       <span class="d"># build the bootable image</span>
+make disk                        <span class="d"># a 512 MiB data disk for your files and memory</span>
+make wasm-apps                   <span class="d"># python3, sqlite3, jq, lua, ... onto the disk</span>
+make run-local MODEL=4b QUANT=q4 <span class="d"># boot it in a QEMU window</span></code></pre>
+  </figure>
+  <p>Then, at the <code>ringzero[main]&gt;</code> prompt:</p>
+  <figure class="term">
+<pre><code>my name is Anna and my favourite number is 4711
+!write /notes/todo.txt buy milk
+what do I need to buy?
+create a table in /shop.db with sqlite, add three products with prices, and tell me the most expensive
+!run python3
+/undo
+!poweroff</code></pre>
+  </figure>
+  <p>Boot again and ask "what is my name?". More examples:
+    <a href="https://github.com/tcsenpai/ringzero/blob/main/docs/DEMOS.md">docs/DEMOS.md</a>.</p>
+  <div class="callout">
+    <h3>Download</h3>
+    <p>Prebuilt images are coming with the beta. Until then, build from source:
+      <a href="https://github.com/tcsenpai/ringzero">the repository</a>. Beta notes:
+      <a href="https://github.com/tcsenpai/ringzero/blob/main/docs/BETA.md">docs/BETA.md</a>.</p>
+  </div>
+</section>
+
+<section id="status" class="wrap">
+  <h2>Status</h2>
+  <p>Experimental. It runs in QEMU/KVM with virtio devices; real hardware is on the roadmap. Expect rough edges.</p>
+</section>
+
+<section id="related" class="wrap">
+  <h2>Related work</h2>
+  <ul class="plain">
+    <li>D. Son, <em>ProbeLogits: Kernel-Level LLM Inference Primitives for AI-Native Operating Systems</em>, 2026,
+      <a href="https://arxiv.org/abs/2604.11943">arXiv:2604.11943</a>. Anima OS, a bare-metal x86-64 Rust kernel with
+      LLM inference inside, reads the model's next-token logits as a kernel primitive for classifying agent actions.
+      ringzero acts on the logits in the kernel too: the tool-call grammar mask, and the confidence of each tool call.</li>
+    <li><a href="https://github.com/hardrave/NIGHTRUN">NIGHTRUN</a>, 2026: a UEFI application in Rust that runs
+      Qwen3-4B (Q4_K_M) with its own inference kernels before any OS loads, as a chat. ringzero is a kernel with an
+      agent, tools, memory and programs around the model.</li>
+  </ul>
+</section>
+
+<section id="thanks" class="wrap">
+  <h2>Special thanks</h2>
+  <ul class="plain">
+    <li><strong>Alexey Fateev (<a href="https://github.com/alesha-pro">alesha-pro</a>)</strong> for
+      <a href="https://github.com/alesha-pro/llm.asm">llm.asm</a>, an LLM inference engine written in assembly that
+      boots on bare metal. ringzero's engine is llm.asm, extended for Qwen3.5 (our fork:
+      <a href="https://github.com/tcsenpai/llm.asm">tcsenpai/llm.asm</a>), and its thread pool comes from llm.asm's
+      bare-metal OS. Without it this project would not exist.</li>
+    <li><strong>Daeyeon Son</strong> for <a href="https://arxiv.org/abs/2604.11943">ProbeLogits</a> and Anima OS,
+      which show what a kernel can do when it can read the model's logits directly.</li>
+  </ul>
+</section>
+
+<section id="credits" class="wrap">
+  <h2>Credits</h2>
+  <p>Code from other projects: the inference engine, thread-pool dispatch and weight exporter from
+    <a href="https://github.com/alesha-pro/llm.asm">llm.asm</a> (MIT),
+    <a href="https://github.com/micropython/micropython">MicroPython</a> (MIT),
+    <a href="https://github.com/wasmi-labs/wasmi">wasmi</a> (MIT / Apache-2.0) and the
+    <a href="https://github.com/limine-bootloader/limine">Limine</a> bootloader (BSD-2-Clause). The programs in
+    <code>/bin</code> are fetched or built by <code>make wasm-apps</code>, and the models (Qwen3.5-2B, Qwen3.5-4B and
+    Qwen3-Embedding-0.6B by the Qwen team, Apache-2.0) are downloaded by <code>make model</code>; neither is shipped
+    in the repo.</p>
+  <p>The full list, with versions and licenses:
+    <a href="https://github.com/tcsenpai/ringzero#credits">README credits</a> and
+    <a href="https://github.com/tcsenpai/ringzero/blob/main/INFO.md#license">INFO.md</a>.</p>
+</section>
+
+<section id="license" class="wrap">
+  <h2>License</h2>
+  <p>GPL-2.0-or-later. The vendored engine is MIT. Models are Apache-2.0 and are downloaded, not shipped.</p>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><img src="img/logo-256.png" alt="" width="24" height="24"> ringzero is on
+      <a href="https://github.com/tcsenpai/ringzero">GitHub</a>.</p>
+    <p class="dim">Brand images were generated by the project author with Lumo.</p>
+  </div>
+</footer>
+</body>
+</html>
