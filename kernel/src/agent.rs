@@ -21,9 +21,14 @@ never in the language of tool output or memory notes, briefly, in plain text wit
 a MicroPython sandbox without files: use ls, cat and run_wasm for files and programs.";
 
 // JSON lines exactly as the HF template's `tool | tojson` renders them (", " and ": " separators).
-// T55: 14 tools in the prompt; meminfo, cpuinfo, list_cores and uptime are hidden aliases (SPECS, ALIASES).
-const TOOLS: [&str; 14] = [
+// T55: the information tools answer with the file that holds the state (FILES); hiding them failed the tooleval gate
+// (docs/T55_RESULT.md), so they stay in the prompt and name their file.
+const TOOLS: [&str; 18] = [
+    r#"{"type": "function", "function": {"name": "meminfo", "description": "Memory of this machine: the content of /proc/meminfo (MemTotal, MemFree, MemAvailable in kB).", "parameters": {"type": "object", "properties": {}}}}"#,
+    r#"{"type": "function", "function": {"name": "cpuinfo", "description": "CPU model, number of cores, clock and features: the content of /proc/cpuinfo.", "parameters": {"type": "object", "properties": {}}}}"#,
+    r#"{"type": "function", "function": {"name": "list_cores", "description": "List the CPU cores and what each one does (/sys/devices/system/cpu).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "read_log", "description": "Last n lines of the kernel log.", "parameters": {"type": "object", "properties": {"n": {"type": "integer", "description": "number of lines, default 10"}}}}}"#,
+    r#"{"type": "function", "function": {"name": "uptime", "description": "Time since boot: the content of /proc/uptime.", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "poweroff", "description": "Shut down the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "reboot", "description": "Reboot the machine (asks the user to confirm).", "parameters": {"type": "object", "properties": {}}}}"#,
     r#"{"type": "function", "function": {"name": "set_setting", "description": "Change a system setting. temperature: sampling temperature, 0 = greedy. cores: CPU cores used for inference. keyboard: PS/2 keyboard layout, us or it.", "parameters": {"type": "object", "properties": {"key": {"type": "string", "enum": ["temperature", "cores", "keyboard"]}, "value": {"type": "string"}}, "required": ["key", "value"]}}}"#,
@@ -44,10 +49,13 @@ pub(crate) enum Ty {
     Str(&'static [&'static str]), // allowed values, empty = any
 }
 
-// (name, params (name, type, required)): the TOOLS in their order, then the hidden aliases (not in the prompt; the
-// validator and the grammar still accept them)
+// (name, params (name, type, required)), same order and content as TOOLS
 pub(crate) const SPECS: [(&str, &[(&str, Ty, bool)]); 18] = [
+    ("meminfo", &[]),
+    ("cpuinfo", &[]),
+    ("list_cores", &[]),
     ("read_log", &[("n", Ty::Int, false)]),
+    ("uptime", &[]),
     ("poweroff", &[]),
     ("reboot", &[]),
     ("set_setting", &[("key", Ty::Str(&["temperature", "cores", "keyboard"]), true), ("value", Ty::Str(&[]), true)]),
@@ -61,10 +69,6 @@ pub(crate) const SPECS: [(&str, &[(&str, Ty, bool)]); 18] = [
     ("rm", &[("path", Ty::Str(&[]), true)]),
     ("run_code", &[("code", Ty::Str(&[]), true)]), // M5
     ("run_wasm", &[("path", Ty::Str(&[]), true), ("args", Ty::Str(&[]), false)]), // M5b
-    ("meminfo", &[]),
-    ("cpuinfo", &[]),
-    ("list_cores", &[]),
-    ("uptime", &[]),
 ];
 
 const TEMPLATE_TOOLS_HEAD: &str = "<|im_start|>system\n# Tools\n\nYou have access to the following functions:\n\n<tools>";
@@ -450,8 +454,8 @@ fn arg<'a>(c: &Call<'a>, k: &str) -> Option<&'a str> {
     c.args[..c.n].iter().find(|(a, _)| *a == k).map(|(_, v)| *v)
 }
 
-/// T55: the tools that left the prompt and the file each one reads.
-const ALIASES: [(&str, &str); 4] = [("meminfo", "/proc/meminfo"), ("cpuinfo", "/proc/cpuinfo"),
+/// T55: the information tools and the file each one reads.
+const FILES: [(&str, &str); 4] = [("meminfo", "/proc/meminfo"), ("cpuinfo", "/proc/cpuinfo"),
     ("list_cores", "/sys/devices/system/cpu"), ("uptime", "/proc/uptime")];
 
 /// Tool calls of the current turn that changed the machine (printed by /undo, which cannot revert them).
@@ -460,12 +464,9 @@ static mut FXT: SBuf<160> = SBuf::new();
 fn exec<const N: usize>(c: &Call, o: &mut SBuf<N>) {
     let fx = unsafe { &mut *core::ptr::addr_of_mut!(FXT) };
     match c.name {
-        // T55: hidden aliases, answered with the file that replaces them
+        // T55: the information tools answer with the file that holds the state
         "meminfo" | "cpuinfo" | "list_cores" | "uptime" => {
-            let file = ALIASES.iter().find(|a| a.0 == c.name).map_or("", |a| a.1);
-            println!("{}[tool] {} (hidden alias of {}){}", crate::console::sgr(crate::console::TOOL), c.name, file,
-                crate::console::sgr(crate::console::RESET));
-            klog!(b'D', "agent: {} called (hidden alias of {})", c.name, file);
+            let file = FILES.iter().find(|a| a.0 == c.name).map_or("", |a| a.1);
             if c.name == "list_cores" {
                 for f in ["online", "inference"] {
                     let v = crate::sysfs::read(&alloc::format!("devices/system/cpu/{}", f)).unwrap_or_default();
