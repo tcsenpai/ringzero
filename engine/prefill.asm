@@ -15,6 +15,9 @@
 ;   int64 prefill_init(uint64 max_b)     allocate the block buffers (once, before the snapshot pool), pick the
 ;                                        AVX-VNNI batch matmul when the CPU has it (matmul.asm, bmm_vnni)
 ;   void  transformer_prefill(const uint32 *toks, uint64 n /*1..max_b*/, uint64 pos0, int compute_logits)
+;                                        compute_logits: 0 none, 1 the last token -> BUF_LOGITS, 2 (M4.8b, the
+;                                        speculative verifier) every token from row pf_lg0 on -> pf_lg_ptr rows
+;                                        (stride pf_lg_stride bytes), with one batched LM-head matmul
 
 bits 64
 default rel
@@ -55,6 +58,9 @@ global prefill_init
 global transformer_prefill
 global pf_tsc_mm
 global pf_tsc_all
+global pf_lg_ptr
+global pf_lg_stride
+global pf_lg0
 
 section .text
 
@@ -647,6 +653,8 @@ transformer_prefill:
     mov     [rbx + CTX_BUF_Q], rax
     mov     rax, [rsp + L_SAVEA]
     mov     [rbx + CTX_BUF_ATT_OUT], rax
+    cmp     qword [rsp + L_LOGITS], 2
+    je      .all_logits
     cmp     qword [rsp + L_LOGITS], 0
     je      .done
 
@@ -671,6 +679,36 @@ transformer_prefill:
     mov     rcx, [rbx + CTX_VOCAB_SIZE]
     mov     r8,  [rbx + CTX_DIM]
     call    tp_matmul_q8_0
+    jmp     .done
+
+    ; M4.8b: rows pf_lg0..n-1: final RMSNorm in place (as transformer_forward on BUF_X), then the LM head for
+    ; all of them in one batched matmul (bit-identical to tp_matmul_q8_0 per row, like the layer matmuls)
+.all_logits:
+    mov     r12, [rel pf_lg0]
+.fn_lp:
+    cmp     r12, [rsp + L_N]
+    jae     .fn_done
+    ROW     rdi, r12, pf_x, pf_sx
+    mov     rsi, rdi
+    mov     rdx, [rbx + CTX_FINAL_NORM_PTR]
+    mov     rcx, [rbx + CTX_DIM]
+    vmovss  xmm0, [rbx + CTX_RMS_EPS]
+    call    rmsnorm_avx2
+    inc     r12
+    jmp     .fn_lp
+.fn_done:
+    mov     rax, [rel pf_sx]
+    mov     [rel bmm_xstride], rax
+    mov     rax, [rel pf_lg_stride]
+    mov     [rel bmm_ostride], rax
+    mov     rdi, [rbx + CTX_LM_HEAD_PTR]
+    ROW     rsi, [rel pf_lg0], pf_x, pf_sx
+    mov     rdx, [rel pf_lg_ptr]
+    mov     rcx, [rbx + CTX_VOCAB_SIZE]
+    mov     r8,  [rbx + CTX_DIM]
+    mov     r9,  [rsp + L_N]
+    sub     r9,  [rel pf_lg0]
+    call    tp_matmul_q8_0_batch
 
 .done:
     rdtsc
@@ -706,4 +744,7 @@ pf_sgu:   resq 1
 pf_maxb:  resq 1
 pf_tsc_mm:  resq 1                      ; TSC in the batched matmuls (quantize + dispatch + wait)
 pf_tsc_all: resq 1                      ; TSC in transformer_prefill
+pf_lg_ptr:    resq 1                    ; M4.8b: logits rows of compute_logits = 2 (llm.rs allocates them)
+pf_lg_stride: resq 1                    ; bytes between two rows
+pf_lg0:       resq 1                    ; first block row that gets logits
 %endif

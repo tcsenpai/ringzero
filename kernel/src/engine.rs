@@ -21,6 +21,10 @@ unsafe extern "C" {
     pub static mut pf_tsc_mm: u64;
     /// 1 = AVX-VNNI batched matmul kernel, 0 = AVX2 (both bit-identical to the per-token matmul)
     pub static mut bmm_vnni: u32;
+    /// M4.8b: transformer_prefill(.., compute_logits = 2) writes the logits of rows pf_lg0..n-1 here
+    pub static mut pf_lg_ptr: u64;
+    pub static mut pf_lg_stride: u64;
+    pub static mut pf_lg0: u64;
     pub fn tok_encode_bpe(text: *const u8, len: u64, out: *mut u32, max: u64) -> u64;
     pub fn tok_build_chat_prompt(prompt: *const u8, out: *mut u32, max: u64, raw: u64, think: u64) -> u64;
     pub fn tok_write_stdout(token: u64);

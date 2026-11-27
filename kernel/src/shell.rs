@@ -100,7 +100,7 @@ const fn c(name: &'static str, pre: u8, args: &'static [&'static str], help: &'s
     Cmd { name, pre, args, help }
 }
 
-const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain"];
+const SETTINGS: &[&str] = &["temperature", "cores", "keyboard", "think", "compact", "snappool", "consolidate", "slot", "constrain", "spec"];
 const CMDS: &[Cmd] = &[
     c("help", BANG | SLASH, &[], "this help"),
     c("mem", BANG, &[], "memory: total, free, model, engine arena"),
@@ -109,7 +109,7 @@ const CMDS: &[Cmd] = &[
     c("log", BANG, &[], "[N]  last N kernel log lines (20)"),
     c("uptime", BANG, &[], "time since boot"),
     c("kbd", BANG, &["us", "it"], "[us|it]  PS/2 keyboard layout"),
-    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar)"),
+    c("set", BANG, SETTINGS, "<key> <value>  temperature, cores, keyboard, think, compact (percent), snappool (MiB), consolidate (idle s, 0 = off), slot (tokens, 0 = off), constrain (on|off: tool-call grammar), spec (on|off|N: speculative decoding, N = longest draft)"),
     c("park", BANG, &["off", "idle"], "off|idle|<usec>  worker core parking"),
     c("stats", BANG | SLASH, &[], "threads, parking, arena, context"),
     c("ls", BANG, &[], "[PATH]  list a directory on the disk (default /)"),
@@ -153,6 +153,7 @@ const CMDS: &[Cmd] = &[
     c("fill", SLASH, &[], "<tokens>  prefill + decode speed at that context fill"),
     c("gen", SLASH, &[], "<n> <text>  debug: greedy ids + logit margins"),
     c("prefill", SLASH, &["avx2", "vnni"], "[B] [avx2|vnni]  prompt block (1 = per token, 64 max) and matmul kernel: time the boot prefix + state hash"),
+    c("spec", SLASH, &[], "[N]  debug: speculative verifier logits for N positions (16) vs one transformer_forward each, and their times"),
 ];
 
 fn pre_of(b: u8) -> u8 {
@@ -432,6 +433,17 @@ pub fn set_setting<const N: usize>(key: &str, val: &str, o: &mut SBuf<N>) -> boo
             let on = matches!(val, "on" | "1" | "true");
             unsafe { crate::gram::ON = on };
             let _ = write!(o, "constrain = {}", if on { "on (tool calls follow the tool schemas)" } else { "off (the grammar only checks tool calls)" });
+            true
+        }
+        "spec" => {
+            match val.parse::<usize>() {
+                Ok(k) if (1..llm::SPEC_ROWS).contains(&k) => unsafe { (llm::SPEC_ON, llm::SPEC_K) = (true, k) },
+                _ => unsafe { llm::SPEC_ON = matches!(val, "on" | "true") },
+            }
+            let _ = write!(o, "spec = {}", if !unsafe { llm::SPEC_ON } { "off (one token per pass)" } else if llm::spec_ok() { "on" } else { "on, but not available on this build" });
+            if unsafe { llm::SPEC_ON } {
+                let _ = write!(o, " (prompt lookup, drafts up to {} tokens)", unsafe { llm::SPEC_K });
+            }
             true
         }
         "think" => {
@@ -741,6 +753,11 @@ pub fn run() -> ! {
             "prefill" => {
                 snap::invalidate(); // the bench prefills from position 0
                 llm::prefill_bench(arg, agent::prefix_tokens());
+                agent::resume();
+            }
+            "spec" => {
+                snap::invalidate(); // the check runs from position 0
+                llm::spec_check(&agent::prefix_tokens()[..200], arg.parse::<usize>().unwrap_or(llm::SPEC_ROWS));
                 agent::resume();
             }
             "gen" => {

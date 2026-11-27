@@ -1,7 +1,7 @@
 # ringzero build. Run on the Linux build box (needs cargo, nasm, xorriso, git, cc, qemu).
 LIMINE_TAG ?= v11.2.1-binary
 LIMINE_URL ?= https://codeberg.org/Limine/Limine.git
-# Model choice (README "Which model for which machine"): MODEL=2b|4b, QUANT=q8|q4|q4all.
+# Model choice (INFO.md "Which model for which machine"): MODEL=2b|4b, QUANT=q8|q4|q4all.
 #   q8     every matrix Q8_0 (.asmbin v3)
 #   q4     MLP (gate/up/down) Q4_0, attention + DeltaNet projections, embed/lm_head Q8_0 (.asmbin v4)
 #   q4all  every projection Q4_0, embed/lm_head Q8_0 (smallest, lowest quality; docs/M7_Q4_RESULT.md)

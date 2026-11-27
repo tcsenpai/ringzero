@@ -15,6 +15,7 @@ const CTX_BUF_PROMPT: usize = 344;
 const CTX_BUF_GEN: usize = 352;
 const CTX_BUF_PROBS: usize = 360;
 const CTX_SAMPLE_N: usize = 488;
+const CTX_VOCAB_SIZE: usize = 152;
 const CTX_TOK_IM_START: usize = 512;
 const CTX_TOK_IM_END: usize = 520;
 const CTX_TOK_THINK_START: usize = 528;
@@ -273,13 +274,23 @@ fn run(prompt: &[u8], o: &Opts) -> Stats {
 pub fn print_speed(s: &Stats) {
     let (pa, pb) = rate(s.n_prompt, s.prefill_us);
     let (da, db) = rate(s.n_gen.saturating_sub(1).max(1), s.decode_us);
-    println!(
+    print!(
         "[prefill] {} tok in {}.{:02} ms ({}.{:02} tok/s)  [decode] {} tok in {}.{:02} ms ({}.{:02} tok/s, output {} ms)  cores {}  ctx {}/{} ({}%)",
         s.n_prompt, s.prefill_us / 1000, s.prefill_us % 1000 / 10, pa, pb,
         s.n_gen, s.decode_us / 1000, s.decode_us % 1000 / 10, da, db,
         smp::tsc_to_us(OUT_TSC.load(core::sync::atomic::Ordering::Relaxed)) / 1000,
         smp::threads(), s.pos, ctx(CTX_MAX_SEQ), s.pos * 100 / ctx(CTX_MAX_SEQ).max(1)
     );
+    // M4.8b: the speculative counters of the generate() call this line reports (taken: printed once)
+    let x = unsafe { core::ptr::addr_of_mut!(SPEC_ST).replace(SPEC0) };
+    if x.used && x.on {
+        println!("  spec {}/{} accepted ({}%) in {} verify, {} rollback, verify {} ms, ids {:#x}", x.accepted, x.drafted,
+            x.accepted as u64 * 100 / (x.drafted as u64).max(1), x.verifies, x.rollbacks, x.verify_us / 1000, x.ids);
+    } else if x.used {
+        println!("  spec off, ids {:#x}", x.ids);
+    } else {
+        println!("");
+    }
 }
 
 /// KV cache element type of this build.
@@ -314,6 +325,7 @@ pub fn init(base: *const u8, size: u64) -> bool {
     if pr != 0 {
         crate::klog!(b'W', "model: batched prefill off ({}), one token per pass", pr);
     }
+    spec_init();
     crate::klog!(b'I',
         "model: model_init ok in {} ms, max_seq {}, KV cache {}, arena {} MiB, vocab sample_n {}, prefill block {}",
         smp::tsc_to_us(smp::rdtsc() - t0) / 1000,
@@ -610,41 +622,249 @@ pub enum Stop {
     Intr,
 }
 
+// ---- M4.8b: speculative decoding by prompt lookup ----
+//
+// Draft: the latest earlier place in the context (REC + the emitted tokens not fed yet) that ends with the same 3
+// tokens (else 2) as the context now; the tokens that followed it are the draft. Verify: the pending tokens plus
+// the draft in one transformer_prefill pass with logits for every row (compute_logits = 2, one batched LM-head
+// matmul), then each row is picked exactly as the per-token loop picks (sampler, grammar fix, RNG order) and the
+// draft is accepted while it matches. Every row's logits are bit-identical to a transformer_forward at that
+// position (the batched matmuls are, `/spec` checks it), so the output is the same token for token, greedy or
+// sampled. Rollback: the KV rows of rejected tokens are simply overwritten later (attention reads 0..pos); the
+// DeltaNet recurrent state + conv history cannot be cut, so it is copied before the verify and copied back on a
+// partial accept, and the accepted tokens are fed again at the front of the next pass.
+
+/// Logits rows of one verify (draft + 1).
+pub const SPEC_ROWS: usize = 16;
+/// Emitted tokens not fed yet, and so the largest verify pass (<= PREFILL_MAX_B).
+const TODO_MAX: usize = 48;
+pub static mut SPEC_ON: bool = true;
+/// Longest draft (1..SPEC_ROWS-1).
+pub static mut SPEC_K: usize = 8;
+static mut SPEC_OK: bool = false;
+static mut DN_BAK: *mut u8 = core::ptr::null_mut();
+
+#[derive(Clone, Copy)]
+struct SpecStats {
+    used: bool,
+    on: bool,
+    verifies: u32,
+    drafted: u32,
+    accepted: u32,
+    rollbacks: u32,
+    verify_us: u64,
+    ids: u64, // FNV-1a of the emitted ids (the equality check of spec on vs off)
+}
+const SPEC0: SpecStats = SpecStats { used: false, on: false, verifies: 0, drafted: 0, accepted: 0, rollbacks: 0, verify_us: 0, ids: 0 };
+static mut SPEC_ST: SpecStats = SPEC0;
+const FNV0: u64 = 0xcbf2_9ce4_8422_2325;
+
+fn st() -> &'static mut SpecStats {
+    unsafe { &mut *core::ptr::addr_of_mut!(SPEC_ST) }
+}
+
+/// Boot, after prefill_init: SPEC_ROWS logits rows and a copy of the DeltaNet state, from the engine arena.
+fn spec_init() {
+    if !unsafe { PREFILL_OK } {
+        return;
+    }
+    let stride = (ctx(CTX_VOCAB_SIZE) * 4 + 63) & !63;
+    let lg = crate::mem::sys_mmap_anon(stride * SPEC_ROWS as u64);
+    let bak = crate::mem::sys_mmap_anon(ctx(CTX_DN_ZERO_BYTES));
+    if (lg as i64) <= 0 || (bak as i64) <= 0 {
+        crate::klog!(b'W', "model: speculative decoding off (arena full)");
+        return;
+    }
+    unsafe { (pf_lg_ptr, pf_lg_stride, DN_BAK, SPEC_OK) = (lg as u64, stride, bak, true) };
+    crate::klog!(b'I', "model: speculative decoding (prompt lookup): {} logits rows {} KiB, DeltaNet state copy {} KiB",
+        SPEC_ROWS, stride * SPEC_ROWS as u64 >> 10, ctx(CTX_DN_ZERO_BYTES) >> 10);
+}
+
+pub fn spec_ok() -> bool {
+    unsafe { SPEC_OK }
+}
+
+fn dn_copy(save: bool) {
+    let (live, bak) = (ctx(CTX_BUF_DN_STATE) as *mut u8, unsafe { DN_BAK });
+    let n = ctx(CTX_DN_ZERO_BYTES) as usize;
+    unsafe {
+        if save { core::ptr::copy_nonoverlapping(live, bak, n) } else { core::ptr::copy_nonoverlapping(bak, live, n) }
+    }
+}
+
+/// Logits row r of the last verify -> BUF_LOGITS (what pick_next and the grammar read).
+fn logits_row(r: usize) {
+    let v = ctx(CTX_VOCAB_SIZE) as usize;
+    unsafe {
+        core::ptr::copy_nonoverlapping((pf_lg_ptr + r as u64 * pf_lg_stride) as *const f32, ctx(CTX_BUF_LOGITS) as *mut f32, v)
+    };
+}
+
+/// fwd_block() with logits for the rows from lg0 on (one pass, t.len() <= PREFILL_MAX_B).
+fn fwd_verify(t: &[u32], pos: u64, lg0: usize) {
+    for (j, &x) in t.iter().enumerate() {
+        if let Some(r) = rec().get_mut(pos as usize + j) {
+            *r = x;
+        }
+    }
+    unsafe {
+        pf_lg0 = lg0 as u64;
+        transformer_prefill(t.as_ptr(), t.len() as u64, pos, 2);
+    }
+}
+
+/// Prompt lookup over REC[..pos] ++ todo: the latest earlier match of the last 3 tokens (else of the last 2), and
+/// the tokens after it, at most out.len(). Returns how many were written.
+fn lookup(pos: usize, todo: &[u32], out: &mut [u32]) -> usize {
+    let rec = rec();
+    let len = pos + todo.len();
+    if len < 3 || out.is_empty() {
+        return 0;
+    }
+    let at = |i: usize| if i < pos { rec[i] } else { todo[i - pos] };
+    let (l1, l2, l3) = (at(len - 1), at(len - 2), at(len - 3));
+    let mut best = 0;
+    let mut e = len - 1; // a match ends at e (exclusive): at(e-2), at(e-1) == the last two
+    while e >= 2 {
+        if at(e - 1) == l1 && at(e - 2) == l2 {
+            if e >= 3 && at(e - 3) == l3 {
+                best = e;
+                break;
+            }
+            if best == 0 {
+                best = e;
+            }
+        }
+        e -= 1;
+    }
+    if best == 0 {
+        return 0;
+    }
+    let k = out.len().min(len - best);
+    for (j, o) in out[..k].iter_mut().enumerate() {
+        *o = at(best + j);
+    }
+    k
+}
+
+/// The sampler's pick, through the tool-call grammar inside a call (M4.7a).
+fn pick_fixed() -> u64 {
+    let t = pick_next();
+    if crate::gram::active() { crate::gram::fix(t) } else { t }
+}
+
+/// generate()'s per-token step before token t is fed, in the order of the per-token loop: stop on EOS or Ctrl-C,
+/// stream t (hidden from <tool_call> on), stop after </tool_call>, at max_tok or a full context. lpos = t's position.
+fn emit(t: u64, lpos: u64, n: &mut u64, max_tok: u64) -> Option<Stop> {
+    if is_eos(t) {
+        return Some(Stop::Eos);
+    }
+    if crate::shell::poll_intr() {
+        return Some(Stop::Intr);
+    }
+    if t == TOK_TOOL_CALL {
+        unsafe { ECHO = false };
+        crate::gram::begin();
+    }
+    unsafe { tok_write_stdout(t) };
+    *n += 1;
+    st().ids = (st().ids ^ t).wrapping_mul(0x100_0000_01b3);
+    if t == TOK_TOOL_CALL_END {
+        return Some(Stop::ToolEnd);
+    }
+    if *n >= max_tok {
+        return Some(Stop::MaxTok);
+    }
+    if lpos + 3 >= ctx(CTX_MAX_SEQ) {
+        return Some(Stop::Ctx);
+    }
+    None
+}
+
 /// Decode after a feed(): stream tokens (hidden from <tool_call> on), stop at EOS, </tool_call>, max_tok,
 /// a full context or Ctrl-C, then close the assistant turn in the KV cache (<|im_end|>\n) so the next
-/// turn lines up. Returns the stop reason and the number of generated tokens.
+/// turn lines up. Returns the stop reason and the number of generated tokens. With speculation on, tokens come
+/// in verified runs (see above); the emitted ids and the final state are the same as one token per pass.
 pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
     let max_seq = ctx(CTX_MAX_SEQ);
-    let (eos1, eos2) = (ctx(CTX_EOS_1), ctx(CTX_EOS_2));
+    let spec = unsafe { SPEC_ON && SPEC_OK };
+    let kmax = unsafe { SPEC_K }.clamp(1, SPEC_ROWS - 1);
+    *st() = SpecStats { used: true, on: spec, ids: FNV0, ..SPEC0 };
     let mut next = pick_next();
     let mut n = 0;
-    let stop = loop {
-        if next == eos1 || next == eos2 {
-            break Stop::Eos;
+    let mut todo = [0u32; TODO_MAX]; // emitted tokens before `next` that are not fed yet (after a rollback)
+    let mut nt = 0;
+    let mut blk = [0u32; TODO_MAX];
+    // shortcut: draft length and back-off are simple heuristics (grow by 2 on a full accept, shrink by 1 otherwise;
+    // after a verify with nothing accepted no drafting for 2, 4, .. 32 tokens), tuned on docs/M48B_RESULT.md
+    let (mut k_cur, mut cool, mut fails) = (kmax, 0u32, 0u32);
+    let stop = 'gen: loop {
+        if let Some(s) = emit(next, *pos + nt as u64, &mut n, max_tok) {
+            if nt > 0 {
+                fwd_block(&todo[..nt], *pos, false);
+                *pos += nt as u64;
+            }
+            break s;
         }
-        if crate::shell::poll_intr() {
-            break Stop::Intr;
+        todo[nt] = next as u32;
+        nt += 1;
+        let mut k = 0;
+        if spec && cool == 0 && *pos + (nt + k_cur) as u64 + 4 < max_seq {
+            let room = k_cur.min(TODO_MAX - nt);
+            k = lookup(*pos as usize, &todo[..nt], &mut blk[nt..nt + room]);
         }
-        if next == TOK_TOOL_CALL {
-            unsafe { ECHO = false };
-            crate::gram::begin();
+        cool = cool.saturating_sub(1);
+        if k == 0 {
+            if nt == 1 { fwd(todo[0], *pos, 1) } else { fwd_block(&todo[..nt], *pos, true) }
+            *pos += nt as u64;
+            nt = 0;
+            next = pick_fixed();
+            continue;
         }
-        unsafe { tok_write_stdout(next) };
-        n += 1;
-        if next == TOK_TOOL_CALL_END {
-            break Stop::ToolEnd;
+        let t0 = smp::rdtsc();
+        blk[..nt].copy_from_slice(&todo[..nt]);
+        dn_copy(true);
+        fwd_verify(&blk[..nt + k], *pos, nt - 1);
+        let x = st();
+        (x.verifies, x.drafted, x.verify_us) = (x.verifies + 1, x.drafted + k as u32, x.verify_us + smp::tsc_to_us(smp::rdtsc() - t0));
+        let mut r = 0; // drafts accepted
+        next = loop {
+            logits_row(r);
+            let p = pick_fixed();
+            if r < k && p == blk[nt + r] as u64 {
+                if let Some(s) = emit(p, *pos + (nt + r) as u64, &mut n, max_tok) {
+                    // stop on an accepted draft token: keep the state of the tokens before it only
+                    dn_copy(false);
+                    fwd_block(&blk[..nt + r], *pos, false);
+                    *pos += (nt + r) as u64;
+                    next = p;
+                    st().accepted += r as u32;
+                    break 'gen s;
+                }
+                r += 1;
+                continue;
+            }
+            break p; // the correction (r < k) or the token after a fully accepted draft
+        };
+        st().accepted += r as u32;
+        if r == k {
+            *pos += (nt + k) as u64;
+            nt = 0;
+            k_cur = (k_cur + 2).min(kmax);
+        } else {
+            let t1 = smp::rdtsc();
+            dn_copy(false);
+            st().verify_us += smp::tsc_to_us(smp::rdtsc() - t1);
+            st().rollbacks += 1;
+            todo[nt..nt + r].copy_from_slice(&blk[nt..nt + r]); // fed again in front of the next pass
+            nt += r;
+            k_cur = (k_cur - 1).max(1);
         }
-        if n >= max_tok {
-            break Stop::MaxTok;
-        }
-        if *pos + 3 >= max_seq {
-            break Stop::Ctx;
-        }
-        fwd(next as u32, *pos, 1);
-        *pos += 1;
-        next = pick_next();
-        if crate::gram::active() {
-            next = crate::gram::fix(next); // M4.7a: the grammar of the tool call
+        if r == 0 {
+            fails += 1;
+            cool = 1 << fails.min(5);
+        } else {
+            fails = 0;
         }
     };
     unsafe { ECHO = true };
@@ -659,4 +879,53 @@ pub fn generate(pos: &mut u64, max_tok: u64) -> (Stop, u64) {
         *pos += 2;
     }
     (stop, n)
+}
+
+/// `/spec [N]`: the verifier's logits against the per-token path: prefill `toks[..m]`, then N (16) tokens one
+/// transformer_forward each (logits hashed per position), the DeltaNet copy back, the same tokens as one
+/// compute_logits = 2 pass; prints how many rows are bit-identical and the state hashes. Overwrites the live state.
+pub fn spec_check(toks: &[u32], rows: usize) {
+    if !spec_ok() {
+        println!("[spec] not available (no batched prefill buffers)");
+        return;
+    }
+    let n = rows.clamp(1, SPEC_ROWS).min(toks.len() / 2);
+    let m = toks.len() - n;
+    let lh = || {
+        let mut h = FNV0;
+        let l = unsafe { core::slice::from_raw_parts(ctx(CTX_BUF_LOGITS) as *const u32, ctx(CTX_VOCAB_SIZE) as usize) };
+        l.iter().for_each(|&x| h = (h ^ x as u64).wrapping_mul(0x100_0000_01b3));
+        h
+    };
+    smp::park_phase(true);
+    forward(&toks[..m], 0, false);
+    dn_copy(true);
+    let mut want = [0u64; SPEC_ROWS];
+    let mut am = [0u64; SPEC_ROWS];
+    let t0 = smp::rdtsc();
+    for i in 0..n {
+        unsafe { transformer_forward(toks[m + i], (m + i) as u64, 1) };
+        (want[i], am[i]) = (lh(), unsafe { argmax_f32(ctx(CTX_BUF_LOGITS) as *const f32, ctx(CTX_SAMPLE_N)) });
+    }
+    let t1 = smp::rdtsc();
+    let (h1, _) = state_hash((m + n) as u64);
+    dn_copy(false);
+    let t2 = smp::rdtsc();
+    unsafe {
+        pf_lg0 = 0;
+        transformer_prefill(toks[m..].as_ptr(), n as u64, m as u64, 2);
+    }
+    let t3 = smp::rdtsc();
+    let (h2, _) = state_hash((m + n) as u64);
+    let mut same = 0;
+    let mut same_am = 0;
+    for i in 0..n {
+        logits_row(i);
+        same += (lh() == want[i]) as usize;
+        same_am += (unsafe { argmax_f32(ctx(CTX_BUF_LOGITS) as *const f32, ctx(CTX_SAMPLE_N)) } == am[i]) as usize;
+    }
+    smp::park_phase(false);
+    println!("[spec] {} positions after {} tokens: logits bit-identical {}/{}, argmax {}/{}, kv+deltanet {:#018x} vs {:#018x} ({}); {} x transformer_forward {} ms, one verify pass {} ms",
+        n, m, same, n, same_am, n, h1, h2, if h1 == h2 { "same" } else { "DIFFER" },
+        n, smp::tsc_to_us(t1 - t0) / 1000, smp::tsc_to_us(t3 - t2) / 1000);
 }
