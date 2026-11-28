@@ -745,8 +745,8 @@ class View:
         return {None: self.text[d], "only": self.line[d]}.get(use_ctx, self.text[d] + " " + self.line[d])
 
 
-def rank(view, r, qi, cfg):
-    """The answer list for query r under cfg (a dict of rules; missing = off): [(key, score, via, index)]."""
+def adjusted(view, r, qi, cfg):
+    """Per entry: the query cosine minus the hub and owner penalties of cfg (what `search` ranks by)."""
     g = cfg.get
     al = view.al_ctx if g("own_ctx") else view.al_text
     q_own = owner(r["q"], al)
@@ -759,6 +759,13 @@ def rank(view, r, qi, cfg):
                 s[d] -= g("own1", 0)
             if q_own and not e_own & q_own:
                 s[d] -= g("own2", 0)
+    return s
+
+
+def rank(view, r, qi, cfg):
+    """The answer list for query r under cfg (a dict of rules; missing = off): [(key, score, via, index)]."""
+    g = cfg.get
+    s = adjusted(view, r, qi, cfg)
     h = search(r["q"], list(range(view.n)), view.etext, s, "always" if g("bm25") == "always" else True)
     seen, lst = set(), []
     for d, sc, via in h:  # several vectors of one manual section: the best one stands for it
