@@ -1,0 +1,22 @@
+ [0m/bench
+A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available. When the processor needs data, it first checks the cache; if the item is
+[90m[prefill] 25 tok in 332.98 ms (75.07 tok/s)  [decode] 64 tok in 2920.68 ms (21.57 tok/s, output 8 ms)  cores 8  ctx 88/32768 (0%)[0m
+[snap] conversation restored (ctx 1714) in 26941 us
+
+[1;31mringzero[main]>
+ [0m/bench
+A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available. When the processor needs data, it first checks the cache; if the item is
+[90m[prefill] 25 tok in 337.00 ms (74.18 tok/s)  [decode] 64 tok in 2974.87 ms (21.17 tok/s, output 7 ms)  cores 8  ctx 88/32768 (0%)[0m
+[snap] conversation restored (ctx 1714) in 3396 us
+
+[1;31mringzero[main]>
+ [0m/bench
+A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available. When the processor needs data, it first checks the cache; if the item is
+[90m[prefill] 25 tok in 338.36 ms (73.88 tok/s)  [decode] 64 tok in 2853.56 ms (22.07 tok/s, output 6 ms)  cores 8  ctx 88/32768 (0%)[0m
+[snap] conversation restored (ctx 1714) in 4111 us
+
+[1;31mringzero[main]>
+ [0m!mem
+RAM total 8191 MiB, free 1580 MiB, used 6611 MiB (model weights 3819 MiB, LLM engine arena 1537 MiB, state snapshot pool 1024 MiB, kernel heap 192 MiB, kernel and firmware 39 MiB)
+
+[1;31mringzero[main]> 

@@ -1,0 +1,220 @@
+[bios smp=8] banner at Nones, selftest TIMEOUT, 19/19 commands sent
+[  12.03s] 
+[  12.03s]   |  |  |  |  
+[  12.03s]  .+--+--+--+.          _
+[  12.03s] -|   ____   |-   _ __ (_)_ __   __ _ _______ _ __ ___
+[  12.03s] -|  | R0 |  |-  | '__|| | '_ \ / _` |_  / _ \ '__/ _ \
+[  12.03s] -|  |____|  |-  | |   | | | | | (_| |/ /  __/ | | (_) |
+[  12.03s]  '+--+--+--+'   |_|   |_|_| |_|\__, /___\___|_|  \___/
+[  12.03s]   |  |  |  |                   |___/
+[  12.03s] 
+[  12.03s]   version  0.1.0 beta   ringzero Agents-A1@4b.q4-Qwen3@0.6b (QweQwe)
+[  12.03s]   models   agent Agents (3206 MiB), embedder A1@4b.q4 (613 MiB)
+[  12.03s]   machine  8 cores, 8191 MiB RAM, BIOS, framebuffer 1280x800
+[  12.03s]   Rust no_std kernel + NASM LLM engine in ring 0. Boot log below and in !log.
+[  12.03s] 
+[  12.03s] boot: Limine 11.2.1, base revision Some(3)
+[  12.03s] boot: firmware BIOS
+[  12.03s] fb:   1280x800 32 bpp
+[  12.03s] cpu:  AMD Ryzen AI 9 HX 370 w/ Radeon 890M
+[  12.03s] cpu:  AVX=true AVX2=true FMA=true F16C=true XSAVE=true
+[  12.03s] cpu:  enabled: CR4.OSXSAVE=true XCR0=0x7 (want 0x7)
+[  12.06s] time: TSC 1997.113 MHz (PIT ch2, 20 ms window), entry TSC=23837175460 (~11935 ms after TSC 0)
+[  12.06s] mmap: 0x000100000-0x0573ca000  1394 MiB usable
+[  12.06s] mmap: 0x0573ca000-0x07d92d000   613 MiB kernel+modules
+[  12.06s] mmap: 0x07da3d000-0x07ebf6000    17 MiB kernel+modules
+[  12.06s] mmap: 0x07ebf6000-0x07ffdf000    19 MiB bootloader-reclaimable
+[  12.06s] mmap: 0x0b0000000-0x0c0000000   256 MiB reserved
+[  12.06s] mmap: 0x0fd000000-0x0fd3e8000     3 MiB framebuffer
+[  12.06s] mmap: 0x100000000-0x1b79fb000  2937 MiB usable
+[  12.06s] mmap: 0x1b79fb000-0x280000000  3206 MiB kernel+modules
+[  12.06s] mmap: 0xfd00000000-0x10000000000 12288 MiB reserved
+[  12.06s] mem:  24 entries, usable 4333 MiB, bootloader-reclaimable 20 MiB, kernel+modules 3837 MiB, top 0x280000000
+[  12.06s] mem:  largest usable run 0x100000000 + 2937 MiB, HHDM offset 0xffff800000000000
+[  12.06s] mem:  engine arena identity-mapped at 0x100200000 (2937 MiB), page size 2048 KiB (HHDM view: 1048576 KiB)
+[  12.06s] smp:  8 CPUs reported by Limine MP, BSP LAPIC id 0
+[  12.06s] smp:  7 of 7 APs online in the worker loop, x2APIC=true, TSC-deadline idle timer=true
+[  12.06s] mod:  2 module(s)
+[  12.06s] mod:  /boot/model.asmbin size 3361755072 B (3206 MiB) at virt 0xffff8001b79fb000 phys 0x1b79fb000
+[  12.06s] mod:  magic "ASML" header version 4 dim 2560 layers 32 vocab 248320
+[  12.06s] mod:  /boot/embed.asmbin size 643181888 B (613 MiB) at virt 0xffff8000573ca000 phys 0x573ca000
+[  12.06s] mod:  magic "ASML" header version 3 dim 1024 layers 28 vocab 151669
+[  12.71s] mem:  kernel heap 192 MiB (linked_list_allocator, from the arena)
+[  12.85s] disk: no virtio-blk device (make disk, then a run target attaches build/disk.img); file commands are off
+[  12.85s] upy:  MicroPython 1.29.0 (embed port, freestanding), GC heap 8 MiB + stack 1024 KiB from the arena
+[  13.73s] wasm: wasmi 2.0.3 (WASI preview1), memory cap 256 MiB per instance, random_get from RDRAND
+[  13.73s] wasm: command-line splitter self-test PASS
+[  13.74s] proc: /proc path table self-test PASS
+[  13.74s] engine: silu_mul_avx2 n=64 max_rel_err=155e-9 -> PASS
+[  13.74s] engine: argmax_f32 = 62 (rust 62) -> PASS
+[  13.74s] engine: M0 ABI self-test PASS
+[  13.74s] mem:  model identity-mapped at 0x1b79fb000, page size 2048 KiB (HHDM view: 1048576 KiB)
+[  16.84s] model: speculative decoding (prompt lookup): 19 logits rows 18430 KiB, DeltaNet state copy 51456 KiB
+[  16.86s] model: model_init ok in 3105 ms, max_seq 32768, KV cache fp16, arena 1078 MiB, vocab sample_n 248077, prefill block 32
+[  16.87s] model: batched prefill matmul AVX-VNNI
+[  16.88s] q4: slot 4 K 2560: 64 rows Q4_0 kernel vs Q8_0 kernel on the unpacked rows: bit-identical (row 0 0x3f313a44 / 0x3f313a44)
+[  16.90s] q4: slot 5 K 9216: 64 rows Q4_0 kernel vs Q8_0 kernel on the unpacked rows: bit-identical (row 0 0x3f9583e2 / 0x3f9583e2)
+[  16.91s] q4: Q4_0 kernel self-test PASS
+[  16.93s] mem:  embedder identity-mapped at 0x573ca000 (613 MiB)
+[  17.13s] embed: model_init ok in 194 ms, dim 1024, max_seq 1024, arena 113 MiB (own g_ctx, swapped per call)
+[  17.22s] embed: boot check "ringzero boots": 4 tok in 67.425 ms, v[0..4] = 0.0360 -0.0294 -0.0153 -0.0746
+[  17.23s] index: memory index self-test (fp16, Q8_0 rows, ln, identifier gate, retain) PASS
+[  17.25s] index: file indexer self-test (chunker, path checks) PASS
+[  17.27s] agentd: self-test (record codec + torn tail, fact validation, grounding, calendar) PASS
+[  17.28s] [agentd] no disk: memory stores and index persistence are off (RAM only)
+[  17.30s] [agentd] manual: 32 sections, 0 already in the index, 32 from the vectors in the kernel (no embedder work), 0 queued, 0 old entries dropped
+[  17.31s] selftest: prompt "Say hi in 5 words." (golden_2b.json), greedy, 8 threads
+[  17.33s] PROMPT_TOKENS 248045,846,198,44240,15131,303,220,20,4105,13,248046,198,248045,74455,198,248068,271,248069,271
+[  18.16s] Hello, how are you doing?
+[  18.17s] GEN_TOKENS 9419,11,1204,513,488,3604,30
+[  18.19s] [prefill] 19 tok in 307.54 ms (61.77 tok/s)  [decode] 7 tok in 506.86 ms (11.83 tok/s, output 0 ms)  cores 8  ctx 26/32768 (0%)
+[  18.20s] SELFTEST n/a (golden is the 2B Q8_0 reference, not this model; ids above)
+[  18.21s] bench: 64-token decode, prompt "Explain how a CPU cache works in 3 concise sentences."
+[  21.94s] A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available. When the processor needs data, it first checks the cache; if the item is
+[  21.96s] [prefill] 25 tok in 331.79 ms (75.34 tok/s)  [decode] 64 tok in 3382.80 ms (18.62 tok/s, output 19 ms)  cores 8  ctx 88/32768 (0%)
+[  21.97s] agent: tool-call parser self-test PASS
+[  22.06s] gram: vocab trie 248044 of 248320 tokens sorted in 72 ms, 1211 KiB (ids + prefix lengths), 0 tokens over 128 B never allowed in a call
+[  22.08s] gram: tool-call grammar self-test PASS
+[  22.10s] gram: full mask cost (allowed tokens): call start 421 us (70), tool name 408 us (15), after name 354 us (70), free value 6587 us (248044), enum value 420 us (69)
+[  22.12s] kbd:  PS/2 layout it (change with '!kbd us|it')
+[  22.13s] agent: system prompt + 18 tools = 1652 tokens (fnv 0xa8a06b3cfe922616)
+[  22.15s] [agentd] boot cache: miss (no disk), prefilling 1650 tokens
+[  43.92s] agent: prefix prefill 1650 tok in 21.764 s (75 tok/s)
+[  48.38s] agent: snapshot #0 101 MiB in a 1024 MiB pool, saved in 4440 ms (pool touched)
+[  48.39s] ringzero shell. Type a message for the system agent, !cmd for the machine, /cmd for the session. /help lists them.
+[  48.41s] 
+[  48.62s] ringzero[main]> !set temperature 0
+[  48.64s] temperature = 0 (greedy)
+[  48.65s] 
+[  48.86s] ringzero[main]> /bench
+[  52.60s] A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available. When the processor needs data, it first checks the cache; if the item is
+[  52.61s] [prefill] 25 tok in 345.08 ms (72.44 tok/s)  [decode] 64 tok in 3369.79 ms (18.69 tok/s, output 17 ms)  cores 8  ctx 88/32768 (0%)
+[  52.65s] [snap] conversation restored (ctx 1650) in 26251 us
+[  52.67s] 
+[  52.88s] ringzero[main]> /bench
+[  56.47s] A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available. When the processor needs data, it first checks the cache; if the item is
+[  56.48s] [prefill] 25 tok in 345.14 ms (72.43 tok/s)  [decode] 64 tok in 3221.62 ms (19.55 tok/s, output 19 ms)  cores 8  ctx 88/32768 (0%)
+[  56.50s] [snap] conversation restored (ctx 1650) in 3385 us
+[  56.51s] 
+[  56.73s] ringzero[main]> /bench
+[  60.31s] A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available. When the processor needs data, it first checks the cache; if the item is
+[  60.32s] [prefill] 25 tok in 372.75 ms (67.06 tok/s)  [decode] 64 tok in 3195.13 ms (19.71 tok/s, output 18 ms)  cores 8  ctx 88/32768 (0%)
+[  60.34s] [snap] conversation restored (ctx 1650) in 3921 us
+[  60.36s] 
+[  60.57s] ringzero[main]> /prefill 32
+[  83.22s] [prefill] block 32 (vnni): 1650 tok in 22.623 s (72.93 tok/s), next token 1542, batched passes 22623 ms (matmuls 19728 ms)
+[  83.25s] STATE pos 1650 prefill block 32 kv+deltanet fnv 0x376d73c4002b9b8d logits fnv 0x23ec95058e7e7b67
+[  83.27s] [snap] conversation restored (ctx 1650) in 3327 us
+[  83.28s] 
+[  83.49s] ringzero[main]> /gen 8 Say hi in 5 words.
+[  83.78s] STATE pos 19 prefill block 32 kv+deltanet fnv 0xb87dde3e5a8f6503 logits fnv 0x641ea4b1632b2f28
+[  84.13s] Hello, how are you doing?
+[  84.14s] GEN_TOKENS 9419,11,1204,513,488,3604,30
+[  84.16s] PROMPT 19 tokens fnv 0x8112e40b996ce427, KV fp16
+[  84.17s] MARGINS 1.867,0.279,0.089,1.698,8.606,0.656,0.848
+[  84.18s] [prefill] 19 tok in 260.96 ms (72.80 tok/s)  [decode] 7 tok in 335.18 ms (17.90 tok/s, output 0 ms)  cores 8  ctx 26/32768 (0%)
+[  84.20s] [snap] conversation restored (ctx 1650) in 3352 us
+[  84.21s] 
+[  84.43s] ringzero[main]> /gen 48 Explain how a CPU cache works in 3 concise sentences.
+[  84.78s] STATE pos 25 prefill block 32 kv+deltanet fnv 0x3c11f40fadcd4ce3 logits fnv 0x1b4c220f4173263e
+[  87.10s] A CPU cache is a small, high-speed memory located close to the processor that stores frequently accessed data and instructions. It acts as a buffer to reduce the time the CPU spends waiting for slower main memory by keeping recently used items readily available.
+[  87.13s] GEN_TOKENS 32,13540,6297,369,264,2526,11,1496,28632,4779,7172,3160,310,279,17128,421,10220,13418,23975,795,321,10895,13,1049,13653,430,264,4011,310,7698,279,854,279,13540,35872,8318,364,27467,1822,4779,539,9976,5742,1429,3470,29281,2420,13
+[  87.14s] PROMPT 25 tokens fnv 0xeabca0bc4b186e16, KV fp16
+[  87.17s] MARGINS 4.354,7.597,10.592,1.824,8.832,2.137,8.682,0.353,9.007,4.316,3.775,0.090,16.047,12.235,3.772,4.550,6.368,1.837,0.052,5.366,1.770,8.226,0.917,0.808,0.503,6.594,6.193,1.566,0.673,2.270,4.487,2.939,4.040,6.541,2.493,8.385,6.517,0.723,8.128,3.646,1.971,3.186,1.151,4.551,1.297,5.825,7.205,8.959
+[  87.18s] [prefill] 25 tok in 334.36 ms (74.76 tok/s)  [decode] 48 tok in 2304.19 ms (20.39 tok/s, output 18 ms)  cores 8  ctx 72/32768 (0%)
+[  87.20s] [snap] conversation restored (ctx 1650) in 3428 us
+[  87.21s] 
+[  87.42s] ringzero[main]> /gen 48 Write a Python function that returns the n-th Fibonacci number.
+[  87.74s] STATE pos 24 prefill block 32 kv+deltanet fnv 0xb274c5ebac07a2da logits fnv 0x734b40d69f590b37
+[  88.89s] Here’s a simple and efficient implementation using memoization (dynamic programming) to compute the n-th Fibonacci number:
+[  88.89s] 
+[  89.06s] ```python
+[  89.55s] def fib(n: int) -> int:
+[  89.71s]     """
+[  90.17s]     Return the n-th Fibonacci number.
+[  90.18s] 
+[  90.21s] GEN_TOKENS 8160,725,264,4145,321,10727,7873,1608,20781,1954,318,20884,15019,8,310,12204,279,307,7324,76938,1324,25,271,71093,12305,198,727,15336,1393,25,514,8,1411,514,25,198,262,4071,198,262,3301,279,307,7324,76938,1324,13,198
+[  90.23s] PROMPT 24 tokens fnv 0x910678a9e0fe6b2f, KV fp16
+[  90.25s] MARGINS 0.509,0.343,3.099,0.983,0.203,3.816,0.217,3.518,3.475,8.842,1.056,1.934,11.205,1.632,1.638,2.723,12.109,3.549,3.005,9.799,12.379,1.818,11.937,11.215,11.900,10.528,0.659,0.280,7.572,0.920,13.600,2.723,9.691,14.229,12.699,10.883,10.063,9.046,0.532,11.018,0.276,13.219,6.916,10.873,9.353,12.427,0.976,2.055
+[  90.27s] [prefill] 24 tok in 298.64 ms (80.36 tok/s)  [decode] 48 tok in 2426.93 ms (19.36 tok/s, output 82 ms)  cores 8  ctx 71/32768 (0%)
+[  90.28s] [snap] conversation restored (ctx 1650) in 3310 us
+[  90.30s] 
+[  90.51s] ringzero[main]> /gen 48 What is the capital of Australia, and why is it not Sydney?
+[  90.89s] STATE pos 26 prefill block 32 kv+deltanet fnv 0x3b87e29153f26a3e logits fnv 0x22c5191ef811460b
+[  91.34s] The capital of Australia is **Canberra**.
+[  91.34s] 
+[  93.00s] While Sydney is the largest city and the most populous urban center in the country, it was never chosen as the capital for several key historical and political reasons:
+[  93.00s] 
+[  93.31s] 1.  **The 
+[  93.34s] GEN_TOKENS 760,6511,314,8071,369,2972,6503,60241,159034,271,7732,20620,369,279,7526,3177,321,279,1379,91188,15203,3990,303,279,3046,11,424,557,2496,11543,430,279,6511,364,3679,1328,13263,321,4788,7715,25,271,16,13,220,2972,760,220
+[  93.35s] PROMPT 26 tokens fnv 0x4fd3a5511c1087bb, KV fp16
+[  93.38s] MARGINS 5.941,6.651,4.891,6.632,11.678,8.018,5.566,13.673,0.255,2.415,0.149,2.236,4.189,2.376,1.210,5.791,0.806,1.404,0.045,0.589,1.426,2.677,3.996,5.732,1.920,3.255,4.690,2.736,0.321,0.822,7.938,11.216,1.490,0.570,3.657,1.186,2.169,2.225,1.848,11.749,5.795,11.653,0.854,17.739,8.342,9.108,0.089,0.571
+[  93.39s] [prefill] 26 tok in 360.47 ms (72.12 tok/s)  [decode] 48 tok in 2398.57 ms (19.59 tok/s, output 60 ms)  cores 8  ctx 73/32768 (0%)
+[  93.41s] [snap] conversation restored (ctx 1650) in 3607 us
+[  93.42s] 
+[  93.64s] ringzero[main]> /gen 48 Translate to Italian: The weather is nice today, let's go for a walk.
+[  93.99s] STATE pos 29 prefill block 32 kv+deltanet fnv 0x9d6f444abb5fda51 logits fnv 0x0ee4306bf6c9ed99
+[  94.74s] Il tempo è bello oggi, andiamo a fare una passeggiata.
+[  94.76s] GEN_TOKENS 11707,22506,11094,187188,85593,11,321,33081,264,19802,4931,216916,450,13
+[  94.77s] PROMPT 29 tokens fnv 0x924b2242b65c55ac, KV fp16
+[  94.79s] MARGINS 2.927,3.343,4.967,1.406,5.654,9.435,4.720,6.384,0.694,2.899,4.008,5.135,11.415,12.148
+[  94.81s] [prefill] 29 tok in 335.02 ms (86.56 tok/s)  [decode] 14 tok in 738.04 ms (17.61 tok/s, output 0 ms)  cores 8  ctx 43/32768 (0%)
+[  94.82s] [snap] conversation restored (ctx 1650) in 3698 us
+[  94.84s] 
+[  95.06s] ringzero[main]> /gen 48 List three differences between TCP and UDP.
+[  95.38s] STATE pos 20 prefill block 32 kv+deltanet fnv 0x729569091d57bb52 logits fnv 0x1fbb9c2c700f72c1
+[  96.36s] Here are three key differences between TCP (Transmission Control Protocol) and UDP (User Datagram Protocol):
+[  96.36s] 
+[  96.78s] 1.  **Connection Orientation**
+[  97.84s]     *   **TCP** is a **connection-oriented** protocol. Before data is transferred, a
+[  97.87s] GEN_TOKENS 8160,513,2250,1328,11461,1881,25804,318,88061,7533,23796,8,321,40986,318,1421,93461,23796,1590,271,16,13,220,2972,4378,52316,332,198,262,348,256,2972,48218,332,369,264,2972,7496,33924,332,11176,13,12851,795,369,21711,11,264
+[  97.88s] PROMPT 20 tokens fnv 0xdbe217f689035e6b, KV fp16
+[  97.91s] MARGINS 7.727,12.777,12.133,3.040,10.388,12.570,1.963,2.926,7.073,12.215,11.543,13.980,13.552,9.711,11.384,9.863,5.864,11.355,9.038,12.352,5.393,15.322,2.510,13.084,1.630,2.021,4.939,8.155,14.582,2.610,12.974,10.683,10.388,6.530,10.116,1.914,5.023,3.600,6.423,10.522,10.714,5.513,0.514,3.252,0.978,0.323,12.215,1.474
+[  97.93s] [prefill] 20 tok in 299.98 ms (66.67 tok/s)  [decode] 48 tok in 2438.00 ms (19.27 tok/s, output 47 ms)  cores 8  ctx 67/32768 (0%)
+[  97.95s] [snap] conversation restored (ctx 1650) in 3545 us
+[  97.96s] 
+[  98.18s] ringzero[main]> /clear
+[  98.19s] [2J[H[agent] new conversation from the boot prefix (the old one stays in /tree)
+[  98.19s] 
+[  98.40s] ringzero[main]> Spiegami in due frasi che cos'è un file system.
+[ 103.10s] Un file system è un metodo organizzato per gestire e archiviare dati su un supporto di storage, definendo come i file e le directory sono strutturati e accessibili. Permette di organizzare i dati in modo efficiente, garantendo che ogni dato sia salvato in un'unica posizione e possa essere recuperato quando necessario.
+[ 103.10s] [prefill] 27 tok in 386.22 ms (69.90 tok/s)  [decode] 67 tok in 3841.21 ms (17.18 tok/s, output 3 ms)  cores 8  ctx 1748/32768 (5%)  spec 0/0 accepted (0%) in 0 verify, 0 rollback, verify 0 ms, grammar 0/0, ids 0x8dfa8ccff634eb83
+[ 103.11s] 
+[ 103.31s] ringzero[main]> /clear
+[ 103.31s] [2J[H[agent] new conversation from the boot prefix (the old one stays in /tree)
+[ 103.31s] 
+[ 103.52s] ringzero[main]> Scrivi una breve email al mio collega Marco per spostare la riunione di domani alle 15.
+[ 104.95s] Oggetto: Cambio orario riunione di domani
+[ 104.96s] 
+[ 105.23s] Ciao Marco,
+[ 105.23s] 
+[ 106.28s] ti scrivo per informarti che dobbiamo spostare la riunione di domani alle 15:00.
+[ 106.28s] 
+[ 106.66s] Scusa per il disturbo.
+[ 106.66s] 
+[ 106.91s] Un saluto,
+[ 107.25s] [Tuo nome]
+[ 107.25s] [prefill] 33 tok in 465.39 ms (70.90 tok/s)  [decode] 55 tok in 2822.55 ms (19.13 tok/s, output 2 ms)  cores 8  ctx 1742/32768 (5%)  spec 6/9 accepted (66%) in 3 verify, 2 rollback, verify 297 ms, grammar 0/0, ids 0x9c0545b7077edbee
+[ 107.27s] 
+[ 107.48s] ringzero[main]> /clear
+[ 107.48s] [2J[H[agent] new conversation from the boot prefix (the old one stays in /tree)
+[ 107.48s] 
+[ 107.68s] ringzero[main]> Riassumi in una frase: il gatto ha dormito tutto il giorno sul divano perché fuori pioveva e faceva freddo.
+[ 109.30s] Il gatto ha dormito tutto il giorno sul divano perché fuori pioveva e faceva freddo.
+[ 109.31s] [prefill] 41 tok in 617.66 ms (66.37 tok/s)  [decode] 21 tok in 550.73 ms (36.31 tok/s, output 0 ms)  cores 8  ctx 1716/32768 (5%)  spec 15/15 accepted (100%) in 3 verify, 0 rollback, verify 317 ms, grammar 0/0, ids 0xf0a40d81352150b8
+[ 109.33s] 
+[ 109.53s] ringzero[main]> /clear
+[ 109.53s] [2J[H[agent] new conversation from the boot prefix (the old one stays in /tree)
+[ 109.53s] 
+[ 109.74s] ringzero[main]> Dammi tre consigli per dormire meglio, in italiano.
+[ 110.73s] Ecco tre consigli per dormire meglio:
+[ 110.73s] 
+[ 112.88s] 1. **Mantieni una routine regolare**: Vai a letto e svegliati allo stesso orario ogni giorno, anche nei weekend. Questo aiuta il tuo corpo a stabilire un ritmo circadiano costante.
+[ 112.88s] 
+[ 115.57s] 2. **Crea un ambiente ideale**: Assicurati che la stanza sia buia, fresca e silenziosa. Puoi usare una maschera per il rumore, tappi per le orecchie o un ventilatore per il rumore bianco.
+[ 115.57s] 
+[ 118.40s] 3. **Evita stimolanti prima di dormire**: Limita il consumo di caffeina e alcol nelle ore serali, e prova a non fare attività schermi (telefono, computer) almeno un'ora prima di andare a letto.
+[ 118.40s] [prefill] 23 tok in 312.17 ms (73.67 tok/s)  [decode] 151 tok in 7985.22 ms (18.78 tok/s, output 6 ms)  cores 8  ctx 1828/32768 (5%)  spec 2/4 accepted (50%) in 2 verify, 1 rollback, verify 138 ms, grammar 0/0, ids 0x98683b6fff7b268b
+[ 118.42s] 
+[ 118.42s] ringzero[main]> 
+

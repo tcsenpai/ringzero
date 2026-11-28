@@ -1,0 +1,193 @@
+[on] 1/30   5.5s quanta RAM libera?
+[on] 2/30   8.7s list files in /home
+[on] 3/30   4.6s create notes.txt with hello
+[on] 4/30   2.9s spegni la macchina
+[on] 5/30   2.5s run this: print 2+2
+[on] 6/30   2.7s show me /etc/hostname
+[on] 7/30   2.4s crea la cartella /home/progetti
+[on] 8/30   2.3s delete /tmp/old.log
+[on] 9/30   5.3s how many cores do I have?
+[on] 10/30  12.7s che processore ho?
+[on] 11/30   3.1s riavvia
+[on] 12/30  24.7s show the last 20 log lines
+[on] 13/30  34.2s set the hostname to aios-dev
+[on] 14/30   2.7s imposta la lingua su italiano
+[on] 15/30   4.0s cosa c'è nella root?
+[on] 16/30  15.4s memory usage please
+[on] 17/30   7.9s rimuovi la directory /tmp/cache e tutto il contenuto
+[on] 18/30   3.1s reboot the system now
+[on] 19/30  10.8s esegui questo modulo wasm: (module (func (export "main") (result i32) i32.const 42))
+[on] 20/30  46.7s ci sono errori nel log?
+[on] 21/30   3.0s shut down
+[on] 22/30   9.5s leggi il file /home/todo.md
+[on] 23/30   3.7s ciao, chi sei?
+[on] 24/30   1.8s explain what a kernel is in one sentence
+[on] 25/30   1.4s grazie mille!
+[on] 26/30   0.9s traduci 'good morning' in italiano
+[on] 27/30   0.9s what's the capital of France?
+[on] 28/30   5.3s crea la cartella /home/demo e poi mettici dentro un file readme.txt con scritto ciao
+[on] 29/30   9.5s how much free RAM and how many cores?
+[on] 30/30  56.5s copy /etc/motd to /home/motd.bak
+[on] 1/32   3.4s ricordati che il mio colore preferito e il verde
+[on] 2/32   2.0s cosa sai di me?
+[on] 3/32   4.1s dimentica il mio colore preferito
+[on] 4/32   4.4s quanto fa 2**100? usa python
+[on] 5/32   4.2s calcola la media di 3, 7 e 11 con python
+[on] 6/32   3.7s what's 17 times 23? use python
+[on] 7/32  16.6s elenca i file in /notes
+[on] 8/32  34.5s leggi /notes/todo.txt
+[on] 9/32   3.9s scrivi in /notes/m47.txt la parola prova
+[on] 10/32   2.9s crea la cartella /notes/m47
+[on] 11/32   4.2s cancella il file /notes/m47.txt
+[on] 12/32   3.6s imposta la temperatura a 0
+[on] 13/32   4.8s usa 4 core per l'inferenza
+[on] 14/32   2.8s set the keyboard layout to us
+[on] 15/32  41.2s set the screen brightness to 80
+[on] 16/32   3.1s da quanto tempo e acceso il sistema?
+[on] 17/32  12.6s mostra le ultime 5 righe del log
+[on] 18/32  15.3s show the last ten log lines
+[on] 19/32  11.8s quanti core ha la CPU?
+[on] 20/32   4.7s what is on the disk root?
+[on] 21/32  45.7s cerca nei file qualcosa sul latte
+[on] 22/32   3.2s spegni il computer
+[on] 23/32   1.7s hi, how are you?
+[on] 24/32   3.2s che cos'e un kernel? una frase
+[on] 25/32   5.4s quanta RAM libera c'e?
+[on] 26/32  12.3s how many CPU cores does this machine have?
+[on] 27/32   2.6s quanto uptime?
+[on] 28/32  11.5s what CPU model is this?
+[on] 29/32   8.4s che driver abbiamo?
+[on] 30/32  55.4s how big is the disk?
+[on] 31/32   9.3s come si chiama questa macchina?
+[on] 32/32   3.9s which version of ringzero is running?
+[on] 1/10   1.6s Qual è la capitale dell'Australia? Rispondi in una parola.
+[on] 2/10   3.0s Quanto fa 17 per 23? Rispondi solo con il numero, senza usare strumenti.
+[on] 3/10   2.2s Chi ha scritto la Divina Commedia?
+[on] 4/10   2.7s Se oggi è martedì, che giorno della settimana sarà fra 10 giorni?
+[on] 5/10   1.9s Qual è il pianeta più grande del sistema solare?
+[on] 6/10   2.1s Un treno parte alle 14:40 e arriva alle 17:15. Quanto dura il viaggio?
+[on] 7/10   2.7s In che anno è caduto il muro di Berlino?
+[on] 8/10   4.4s Ho 5 mele, ne mangio 2 e poi ne compro il doppio di quelle che mi sono rimaste. Quante mele ho adesso?
+[on] 9/10   2.3s Qual è il fiume più lungo d'Italia?
+[on] 10/10   2.3s Quanti secondi ci sono in un'ora?
+{
+ "spike": {
+  "prompts": 30,
+  "correct": 23,
+  "calls": 53,
+  "malformed": 0,
+  "schema_errors": 0,
+  "grammar_bad": 0,
+  "masked_tokens": 0,
+  "need_tool": 25,
+  "first_right": 23,
+  "args_rule_prompts": 15,
+  "args_exact": 9,
+  "no_tool_ok": 5,
+  "auto_ok": 0,
+  "conf_lines": 53,
+  "conf_asked_y": 2,
+  "round_limit": 2,
+  "alias_hits": 0,
+  "info_correct": 0,
+  "info_first_right": 0,
+  "conf_low_mid": [
+   "[confidence] min margin 0.66 at 'tool name' ('mkdir' vs 'run'), 1 decision tokens: 0.66, 715 us -> ask y/N",
+   "[confidence] min margin 0.07 at 'tool name' ('run' vs 'cat'), 2 decision tokens: 0.07 0.32, 805 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.63 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.83 0.63, 1063 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.71 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.81 0.71, 646 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.69 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.93 0.69, 723 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.73 at 'tool name' ('mem' vs 'cat'), 1 decision tokens: 0.73, 555 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.62 at 'tool name' ('rm' vs 'run'), 1 decision tokens: 0.62, 724 us -> ask (the tool asks y/N itself)",
+   "[confidence] min margin 0.16 at 'tool name' ('run' vs 'ls'), 5 decision tokens: 0.16 0.68 0.98 1.00 1.00, 2107 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.52 at 'tool name' ('_w' vs '_code'), 4 decision tokens: 0.93 0.52 1.00 1.00, 1615 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.41 at 'tool name' ('_w' vs '_code'), 5 decision tokens: 0.85 0.41 0.96 1.00 1.00, 1882 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.16 at 'tool name' ('run' vs 'write'), 5 decision tokens: 0.16 0.85 0.93 1.00 1.00, 1781 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.23 at 'integer' ('5' vs '3'), 6 decision tokens: 1.00 1.00 1.00 0.23 1.00 1.00, 1819 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.31 at 'tool name' ('ls' vs 'run'), 1 decision tokens: 0.31, 417 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.57 at 'tool name' ('mkdir' vs 'run'), 1 decision tokens: 0.57, 421 us -> ask y/N",
+   "[confidence] min margin 0.77 at 'tool name' ('_w' vs '_code'), 5 decision tokens: 0.81 0.77 0.98 0.99 1.00, 1443 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.50 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.96 0.50, 626 us -> run (low-confidence notice: check the result)"
+  ],
+  "call_round_decode_tok_s": 31.5
+ },
+ "inos": {
+  "prompts": 32,
+  "correct": 24,
+  "calls": 71,
+  "malformed": 0,
+  "schema_errors": 0,
+  "grammar_bad": 0,
+  "masked_tokens": 0,
+  "need_tool": 30,
+  "first_right": 25,
+  "args_rule_prompts": 0,
+  "args_exact": 0,
+  "no_tool_ok": 2,
+  "auto_ok": 0,
+  "conf_lines": 71,
+  "conf_asked_y": 3,
+  "round_limit": 4,
+  "alias_hits": 0,
+  "info_correct": 5,
+  "info_first_right": 5,
+  "conf_low_mid": [
+   "[confidence] min margin 0.54 at 'tool name' ('ls' vs 'run'), 1 decision tokens: 0.54, 445 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.31 at 'tool name' ('ls' vs 'cat'), 1 decision tokens: 0.31, 417 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.01 at 'tool name' ('cat' vs 'run'), 1 decision tokens: 0.01, 551 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.60 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.80 0.60, 974 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.14 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.96 0.14, 868 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.49 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.94 0.49, 1181 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.26 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.97 0.26, 660 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.75 at 'parameter' ('=path' vs '=args'), 5 decision tokens: 1.00 0.84 0.75 1.00 1.00, 2106 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.61 at 'tool name' ('write' vs 'mkdir'), 1 decision tokens: 0.61, 591 us -> ask y/N",
+   "[confidence] min margin 0.71 at 'tool name' ('mkdir' vs 'ls'), 1 decision tokens: 0.71, 576 us -> ask y/N",
+   "[confidence] min margin 0.78 at 'tool name' ('rm' vs 'run'), 1 decision tokens: 0.78, 612 us -> ask (the tool asks y/N itself)",
+   "[confidence] min margin 0.71 at 'enum value' ('cores' vs 'temperature'), 2 decision tokens: 1.00 0.71, 726 us -> ask y/N",
+   "[confidence] min margin 0.55 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.85 0.55, 647 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.68 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.94 0.68, 841 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.33 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.89 0.33, 714 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.46 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.95 0.46, 815 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.72 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.98 0.72, 861 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.60 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.96 0.60, 920 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.71 at 'tool name' ('recall' vs 'run'), 1 decision tokens: 0.71, 569 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.14 at 'tool name' ('run' vs 'cat'), 5 decision tokens: 0.14 0.97 0.96 1.00 1.00, 1570 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.25 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.95 0.25, 672 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.67 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.86 0.67, 829 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.74 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.91 0.74, 1006 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.37 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.77 0.37, 1246 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.61 at 'tool name' ('cat' vs 'run'), 1 decision tokens: 0.61, 421 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.47 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.68 0.47, 662 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.40 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.98 0.40, 806 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.62 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.85 0.62, 869 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.37 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.92 0.37, 867 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.50 at 'tool name' ('_code' vs '_w'), 2 decision tokens: 0.56 0.50, 760 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.64 at 'tool name' ('run' vs 'write'), 2 decision tokens: 0.64 0.71, 856 us -> run (low-confidence notice: check the result)",
+   "[confidence] min margin 0.61 at 'tool name' ('recall' vs 'run'), 1 decision tokens: 0.61, 445 us -> run (low-confidence notice: check the result)"
+  ],
+  "call_round_decode_tok_s": 31.89
+ },
+ "it": {
+  "prompts": 10,
+  "correct": 10,
+  "calls": 0,
+  "malformed": 0,
+  "schema_errors": 0,
+  "grammar_bad": 0,
+  "masked_tokens": 0,
+  "need_tool": 0,
+  "first_right": 0,
+  "args_rule_prompts": 0,
+  "args_exact": 0,
+  "no_tool_ok": 10,
+  "auto_ok": 8,
+  "conf_lines": 0,
+  "conf_asked_y": 0,
+  "round_limit": 0,
+  "alias_hits": 0,
+  "info_correct": 0,
+  "info_first_right": 0,
+  "conf_low_mid": [],
+  "call_round_decode_tok_s": null
+ }
+}

@@ -1,0 +1,20 @@
+Architecture: qwen35 (hybrid DeltaNet + gated attention)
+Tokenizer: 247587 merges in 524288 slots (load=0.472, avg_probe=1.44, max_probe=34), tok_bytes=1,843,484 B
+Verified embed_tokens == lm_head exact (max_diff=0.0)
+Quantizing embed_tokens (248320, 2560) -> Q8_0 (scale_dtype=fp16, v4)...
+  Exported layer 7/32
+  Exported layer 14/32
+  Exported layer 21/32
+  Exported layer 28/32
+  Exported layer 32/32
+
+Export complete: models/t64-eu-tool-q4_0mlp-v4.asmbin.part
+  Format       : .asmbin v4 (scale_dtype=fp16, flags=0x7)
+  Total size   : 3,361,755,072 bytes (3206.02 MiB)
+  off_tokenizer: 4,608
+  off_embed    : 11,231,168
+  off_layertbl : 256 (32 x 136 B)
+  off_layers   : 686,661,568 (stride=0 x 32)
+  off_final_nrm: 3,361,744,832
+  Q4_0 roles   : mlp,mlp_down; lm_head tied
+  Elapsed      : 61.15 s

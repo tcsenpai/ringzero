@@ -1,0 +1,22 @@
+ [0m/bench
+A CPU cache is a small, ultra-fast memory located physically close to the processor to store frequently accessed data and instructions. It operates by automatically keeping copies of recently used information, allowing the CPU to retrieve data much faster than it could from the main system memory. This mechanism significantly reduces processing delays and improves overall system performance by
+[90m[prefill] 25 tok in 307.41 ms (81.32 tok/s)  [decode] 64 tok in 2934.83 ms (21.46 tok/s, output 8 ms)  cores 8  ctx 88/32768 (0%)[0m
+[snap] conversation restored (ctx 1723) in 8938 us
+
+[1;31mringzero[main]>
+ [0m/bench
+A CPU cache is a small, ultra-fast memory located physically close to the processor to store frequently accessed data and instructions. It operates by automatically keeping copies of recently used information, allowing the CPU to retrieve data much faster than it could from the main system memory. This mechanism significantly reduces processing delays and improves overall system performance by
+[90m[prefill] 25 tok in 337.33 ms (74.10 tok/s)  [decode] 64 tok in 2940.26 ms (21.42 tok/s, output 8 ms)  cores 8  ctx 88/32768 (0%)[0m
+[snap] conversation restored (ctx 1723) in 3897 us
+
+[1;31mringzero[main]>
+ [0m/bench
+A CPU cache is a small, ultra-fast memory located physically close to the processor to store frequently accessed data and instructions. It operates by automatically keeping copies of recently used information, allowing the CPU to retrieve data much faster than it could from the main system memory. This mechanism significantly reduces processing delays and improves overall system performance by
+[90m[prefill] 25 tok in 329.10 ms (75.96 tok/s)  [decode] 64 tok in 2831.06 ms (22.25 tok/s, output 7 ms)  cores 8  ctx 88/32768 (0%)[0m
+[snap] conversation restored (ctx 1723) in 3446 us
+
+[1;31mringzero[main]>
+ [0m!mem
+RAM total 8191 MiB, free 1580 MiB, used 6611 MiB (model weights 3819 MiB, LLM engine arena 1537 MiB, state snapshot pool 1024 MiB, kernel heap 192 MiB, kernel and firmware 39 MiB)
+
+[1;31mringzero[main]>
