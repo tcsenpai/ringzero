@@ -47,6 +47,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │                   └── ✓ 🟢 M5b WASI runtime [E1]
 │                       └── ✓ 🟢 M8 Demo apps on ringzero (Python + WASM) [E1]
 │                           └── T34: Beta release gate (circular)
+○ 🟠 Tool calling to 99% (goal) [E1]
 ✓ 🟠 Evaluate NeoHorse-1-4B and QwenPaw-Flash-4B (Q4) [E1]
 ✓ 🟠 Fixes found by the OpenSpec baseline (before release) [E1]
 │   └── T51: Beta release (today, 2026-11-27) (circular)
@@ -66,6 +67,8 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │   │   └── ✓ 🟠 Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B [E1]
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
+✓ 🟢 Memory systems survey: pick a design for agentd [E1]
+│   └── ○ 🟢 Decide the memory design (from T66) [E1]
 ✓ 🟢 Agent-specific fine-tunes <= 4B (eval) [E1]
 ✓ 🟢 Reranker over the embedder's recall (spike) [E1]
 ○ 🟢 4B extra streams vs snapshot pool [E1]
@@ -79,6 +82,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │   └── T16: Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B (circular)
 ✓ 🟢 Spike: 2B tool-calling reliability on Linux [E1]
 │   └── T4: M3 agent loop and system tools (circular)
+○ 🔵 Boot-time model pick by usable RAM (2B or 4B) [E1]
 ○ 🔵 Live logit view on the framebuffer [E1]
 ○ 🔵 Shareable mind-state files [E1]
 ○ 🔵 Spike: zero-shot Safe/Dangerous probe on Qwen3.5-4B [E1]
@@ -87,5 +91,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 64 task(s) shown
+ℹ️ 68 task(s) shown
 ```
