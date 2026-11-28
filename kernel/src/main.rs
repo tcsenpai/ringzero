@@ -26,6 +26,7 @@ mod multi; // M4.8a multi-stream decode
 mod log;
 mod mem;
 mod memidx;
+mod memrank; // T72 design A ranking rules
 mod mstore;
 mod q4test;
 mod shell;

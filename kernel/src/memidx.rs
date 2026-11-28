@@ -4,9 +4,12 @@
 // (docs/spikes/EMBEDDER.md): BM25 joins the ranking (RRF) only when the query looks like an identifier or path,
 // or when its top BM25 hit is strong; otherwise the embedding order stands. API (add, search, text, len, clear,
 // set_dim, save, load) is what /index, /search, the agent's recall tool and agentd use.
-// Persistence (M4.5): agentd saves the index to /sys/mem/index.bin with a header (embedder hash, dim, Q8_0 row
-// layout, chunker version, a checksum) and loads it at boot; any mismatch means a rebuild by re-embedding. Texts
-// carry their source: "[/path] chunk" (fidx.rs), "[fact] key: value", "[episode N] ...", "[said] ..." (agentd).
+// Persistence (M4.5): agentd saves the index to /var/lib/ringzero/mem/index.bin with a header (embedder hash, dim,
+// Q8_0 row layout, chunker version, a checksum) and loads it at boot; any mismatch means a rebuild by re-embedding.
+// Texts carry their source: "[/path] chunk" (fidx.rs), "[fact] key: value", "[episode N] ...", "[said] ..." (agentd).
+// T72 (design A, docs/M_MEMA_RESULT.md): every entry has a date (Unix seconds, saved since index version 2), a hub
+// score (mean cosine to its HUB_K nearest generic probe questions, memrank.rs) and the search ranks by the cosine
+// minus a caller's penalty; Hit.cos stays the raw cosine, the one the floors read.
 use crate::embed::{self, DIM};
 use crate::engine::{ctx, matmul_set_fp16, tp_matmul_q8_0};
 use crate::smp;
@@ -46,6 +49,17 @@ static mut RANK_E: [u16; CAP] = [0; CAP];
 static mut TF: [[u16; QT]; CAP] = [[0; QT]; CAP];
 static mut DL: [u16; CAP] = [0; CAP];
 static mut VEC: [f32; DIM] = [0.0; DIM];
+/// T72: date of each entry, Unix seconds (0 = not known)
+static mut TS: [u64; CAP] = [0; CAP];
+static mut SCORE: [f32; CAP] = [0.0; CAP];
+/// T72: hub score per entry, valid for the first HUB_N entries (appends extend it, retain / clear / load reset it)
+static mut HUB: [f32; CAP] = [0.0; CAP];
+static mut HUB_N: usize = 0;
+/// the probe questions' Q8_0 rows (memrank::PROBES order), as one weight matrix like ROWS
+#[repr(C, align(64))]
+struct Probes([u8; crate::memrank::NP * ROW_MAX]);
+static mut PROBE: Probes = Probes([0; crate::memrank::NP * ROW_MAX]);
+static mut PROBE_DIM: usize = 0; // 0 = no probes yet (no hub score)
 
 fn ix() -> &'static mut Idx {
     unsafe { &mut *core::ptr::addr_of_mut!(IX) }
@@ -77,6 +91,18 @@ pub fn clear() {
     let x = ix();
     (x.n, x.text_n, x.embed_us, x.embed_tok) = (0, 0, 0, 0);
     x.gen += 1;
+    unsafe { HUB_N = 0 };
+}
+/// T72: date of an entry (Unix seconds, 0 = not known).
+pub fn ts(id: usize) -> u64 {
+    unsafe { TS[id] }
+}
+/// T72: set the date of an entry (the migration of a version 1 index).
+pub fn set_ts(id: usize, t: u64) {
+    if id < ix().n {
+        unsafe { TS[id] = t };
+        ix().gen += 1;
+    }
 }
 /// Matryoshka dim (multiple of 128, 128..1024); only on an empty index (stored rows cannot change dim).
 pub fn set_dim(d: usize) -> Result<(), &'static str> {
@@ -120,6 +146,72 @@ fn f16_f32(h: u16) -> f32 {
         _ => s | ((e + 112) << 23) | (m << 13),
     };
     f32::from_bits(v)
+}
+
+/// One row back to floats (the probes and supersession need an entry's vector, not only its cosine to a query).
+fn dequant(row: &[u8], dim: usize, out: &mut [f32]) {
+    for b in 0..dim / 32 {
+        let s = f16_f32(u16::from_le_bytes([row[dim + 2 * b], row[dim + 2 * b + 1]]));
+        for i in 0..32 {
+            out[b * 32 + i] = (row[b * 32 + i] as i8) as f32 * s;
+        }
+    }
+}
+
+fn row(id: usize) -> &'static [u8] {
+    let st = stride(ix().dim);
+    unsafe { &(&*core::ptr::addr_of!(ROWS.0))[id * st..(id + 1) * st] }
+}
+
+/// T72: cosine between two entries (their Q8_0 rows; the embedder's vectors are unit length).
+pub fn dd(a: usize, b: usize) -> f32 {
+    let dim = ix().dim;
+    let (mut va, mut vb) = ([0.0f32; DIM], [0.0f32; DIM]);
+    dequant(row(a), dim, &mut va);
+    dequant(row(b), dim, &mut vb);
+    va[..dim].iter().zip(&vb[..dim]).map(|(x, y)| x * y).sum()
+}
+
+/// T72: the probe questions' rows (NP rows at the current dim); hub scores are computed again from them.
+pub fn set_probes(rows: &[u8]) -> Result<(), &'static str> {
+    let st = stride(ix().dim);
+    if rows.len() != crate::memrank::NP * st {
+        return Err("probe rows do not match the index dim");
+    }
+    unsafe {
+        (&mut *core::ptr::addr_of_mut!(PROBE.0))[..rows.len()].copy_from_slice(rows);
+        PROBE_DIM = ix().dim;
+        HUB_N = 0;
+    }
+    Ok(())
+}
+pub fn probes() -> bool {
+    unsafe { PROBE_DIM != 0 && PROBE_DIM == ix().dim }
+}
+
+/// T72: hub score of every entry (mean cosine to its HUB_K nearest probes), computed for the entries added since
+/// the last call; 0 for all without probes.
+pub fn hubs() -> &'static [f32] {
+    let x = ix();
+    let hub = unsafe { &mut *core::ptr::addr_of_mut!(HUB) };
+    if !probes() {
+        hub[..x.n].fill(0.0);
+        return &hub[..x.n];
+    }
+    let (np, dim) = (crate::memrank::NP, x.dim);
+    let mut v = [0.0f32; DIM];
+    let mut c = [0.0f32; crate::memrank::NP];
+    unsafe { matmul_set_fp16(1) };
+    for d in unsafe { HUB_N }..x.n {
+        dequant(row(d), dim, &mut v);
+        unsafe { tp_matmul_q8_0(core::ptr::addr_of!(PROBE.0) as *const u8, v.as_ptr(), c.as_mut_ptr(), np as u64, dim as u64) };
+        hub[d] = crate::memrank::hub_of(&mut c);
+    }
+    unsafe {
+        matmul_set_fp16(ctx(CTX_FP16_SCALES) & 0xffff_ffff);
+        HUB_N = x.n;
+    }
+    &hub[..x.n]
 }
 
 /// v[..dim] -> one row: dim int8, then dim/32 fp16 scales (matmul.asm v2 layout).
@@ -266,12 +358,12 @@ pub struct Added {
     pub info: embed::Info,
 }
 
-/// Embed a document and store it. Err if the index or its text space is full.
-pub fn add(text: &str) -> Result<Added, &'static str> {
+/// Embed a document and store it with date `ts`. Err if the index or its text space is full.
+pub fn add(text: &str, ts: u64) -> Result<Added, &'static str> {
     room(text)?;
     let v = unsafe { &mut *core::ptr::addr_of_mut!(VEC) };
     let info = embed::embed(text.trim(), false, ix().dim, v)?;
-    store(text, &v[..ix().dim], info)
+    store(text, &v[..ix().dim], info, ts)
 }
 
 /// Err if `text` would not fit (checked before spending time on its embedding).
@@ -287,9 +379,9 @@ pub fn room(text: &str) -> Result<(), &'static str> {
     Ok(())
 }
 
-/// Store a text with its embedding v (len = dim()): one Q8_0 row + the text.
-pub fn store(text: &str, v: &[f32], info: embed::Info) -> Result<Added, &'static str> {
-    let id = store_row(text, &row_of(&v[..ix().dim]))?;
+/// Store a text with its embedding v (len = dim()) and its date: one Q8_0 row + the text.
+pub fn store(text: &str, v: &[f32], info: embed::Info, ts: u64) -> Result<Added, &'static str> {
+    let id = store_row(text, &row_of(&v[..ix().dim]), ts)?;
     let x = ix();
     x.embed_us += info.us;
     x.embed_tok += info.n_tok as u64;
@@ -307,7 +399,7 @@ pub fn row_len() -> usize {
     stride(ix().dim)
 }
 /// T38: store a text with a row that is already quantized (row_len() bytes, the current dim), no embedding.
-pub fn store_row(text: &str, row: &[u8]) -> Result<usize, &'static str> {
+pub fn store_row(text: &str, row: &[u8], ts: u64) -> Result<usize, &'static str> {
     room(text)?;
     let x = ix();
     let st = stride(x.dim);
@@ -322,6 +414,7 @@ pub fn store_row(text: &str, row: &[u8]) -> Result<usize, &'static str> {
     x.off[x.n] = x.text_n as u32;
     x.text_n += text.len();
     x.off[x.n + 1] = x.text_n as u32;
+    unsafe { TS[x.n] = ts };
     x.n += 1;
     x.gen += 1;
     Ok(x.n - 1)
@@ -341,6 +434,7 @@ pub fn retain(mut keep: impl FnMut(&str) -> bool) -> usize {
         }
         rows.copy_within(r * st..(r + 1) * st, w * st);
         t.copy_within(a..b, tw);
+        unsafe { TS[w] = TS[r] };
         x.off[w] = tw as u32;
         tw += b - a;
         w += 1;
@@ -349,6 +443,9 @@ pub fn retain(mut keep: impl FnMut(&str) -> bool) -> usize {
     let dropped = x.n - w;
     (x.n, x.text_n) = (w, tw);
     x.gen += dropped as u64;
+    if dropped > 0 {
+        unsafe { HUB_N = 0 };
+    }
     dropped
 }
 
@@ -372,10 +469,14 @@ impl Via {
 #[derive(Clone, Copy)]
 pub struct Hit {
     pub id: usize,
+    /// raw embedding cosine (the floors read this one, T72)
     pub cos: f32,
+    /// what the ranking used: cos minus the caller's penalty (= cos without one)
+    pub score: f32,
     pub bm25: f32,
     pub via: Via,
 }
+pub const HIT0: Hit = Hit { id: 0, cos: 0.0, score: 0.0, bm25: 0.0, via: Via::Emb };
 
 pub struct Found {
     pub n: usize,
@@ -385,8 +486,9 @@ pub struct Found {
     pub search_us: u64,
 }
 
-/// Top k (at most hits.len()) for a query.
-pub fn search(q: &str, hits: &mut [Hit]) -> Result<Found, &'static str> {
+/// Top k (at most hits.len()) for a query. `pen` (one value per entry, T72) is subtracted from each cosine before
+/// the ranking: the embedding order and the BM25 fusion both use the lowered score.
+pub fn search(q: &str, hits: &mut [Hit], pen: Option<&[f32]>) -> Result<Found, &'static str> {
     let x = ix();
     if x.n == 0 {
         return Err("the memory index is empty");
@@ -403,9 +505,13 @@ pub fn search(q: &str, hits: &mut [Hit]) -> Result<Found, &'static str> {
         matmul_set_fp16(ctx(CTX_FP16_SCALES) & 0xffff_ffff);
     }
     let n = x.n;
+    let sc = unsafe { &mut *core::ptr::addr_of_mut!(SCORE) };
+    for d in 0..n {
+        sc[d] = cos[d] - pen.map_or(0.0, |p| p[d]);
+    }
     let desc = |a: f32, b: f32| b.partial_cmp(&a).unwrap_or(core::cmp::Ordering::Equal);
     ord[..n].iter_mut().enumerate().for_each(|(i, o)| *o = i as u16);
-    ord[..n].sort_unstable_by(|&a, &b| desc(cos[a as usize], cos[b as usize]).then(a.cmp(&b)));
+    ord[..n].sort_unstable_by(|&a, &b| desc(sc[a as usize], sc[b as usize]).then(a.cmp(&b)));
     for (r, &d) in ord[..n].iter().enumerate() {
         rank_e[d as usize] = r as u16;
     }
@@ -448,26 +554,28 @@ pub fn search(q: &str, hits: &mut [Hit]) -> Result<Found, &'static str> {
             (false, true, true) => Via::Both,
             (false, true, false) => Via::Bm25,
         };
-        *h = Hit { id: d, cos: cos[d], bm25: bm[d], via };
+        *h = Hit { id: d, cos: cos[d], score: sc[d], bm25: bm[d], via };
     }
     Ok(Found { n: k, gate, embed: info, search_us: smp::tsc_to_us(smp::rdtsc() - t0) })
 }
 
-// ---- on disk: header, extra (agentd's file table and store offsets), off[n+1], rows, texts ----
+// ---- on disk: header, extra (agentd's file table and store offsets), off[n+1], rows, texts, dates (v2) ----
 
 const MAGIC: &[u8; 4] = b"RZIX";
-const VER: u32 = 1;
+/// 2 (T72): the entries' dates (u64 Unix seconds) after the texts. A version 1 file still loads (no dates).
+const VER: u32 = 2;
 /// Row layout id: int8 x dim, then dim/32 fp16 block scales (matmul.asm v2, fp16 mode).
 const LAYOUT: u32 = 0x5108;
 const HDR: usize = 72; // magic ver emb, 7 x u32, embed_us embed_tok sum, 4 bytes pad
 
-fn payload() -> [&'static [u8]; 3] {
+fn payload(ver: u32) -> [&'static [u8]; 4] {
     let x = ix();
     unsafe {
         [
             core::slice::from_raw_parts(x.off.as_ptr() as *const u8, (x.n + 1) * 4),
             &(&*core::ptr::addr_of!(ROWS.0))[..x.n * stride(x.dim)],
             &(&*core::ptr::addr_of!(TXT))[..x.text_n],
+            core::slice::from_raw_parts(core::ptr::addr_of!(TS) as *const u8, if ver >= 2 { x.n * 8 } else { 0 }),
         ]
     }
 }
@@ -475,7 +583,7 @@ fn payload() -> [&'static [u8]; 3] {
 /// Write the index to `path`; `emb` = embedder hash, `chunker` = fidx chunker version. Returns bytes.
 pub fn save(path: &str, emb: u64, chunker: u32, extra: &[u8]) -> Result<u64, &'static str> {
     let x = ix();
-    let p = payload();
+    let p = payload(VER);
     let sum = p.iter().fold(crate::mstore::fnv(crate::mstore::FNV0, extra), |h, b| crate::mstore::fnv(h, b));
     let mut h = [0u8; HDR];
     h[..4].copy_from_slice(MAGIC);
@@ -492,29 +600,40 @@ pub fn save(path: &str, emb: u64, chunker: u32, extra: &[u8]) -> Result<u64, &'s
     for v in [x.embed_us, x.embed_tok, sum] {
         put(&v.to_le_bytes());
     }
-    crate::fs::write_parts(path, &[&h, extra, p[0], p[1], p[2]])
+    crate::fs::write_parts(path, &[&h, extra, p[0], p[1], p[2], p[3]])
 }
 
-/// Load the index from `path` if its header matches this embedder, dim, layout and chunker. Ok(extra), or
-/// Err(why) with the index left empty.
-pub fn load(path: &str, emb: u64, chunker: u32) -> Result<alloc::vec::Vec<u8>, &'static str> {
+/// A loaded index: agentd's extra block, the file's version (1 = no dates: the caller dates the entries) and
+/// the chunker version it was cut with.
+pub struct Loaded {
+    pub extra: alloc::vec::Vec<u8>,
+    pub ver: u32,
+    pub chunker: u32,
+}
+
+/// Load the index from `path` if its header matches this embedder, dim and layout, and its chunker version is
+/// `chunker` or an older one the caller can migrate (`min_chunker` and up). Err(why) leaves the index empty.
+pub fn load(path: &str, emb: u64, chunker: u32, min_chunker: u32) -> Result<Loaded, &'static str> {
     let mut h = [0u8; HDR];
     let (k, size) = crate::fs::read_into(path, 0, &mut h).map_err(|_| "no saved index")?;
     let u32_at = |o: usize| u32::from_le_bytes(h[o..o + 4].try_into().unwrap()) as usize;
     let u64_at = |o: usize| u64::from_le_bytes(h[o..o + 8].try_into().unwrap());
-    if k < HDR || &h[..4] != MAGIC || u32_at(4) != VER as usize {
+    let ver = if k >= HDR { u32_at(4) as u32 } else { 0 };
+    if k < HDR || &h[..4] != MAGIC || !(1..=VER).contains(&ver) {
         return Err("bad magic or version");
     }
     let (dim, st, n, tn, xl) = (u32_at(16), u32_at(20), u32_at(32), u32_at(36), u32_at(40));
+    let ch = u32_at(28) as u32;
+    let tsb = if ver >= 2 { n * 8 } else { 0 };
     let why = if u64_at(8) != emb {
         "embedder changed"
     } else if dim != ix().dim {
         "dim differs"
     } else if st != stride(dim) || u32_at(24) != LAYOUT as usize {
         "row layout differs"
-    } else if u32_at(28) != chunker as usize {
+    } else if ch > chunker || ch < min_chunker {
         "chunker version differs"
-    } else if n > CAP || tn > TEXT_BYTES || (HDR + xl + (n + 1) * 4 + n * st + tn) as u64 != size {
+    } else if n > CAP || tn > TEXT_BYTES || (HDR + xl + (n + 1) * 4 + n * st + tn + tsb) as u64 != size {
         "size does not match the header"
     } else {
         ""
@@ -536,16 +655,19 @@ pub fn load(path: &str, emb: u64, chunker: u32) -> Result<alloc::vec::Vec<u8>, &
         rd(core::slice::from_raw_parts_mut(x.off.as_mut_ptr() as *mut u8, (n + 1) * 4))?;
         rd(&mut (&mut *core::ptr::addr_of_mut!(ROWS.0))[..n * st])?;
         rd(&mut (&mut *core::ptr::addr_of_mut!(TXT))[..tn])?;
+        let tsv = &mut *core::ptr::addr_of_mut!(TS);
+        tsv[..n].fill(0);
+        rd(core::slice::from_raw_parts_mut(tsv.as_mut_ptr() as *mut u8, tsb))?;
     }
     (x.n, x.text_n) = (n, tn);
-    let sum = payload().iter().fold(crate::mstore::fnv(crate::mstore::FNV0, &extra), |h, b| crate::mstore::fnv(h, b));
+    let sum = payload(ver).iter().fold(crate::mstore::fnv(crate::mstore::FNV0, &extra), |h, b| crate::mstore::fnv(h, b));
     if sum != u64_at(60) || x.off[n] as usize != tn || x.off[..n].windows(2).any(|w| w[0] > w[1]) {
         clear();
         return Err("checksum mismatch");
     }
     (x.embed_us, x.embed_tok) = (u64_at(44), u64_at(52));
     x.gen += 1;
-    Ok(extra)
+    Ok(Loaded { extra, ver, chunker: ch })
 }
 
 pub fn stats<const N: usize>(o: &mut crate::log::SBuf<N>) {
@@ -579,8 +701,8 @@ pub fn selftest() -> bool {
         && identifier_like("casa-wifi") && !identifier_like("how are my files backed up?") && !identifier_like("restic Backblaze");
     let z = [0.0f32; DIM];
     let info = || embed::Info { n_tok: 0, us: 0, raw_norm: 0.0 };
-    ["[/a/x] one", "[/b] two", "[/a/y] three"].iter().for_each(|t| { let _ = store(t, &z[..ix().dim], info()); });
-    let r = retain(|t| !t.starts_with("[/a/")) == 2 && len() == 1 && text(0) == "[/b] two";
+    ["[/a/x] one", "[/b] two", "[/a/y] three"].iter().enumerate().for_each(|(i, t)| { let _ = store(t, &z[..ix().dim], info(), 10 + i as u64); });
+    let r = retain(|t| !t.starts_with("[/a/")) == 2 && len() == 1 && text(0) == "[/b] two" && ts(0) == 11;
     clear();
     f16 && q8 && l && g && r
 }

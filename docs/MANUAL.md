@@ -117,7 +117,7 @@ The first message of every conversation gets a memory slot (`[memory]` lines): s
 
 ## Memory index and search
 Asked as: how do I search my notes, cercare nei file, search memory, indice, find a file by meaning
-`/search QUERY` returns the top 5 entries of the memory index (files, facts, past statements, episodes, this manual) by meaning. `/index stats` shows its size and queue, `/index add TEXT` stores a note, `/index clear` rebuilds it. The agent uses the same index through its `recall` tool ("cerca nei file qualcosa sul latte").
+`/search QUERY` returns the top 5 entries of the memory index (files, facts, past statements, episodes, this manual) by meaning, each with its date. `/index stats` shows its size and queue, `/index add TEXT` stores a note (`-d 2026-11-02` dates it), `/index clear` rebuilds it. The agent uses the same index through its `recall` tool ("cerca nei file qualcosa sul latte"). When two records say the same thing, the newer one wins and the older one is left out (it stays on disk). Generic entries and someone else's records rank lower. A CSV file is indexed one row per entry. `/var/lib/ringzero/mem/index.tsv` lists every entry with its date.
 
 ## The manual
 Asked as: is there a manual, c'e un manuale, documentation, documentazione, man page

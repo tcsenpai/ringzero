@@ -86,7 +86,7 @@ ifeq ($(MANUAL_VECTORS),1)
 kernel: $(MANVEC)
 MANVEC_PATH := $(abspath $(MANVEC))
 endif
-$(MANVEC): docs/MANUAL.md $(EMBED) $(wildcard engine/*.asm engine/*.inc) kernel/src/embed.rs kernel/src/memidx.rs kernel/src/llm.rs
+$(MANVEC): docs/MANUAL.md $(EMBED) $(wildcard engine/*.asm engine/*.inc) kernel/src/embed.rs kernel/src/memidx.rs kernel/src/memrank.rs kernel/src/llm.rs
 	$(MAKE) iso MANUAL_VECTORS=0 ISO=$(BUILD)/manvec-pass1.iso
 	MEM=$(GUEST_MEM) python3 tools/manvec.py $(BUILD)/manvec-pass1.iso $@
 	rm -rf $(BUILD)/manvec-pass1.iso $@.boot

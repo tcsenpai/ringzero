@@ -16,10 +16,13 @@
 //    per foreground decode step in the same engine pass, so input at the prompt does not stop it. /consolidate,
 //    and a conversation that does not fit in the extra stream, run on top of the current snapshot point and
 //    restore that point after (the M4.5 path). Either way the user's conversation is untouched.
+//  - T72 ranking (design A, memrank.rs): every index entry is dated (its record's time, a file's mtime), the search
+//    subtracts the hub and owner penalties, a newer near-same record supersedes the older ones in the answer, the
+//    best manual section goes first for any query that it beats by MAN_MARGIN; floors read the raw cosine
 use crate::engine::{CAP, CAPTURE, ECHO};
 use crate::log::SBuf;
 use crate::mstore::{self, EPISODES, FACTS, JOURNAL};
-use crate::{embed, fidx, fs, llm, memidx, smp, snap};
+use crate::{embed, fidx, fs, llm, memidx, memrank, smp, snap};
 use alloc::collections::VecDeque;
 use alloc::format;
 use alloc::string::String;
@@ -144,6 +147,7 @@ struct Emb {
     id: u64,
     text: SBuf<{ fidx::CHUNK + 300 }>,
     src: Src,
+    ts: u64, // T72: the entry's date
 }
 
 struct Cons {
@@ -164,7 +168,7 @@ struct Cons {
 struct St {
     on: bool,
     facts: Vec<Fact>,
-    memq: VecDeque<String>,
+    memq: VecDeque<(String, u64)>, // index text and its date (T72)
     cur: Option<Emb>,
     cons: Option<Cons>,
     saved_gen: u64,
@@ -181,7 +185,7 @@ struct St {
     waited: u64, // slices a due consolidation waited behind other jobs
     ms: [u64; 4],
     preempted: u64,
-    said: Option<String>, // T35: the last user statement, indexed as [said] once its turn ends without acting
+    said: Option<(String, u64)>, // T35: the last user statement, indexed as [said] once its turn ends without acting
     acted: bool,          // that turn called a tool other than remember / forget / recall
     howto: bool,          // T22: the current user message asks how to do something
 }
@@ -206,7 +210,7 @@ pub fn facts() -> &'static [Fact] {
 fn drop_entries(prefix: &str) {
     let s = st();
     memidx::retain(|t| !t.starts_with(prefix));
-    s.memq.retain(|t| !t.starts_with(prefix));
+    s.memq.retain(|t| !t.0.starts_with(prefix));
 }
 
 fn fact_text(k: &str, v: &str) -> String {
@@ -217,7 +221,7 @@ fn fact_text(k: &str, v: &str) -> String {
 fn apply(store: usize, r: &mstore::Rec, state: bool, queue: bool, ep: u64) {
     let s = st();
     match (store, r.kind) {
-        (0, b'U') => said_begin(r.p, queue),
+        (0, b'U') => said_begin(r.p, queue, r.ts),
         (0, b'T') => said_tool(r.p.split(" -> ").next().unwrap_or("")),
         (1, b'S') => {
             let mut it = r.p.splitn(3, '\t');
@@ -228,7 +232,7 @@ fn apply(store: usize, r: &mstore::Rec, state: bool, queue: bool, ep: u64) {
             }
             if queue {
                 drop_entries(&format!("[fact] {}: ", k));
-                s.memq.push_back(fact_text(k, v));
+                s.memq.push_back((fact_text(k, v), r.ts));
             }
         }
         (1, b'X') => {
@@ -239,7 +243,7 @@ fn apply(store: usize, r: &mstore::Rec, state: bool, queue: bool, ep: u64) {
                 drop_entries(&format!("[fact] {}: ", r.p));
             }
         }
-        (2, b'E') if queue => s.memq.push_back(format!("[episode {}] {}", ep, r.p)),
+        (2, b'E') if queue => s.memq.push_back((format!("[episode {}] {}", ep, r.p), r.ts)),
         _ => {}
     }
 }
@@ -356,12 +360,13 @@ pub fn init() {
     let _ = fs::mkdir("/var/lib/ringzero/mem");
     let t0 = smp::rdtsc();
     let mut why: Option<&str> = None;
+    let mut mig = None;
     if !embed::ready() {
         why = Some("no embedder");
     } else {
-        match memidx::load(INDEX, embed::hash(), fidx::VERSION) {
-            Ok(extra) => {
-                for l in core::str::from_utf8(&extra).unwrap_or("").lines() {
+        match memidx::load(INDEX, embed::hash(), fidx::VERSION, fidx::OLDEST) {
+            Ok(ld) => {
+                for l in core::str::from_utf8(&ld.extra).unwrap_or("").lines() {
                     let f: Vec<&str> = l.split('\t').collect();
                     match (f[0], f.len()) {
                         ("S", 4) => (0..3).for_each(|i| s.off[i] = f[i + 1].parse().unwrap_or(0)),
@@ -372,6 +377,7 @@ pub fn init() {
                 let us = smp::tsc_to_us(smp::rdtsc() - t0);
                 crate::dlog!("index: loaded {} entries from {} in {}.{:03} ms ({} files in the table), no re-embedding",
                     memidx::len(), INDEX, us / 1000, us % 1000, fidx::table().len());
+                mig = Some((ld.ver, ld.chunker));
             }
             Err(e) => why = Some(e),
         }
@@ -384,6 +390,9 @@ pub fn init() {
         s.off = [0; 3];
     }
     replay(true, s.off);
+    if let Some((v, c)) = mig {
+        migrate(v, c); // after the replay (the facts' times); the dates change the index, the next idle save writes version 2
+    }
     if embed::ready() {
         scan_files();
         queue_manual();
@@ -394,6 +403,43 @@ pub fn init() {
     crate::dlog!("boot: {} facts, {} episodes, journal {} records ({} KiB); queued for the index: {} memory texts, files: {}",
         s.facts.len(), s.n_ep, s.n_rec[0], s.size[0] >> 10, s.memq.len(), if fidx::pending() { "yes" } else { "none" });
     s.last_input = smp::rdtsc();
+}
+
+/// T72: an index saved by an older kernel. Version 1 has no dates: a file chunk gets its file's mtime from the
+/// table, a fact its record's time, every other entry the boot date (ties between them go by append order, which
+/// is the order they were recorded in). Chunker 1 cut tables as text: their chunks are dropped and the files queued again (by rows).
+fn migrate(ver: u32, chunker: u32) {
+    if ver < 2 {
+        let now = crate::sys::unix_time();
+        let (mut f, mut k, mut o) = (0, 0, 0);
+        for id in 0..memidx::len() {
+            let t = memidx::text(id);
+            let p = t.strip_prefix("[/").and_then(|r| r.split_once("] ")).map(|x| x.0);
+            let mt = p.and_then(|p| fidx::table().iter().find(|e| &e.0[1..] == p)).map_or(0, |e| e.2);
+            let fact = st().facts.iter().find(|x| fact_text(&x.key, &x.value) == t).map_or(0, |x| x.ts);
+            if mt != 0 {
+                memidx::set_ts(id, fs::unix_of(mt));
+                f += 1;
+            } else if fact != 0 {
+                memidx::set_ts(id, fact);
+                k += 1;
+            } else {
+                memidx::set_ts(id, now);
+                o += 1;
+            }
+        }
+        crate::dlog!("index: version {} had no dates: {} file chunks dated by their file's mtime, {} facts by their record, {} other entries by the boot date",
+            ver, f, k, o);
+    }
+    if chunker < fidx::VERSION {
+        let tables: Vec<String> = fidx::table().iter().filter(|e| fidx::table_file(&e.0)).map(|e| e.0.clone()).collect();
+        for p in &tables {
+            let k = fidx::forget(p);
+            let q = fidx::enqueue_path(p);
+            crate::dlog!("index: chunker {} -> {}: {} cut again by rows ({} old chunks dropped{})", chunker, fidx::VERSION, p, k,
+                if q { ", queued" } else { ", not text any more" });
+        }
+    }
 }
 
 /// The shell is up: decisions stop printing on the console.
@@ -410,6 +456,30 @@ fn index_extra() -> String {
     o
 }
 
+/// T72: the index's entries as text, next to index.bin (the Unix way to read state: a file): id, date, source, the
+/// first 80 bytes of the text. Written with every save.
+pub const INDEX_LIST: &str = "/var/lib/ringzero/mem/index.tsv";
+
+fn index_list() -> String {
+    let mut o = String::from("# id\tdate (UTC)\tsource\ttext (first 80 bytes); written with index.bin\n");
+    for id in 0..memidx::len() {
+        let t = memidx::text(id);
+        let src = t.strip_prefix('[').and_then(|r| r.split_once(']')).map_or("note", |x| x.0.split(' ').next().unwrap_or("").trim_end_matches(':'));
+        let head = &t[..crate::agent::floor_char(t, 80)];
+        let _ = writeln!(o, "{}\t{}\t{}\t{}", id, date(memidx::ts(id)), src, head.replace(['\n', '\t'], " "));
+    }
+    o
+}
+
+/// "YYYY-MM-DD HH:MM" of Unix seconds ("-" for 0).
+pub fn date(ts: u64) -> String {
+    if ts == 0 {
+        return String::from("-");
+    }
+    let (y, m, d) = civil((ts / 86_400) as i64);
+    format!("{}-{:02}-{:02} {:02}:{:02}", y, m, d, ts % 86_400 / 3600, ts % 3600 / 60)
+}
+
 fn queue_empty() -> bool {
     let s = st();
     s.memq.is_empty() && s.cur.is_none() && !fidx::pending()
@@ -421,6 +491,9 @@ fn save_index(why: &str) {
     match memidx::save(INDEX, embed::hash(), fidx::VERSION, index_extra().as_bytes()) {
         Ok(b) => crate::dlog!("index: saved {} entries ({} KiB) in {} ms ({})", memidx::len(), b >> 10, smp::tsc_to_us(smp::rdtsc() - t0) / 1000, why),
         Err(e) => crate::dlog!("index: save failed ({}), kept in RAM only", e),
+    }
+    if let Err(e) = fs::write(INDEX_LIST, index_list().as_bytes()) {
+        crate::dlog!("index: {} not written ({})", INDEX_LIST, e);
     }
     s.saved_gen = memidx::gen();
     s.off = s.size;
@@ -459,15 +532,24 @@ fn queue_manual() {
     let s = st();
     let cur: Vec<String> = manual().collect();
     let dropped = memidx::retain(|t| !t.starts_with(MAN) || cur.iter().any(|c| c == t));
-    s.memq.retain(|t| !t.starts_with(MAN));
+    s.memq.retain(|t| !t.0.starts_with(MAN));
     let n = cur.len();
+    let now = crate::sys::unix_time();
     let rows = baked(&cur);
+    if let Ok(r) = rows {
+        let pr = &r[n * memidx::row_len()..];
+        match memidx::set_probes(pr) {
+            Ok(()) => crate::dlog!("hub: {} probe questions from the vectors in the kernel", memrank::NP),
+            Err(e) => crate::dlog!("hub: probe vectors in the kernel not used ({})", e),
+        }
+    }
+    let rows = rows.map(|r| &r[..n * memidx::row_len()]);
     let (mut q, mut b) = (0, 0);
     for (i, t) in cur.iter().enumerate().filter(|(_, t)| !memidx::contains(t)) {
         match &rows {
-            Ok(r) if memidx::store_row(t, &r[i * memidx::row_len()..(i + 1) * memidx::row_len()]).is_ok() => b += 1,
+            Ok(r) if memidx::store_row(t, &r[i * memidx::row_len()..(i + 1) * memidx::row_len()], now).is_ok() => b += 1,
             _ => {
-                s.memq.push_back(t.clone());
+                s.memq.push_back((t.clone(), now));
                 q += 1;
             }
         }
@@ -477,16 +559,17 @@ fn queue_manual() {
 }
 
 // ---- T38: manual vectors baked into the kernel (MANUAL_VECTORS=1, tools/manvec.py) ----
-// Blob: "RZMV", u32 version, u64 key, u32 n, u32 dim, u32 row bytes, then n Q8_0 rows in manual() order.
-// Empty when built with MANUAL_VECTORS=0. The rows come from `/man dump` of a kernel with the same key.
+// Blob: "RZMV", u32 version, u64 key, u32 n, u32 dim, u32 row bytes, then n Q8_0 rows in manual() order, then (v2,
+// T72) the memrank::NP probe questions' rows, embedded as queries. Empty when built with MANUAL_VECTORS=0. The rows
+// come from `/man dump` of a kernel with the same key.
 const BAKED: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/manvec.bin"));
-const MV_VER: u32 = 1;
+const MV_VER: u32 = 2;
 const MV_HDR: usize = 28;
 
-/// What the vectors depend on: every section text (with its Asked-as line), the embedder file, the engine
-/// build, the chunker version and the index dim.
+/// What the vectors depend on: every section text (with its Asked-as line), the probe questions, the embedder
+/// file, the engine build, the chunker version and the index dim.
 fn man_key(cur: &[String]) -> u64 {
-    let h = cur.iter().fold(crate::mstore::FNV0, |h, t| crate::mstore::fnv(crate::mstore::fnv(h, t.as_bytes()), &[0]));
+    let h = cur.iter().map(|t| t.as_str()).chain(memrank::PROBES).fold(crate::mstore::FNV0, |h, t| crate::mstore::fnv(crate::mstore::fnv(h, t.as_bytes()), &[0]));
     let h = crate::mstore::fnv(h, &embed::hash().to_le_bytes());
     let h = crate::mstore::fnv(h, env!("RINGZERO_ENGINE_HASH").as_bytes());
     let h = crate::mstore::fnv(h, &fidx::VERSION.to_le_bytes());
@@ -515,7 +598,7 @@ fn baked(cur: &[String]) -> Result<&'static [u8], &'static str> {
         return Err("key differs (manual, embedder, engine, chunker or dim changed)");
     }
     let rows = &BAKED[MV_HDR..];
-    if rows.len() != cur.len() * memidx::row_len() {
+    if rows.len() != (cur.len() + memrank::NP) * memidx::row_len() {
         return Err("size does not match the header");
     }
     Ok(rows)
@@ -534,8 +617,9 @@ fn man_vectors(check: bool) {
         return;
     }
     let (t0, mut same) = (smp::rdtsc(), 0);
-    for (i, t) in cur.iter().enumerate() {
-        if let Err(e) = embed::embed(t, false, dim, &mut v) {
+    let all = cur.iter().map(|t| (t.as_str(), false)).chain(memrank::PROBES.iter().map(|p| (*p, true)));
+    for (i, (t, query)) in all.enumerate() {
+        if let Err(e) = embed::embed(t, query, dim, &mut v) {
             crate::println!("[man] embed failed: {}", e);
             return;
         }
@@ -547,7 +631,7 @@ fn man_vectors(check: bool) {
     }
     let ms = smp::tsc_to_us(smp::rdtsc() - t0) / 1000;
     if check {
-        crate::println!("[man] vectors in the kernel: {}/{} rows byte-identical to a fresh embedding ({} ms)", same, cur.len(), ms);
+        crate::println!("[man] vectors in the kernel: {}/{} rows byte-identical to a fresh embedding ({} ms)", same, cur.len() + memrank::NP, ms);
         return;
     }
     for c in blob.chunks(64) {
@@ -555,7 +639,8 @@ fn man_vectors(check: bool) {
         c.iter().for_each(|b| { let _ = write!(l, "{:02x}", b); });
         crate::println!("{}", l);
     }
-    crate::println!("MV end {:016x} {} bytes, {} sections in {} ms", crate::mstore::fnv(crate::mstore::FNV0, &blob), blob.len(), cur.len(), ms);
+    crate::println!("MV end {:016x} {} bytes, {} sections and {} probes in {} ms", crate::mstore::fnv(crate::mstore::FNV0, &blob), blob.len(),
+        cur.len(), memrank::NP, ms);
 }
 
 /// `/man [TOPIC]`: the best two manual sections for TOPIC, in full; alone: the section titles.
@@ -573,8 +658,8 @@ pub fn man(q: &str) {
         crate::println!("[man] no embedder: the manual cannot be searched");
         return;
     }
-    let mut h = [memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb }; 32];
-    let n = hits(q, &mut h);
+    let mut h = [HIT0; 32];
+    let n = hits(q, &mut h).map_or(0, |f| f.n);
     let mut k = 0;
     for x in h[..n].iter().filter(|x| memidx::text(x.id).starts_with(MAN)).take(2) {
         crate::println!("(score {:.2}) {}\n", x.cos, render(memidx::text(x.id), 0));
@@ -603,10 +688,10 @@ fn said(q: &str) -> bool {
 // carried out with a tool ("crea la cartella /home/x", "leggi /notes/todo.txt") is done: recalled later it only
 // pulled the model toward the old request (docs/M45_RESULT.md). Turns that only used remember / forget / recall
 // are statements about the user and stay. The same rule runs on the journal replay (U, then its T records).
-fn said_begin(q: &str, queue: bool) {
+fn said_begin(q: &str, queue: bool, ts: u64) {
     said_end();
     let s = st();
-    s.said = (queue && said(q)).then(|| format!("[said] {}", &q[..crate::agent::floor_char(q, 600)]));
+    s.said = (queue && said(q)).then(|| (format!("[said] {}", &q[..crate::agent::floor_char(q, 600)]), ts));
     s.acted = false;
 }
 fn said_tool(name: &str) {
@@ -619,7 +704,7 @@ fn said_end() {
     let s = st();
     if let Some(t) = s.said.take() {
         if s.acted {
-            crate::dlog!("said: not indexed (the turn ran a tool): {}", &t[7..crate::agent::floor_char(&t, 70)]);
+            crate::dlog!("said: not indexed (the turn ran a tool): {}", &t.0[7..crate::agent::floor_char(&t.0, 70)]);
         } else {
             s.memq.push_back(t);
         }
@@ -630,7 +715,7 @@ fn said_end() {
 pub fn on_user(q: &str) {
     let s = st();
     append(0, b'U', q);
-    said_begin(q, s.on && embed::ready());
+    said_begin(q, s.on && embed::ready(), crate::sys::unix_time());
     s.howto = howto(q);
     s.session.push_str(q);
     s.session.push('\n');
@@ -791,28 +876,104 @@ fn flush_mem() {
     crate::dlog!("recall: embedded {} queued memory texts first ({} ms)", n - s.memq.len(), smp::tsc_to_us(smp::rdtsc() - t0) / 1000);
 }
 
-fn hits(q: &str, h: &mut [memidx::Hit]) -> usize {
-    flush_mem();
-    memidx::search(q, h).map(|f| f.n).unwrap_or(0)
+/// T72: the probe questions' vectors when the kernel has none built in (MANUAL_VECTORS=0 or a stale bake): embedded
+/// once, now (about 0.2 s each). Without them the hub penalty is 0.
+fn ensure_probes() {
+    static mut TRIED: bool = false;
+    if memidx::probes() || !embed::ready() || unsafe { TRIED } {
+        return;
+    }
+    unsafe { TRIED = true };
+    let (t0, dim) = (smp::rdtsc(), memidx::dim());
+    let mut v = [0.0f32; embed::DIM];
+    let mut rows = Vec::new();
+    for p in memrank::PROBES {
+        if embed::embed(p, true, dim, &mut v).is_err() {
+            crate::dlog!("hub: probe embedding failed, no hub penalty this boot");
+            return;
+        }
+        rows.extend_from_slice(&memidx::row_of(&v[..dim]));
+    }
+    let r = memidx::set_probes(&rows);
+    crate::dlog!("hub: {} probe questions embedded now ({} ms){}", memrank::NP, smp::tsc_to_us(smp::rdtsc() - t0) / 1000,
+        r.err().map_or(String::new(), |e| format!(", not used: {}", e)));
 }
 
-const HIT0: memidx::Hit = memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb };
+/// One search with design A's penalties (memrank.rs): the raw cosine stays in Hit.cos, the ranking score in Hit.score.
+fn hits(q: &str, h: &mut [memidx::Hit]) -> Option<memidx::Found> {
+    flush_mem();
+    ensure_probes();
+    let pen = memrank::penalties(q);
+    memidx::search(q, h, Some(&pen)).ok()
+}
 
-/// One search, split (T22): the best `own.len()` entries that are not manual sections (facts, past turns,
-/// episodes, files: the manual must not crowd them out) and the best manual section.
-fn hits_split(q: &str, own: &mut [memidx::Hit]) -> (usize, Option<memidx::Hit>) {
+const HIT0: memidx::Hit = memidx::HIT0;
+
+/// What a query ranks to (T72, design A): `own` = the best non-manual hits after supersession, `man` = the best
+/// manual section, `man_first` = it goes before them (a how-to message and a raw cosine of RECALL_MIN or more, or a
+/// score MAN_MARGIN above the best other hit), `sup` = (older, newer) pairs taken out of `own`.
+pub struct Ranked {
+    pub own: Vec<memidx::Hit>,
+    pub man: Option<memidx::Hit>,
+    pub man_first: bool,
+    pub sup: Vec<(usize, usize)>,
+    pub found: Option<memidx::Found>,
+}
+
+impl Ranked {
+    /// The answer list: the manual section first when it goes first, then the other hits.
+    pub fn list(&self) -> Vec<memidx::Hit> {
+        self.man.filter(|_| self.man_first).into_iter().chain(self.own.iter().copied()).collect()
+    }
+}
+
+pub fn ranked(q: &str, howto_msg: bool) -> Ranked {
     let mut h = [HIT0; 24];
-    let n = hits(q, &mut h);
-    let (mut k, mut man) = (0, None);
+    let found = hits(q, &mut h);
+    let n = found.as_ref().map_or(0, |f| f.n);
+    let (mut own, mut man) = (Vec::new(), None);
     for x in &h[..n] {
         if memidx::text(x.id).starts_with(MAN) {
             man = man.or(Some(*x));
-        } else if k < own.len() {
-            own[k] = *x;
-            k += 1;
+        } else {
+            own.push(*x);
         }
     }
-    (k, man)
+    // supersession: near-same records near the top are one group, the newest stands for it (date, then append order).
+    // Chunks of one file are parts of one record, not versions of it: rows of a table look alike and share a date.
+    let mut sup = Vec::new();
+    if let Some(&t) = own.first() {
+        let file = |id: usize| memidx::text(id).strip_prefix("[/").and_then(|r| r.split_once("] ")).map(|x| x.0);
+        let grp: Vec<usize> = (0..own.len().min(memrank::SUP_TOP))
+            .filter(|&i| {
+                let y = own[i];
+                memidx::ts(y.id) != 0 && memidx::ts(t.id) != 0 && y.score >= t.score - memrank::SUP_MARGIN
+                    && (i == 0 || (memidx::dd(t.id, y.id) >= memrank::SUP_DD && (file(y.id).is_none() || file(y.id) != file(t.id))))
+            })
+            .collect();
+        if let Some(&w) = grp.iter().max_by_key(|&&i| (memidx::ts(own[i].id), own[i].id)) {
+            let win = own[w];
+            sup = grp.iter().filter(|&&i| i != w).map(|&i| (own[i].id, win.id)).collect();
+            own.retain(|y| y.id != win.id && !sup.iter().any(|s| s.0 == y.id));
+            own.insert(0, win);
+        }
+    }
+    let man_first = man.is_some_and(|m| ((howto_msg || howto(q)) && m.cos >= RECALL_MIN)
+        || own.first().is_some_and(|o| m.score >= o.score + memrank::MAN_MARGIN));
+    Ranked { own, man, man_first, sup, found }
+}
+
+/// One search, split (T22): the best `own.len()` entries that are not manual sections (after design A's
+/// supersession) and the best manual section, with whether it goes first.
+fn hits_split(q: &str, own: &mut [memidx::Hit]) -> (usize, Option<memidx::Hit>, bool) {
+    let r = ranked(q, st().howto);
+    let k = r.own.len().min(own.len());
+    own[..k].copy_from_slice(&r.own[..k]);
+    if !r.sup.is_empty() {
+        crate::dlog!("supersede '{}':{}", &q[..crate::agent::floor_char(q, 40)],
+            r.sup.iter().map(|(o, n)| format!(" #{} by #{}", o, n)).collect::<String>());
+    }
+    (k, r.man, r.man_first)
 }
 
 /// T22: the message asks how to do something (Italian or English), so a manual section may answer it.
@@ -827,15 +988,20 @@ pub fn howto(q: &str) -> bool {
         || w.windows(2).any(|p| p[0] == "come" && p[1].chars().count() >= 3 && p[1].ends_with('o') && p[1] != "sono")
 }
 
-/// The recall tool: top 3 of facts, past conversations and files, then the best manual section when the
-/// user's message (or the query) asks how to do something and it scores RECALL_MIN or more.
+/// The recall tool: the best manual section first when design A puts it first (T72: a how-to message, or a score
+/// MAN_MARGIN above the rest) and its raw cosine is RECALL_MIN or more, then the top 3 of facts, past
+/// conversations and files (superseded records left out).
 pub fn recall<const N: usize>(q: &str, o: &mut SBuf<N>) {
     let mut h = [HIT0; 4];
-    let (mut n, man) = if embed::ready() && memidx::len() + st().memq.len() > 0 { hits_split(q, &mut h[..3]) } else { (0, None) };
-    if let Some(m) = man.filter(|m| m.cos >= RECALL_MIN && (st().howto || howto(q))) {
-        h[n] = m;
-        n += 1;
+    let mut own = [HIT0; 3];
+    let (k, man, first) = if embed::ready() && memidx::len() + st().memq.len() > 0 { hits_split(q, &mut own) } else { (0, None, false) };
+    let mut n = 0;
+    if let Some(m) = man.filter(|m| first && m.cos >= RECALL_MIN) {
+        h[0] = m;
+        n = 1;
     }
+    h[n..n + k].copy_from_slice(&own[..k]);
+    n += k;
     for (i, x) in h[..n].iter().enumerate() {
         let _ = write!(o, "{}{}. (score {:.2}) {}", if i > 0 { "\n" } else { "" }, i + 1, x.cos, render(memidx::text(x.id), 300));
     }
@@ -862,7 +1028,7 @@ pub fn man_slot(q: &str, o: &mut String) {
         return;
     }
     let t0 = smp::rdtsc();
-    let (_, man) = hits_split(q, &mut []);
+    let (_, man, _) = hits_split(q, &mut []);
     let Some(line) = man_line(man) else { return };
     if tokens(MAN_HEAD) + tokens(&line) > unsafe { SLOT_BUDGET } {
         crate::dlog!("slot (how-to): manual line over the token budget, not added");
@@ -905,9 +1071,10 @@ pub fn slot(q: &str, why: &str, o: &mut String) {
     let mut nr = 0;
     if embed::ready() && memidx::len() + s.memq.len() > 0 {
         let mut h = [HIT0; RECALL_K];
-        let (n, man) = hits_split(q, &mut h);
-        // T22: a how-to message gets the best manual section first (one line, same token budget)
-        if let Some(line) = howto(q).then(|| man_line(man)).flatten() {
+        let (n, man, first) = hits_split(q, &mut h);
+        // T22: a how-to message gets the best manual section first (one line, same token budget); T72: so does any
+        // message it beats the other hits for by MAN_MARGIN
+        if let Some(line) = first.then(|| man_line(man)).flatten() {
             if tokens(SLOT_HEAD) + tokens(&body) + tokens(&line) <= unsafe { SLOT_BUDGET } {
                 body.push_str(&line);
                 let _ = write!(rec, " manual #{} {:.2}", man.map_or(0, |m| m.id), man.map_or(0.0, |m| m.cos));
@@ -1064,23 +1231,33 @@ pub fn stop_bg(why: &str) {
     }
 }
 
+/// T72: a file chunk's date is its file's mtime (the RTC's time when the FAT has none).
+fn file_ts(chunk: &str) -> u64 {
+    let p = chunk.strip_prefix('[').and_then(|r| r.split_once("] ")).map_or("", |x| x.0);
+    match fs::meta(p) {
+        Ok((_, mt)) if mt != 0 => fs::unix_of(mt),
+        _ => crate::sys::unix_time(),
+    }
+}
+
 fn embed_slice(stop: &mut dyn FnMut() -> bool, mem_only: bool) {
     let s = st();
     let mut v = [0.0f32; embed::DIM];
     let dim = memidx::dim();
     while !stop() {
         if s.cur.is_none() {
-            let (text, src) = if let Some(t) = s.memq.pop_front() {
+            let (text, src, ts) = if let Some((t, ts)) = s.memq.pop_front() {
                 if memidx::contains(&t) {
                     continue; // the same text is already there (a repeated question)
                 }
                 let mut b = SBuf::new();
                 b.push(t.as_bytes());
-                (b, Src::Mem)
+                (b, Src::Mem, ts)
             } else if mem_only {
                 break;
             } else if let Some((t, next)) = fidx::next_chunk() {
-                (t, Src::File(next, fidx::gen()))
+                let ts = file_ts(t.as_str());
+                (t, Src::File(next, fidx::gen()), ts)
             } else {
                 break;
             };
@@ -1090,7 +1267,7 @@ fn embed_slice(stop: &mut dyn FnMut() -> bool, mem_only: bool) {
                 break;
             }
             match embed::begin(text.as_str(), false) {
-                Ok(id) => s.cur = Some(Emb { id, text, src }),
+                Ok(id) => s.cur = Some(Emb { id, text, src, ts }),
                 Err(e) => {
                     crate::dlog!("index: embed failed ({}), queue dropped", e);
                     s.memq.clear();
@@ -1106,12 +1283,12 @@ fn embed_slice(stop: &mut dyn FnMut() -> bool, mem_only: bool) {
                 match e.src {
                     Src::File(_, g) if g != fidx::gen() => {} // the file changed meanwhile: its queue entry starts over
                     Src::File(next, _) => {
-                        if memidx::store(e.text.as_str(), &v[..dim], info).is_ok() {
+                        if memidx::store(e.text.as_str(), &v[..dim], info, e.ts).is_ok() {
                             fidx::advance(next);
                         }
                     }
                     Src::Mem => {
-                        let _ = memidx::store(e.text.as_str(), &v[..dim], info);
+                        let _ = memidx::store(e.text.as_str(), &v[..dim], info, e.ts);
                     }
                 }
             }
@@ -1281,7 +1458,7 @@ fn cons_finish() {
             s.n_ep += 1;
             append(2, b'E', e);
             if s.on && embed::ready() {
-                s.memq.push_back(format!("[episode {}] {}", s.n_ep, e));
+                s.memq.push_back((format!("[episode {}] {}", s.n_ep, e), crate::sys::unix_time()));
             }
             crate::dlog!("episode {} saved: {}", s.n_ep, e);
         } else if let Some((k, v)) = l.strip_prefix("FACT:").and_then(|f| f.split_once('=')) {
@@ -1542,5 +1719,5 @@ pub fn selftest() -> bool {
         "how can I list the programs in /bin?"].iter().all(|q| howto(q))
         && !["come mi chiamo?", "come si chiama mia sorella e dove vive?", "how many cores do I have?", "hi, how are you?",
         "quanto fa 2**100? usa python", "come stai?"].iter().any(|q| howto(q));
-    k && v && g && d && r && sd && m && ht
+    k && v && g && d && r && sd && m && ht && memrank::selftest()
 }

@@ -37,9 +37,10 @@ flowchart TB
         SYSFS["sysfs.rs: /sys (T55)<br/>class/block/vda, bus/pci/devices/ADDR,<br/>devices/system/cpu, power/state (disk -> hibernate)"]
         DEVFS["devfs.rs: /dev (T55)<br/>null, zero, random, urandom, tty, console, vda"]
         LAY["layout.rs (T55)<br/>/var/lib/ringzero paths, migration of a 0.1 disk<br/>(copy, verify, marker, remove), /etc/hostname,<br/>virtual os-release + passwd, /tmp clean"]
-        FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>table of indexed files (size, mtime)"]
-        AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35;<br/>T22: a how-to message gets the best manual section, also mid-conversation),<br/>facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
-        MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept;<br/>T38: + their Q8_0 rows (include_bytes!, build/manvec.bin from a headless<br/>pass-1 boot: /man dump), used at boot when the key matches"]
+        FIDX["fidx.rs: file indexer<br/>queue of text files, ~1000 B chunks '[/path] text',<br/>T72: .csv / .tsv one row per chunk, header in front,<br/>table of indexed files (size, mtime)"]
+        AGD["agentd.rs: memory subsystem<br/>idle scheduler (1 memory texts, 2 file chunks, 3 save index, 4 consolidate),<br/>context compiler (memory slot <= 200 tok,<br/>recalled notes filtered: cos, length, 3 lines, T35;<br/>T22: a how-to message gets the best manual section, also mid-conversation),<br/>T72 ranked answer: supersession (newest of a near-same group),<br/>manual first by margin 0.06, floors on the raw cosine,<br/>dates through the queues, index v1 migration, index.tsv,<br/>facts (validate, ground, dedup),<br/>consolidation (2B, greedy, on top of the current point), decision log"]
+        MAN["docs/MANUAL.md, compiled in (include_str!, T22)<br/>one '## ' section = one index entry '[manual: TITLE] ...',<br/>boot: changed sections re-embedded, unchanged kept;<br/>T38: + their Q8_0 rows (include_bytes!, build/manvec.bin from a headless<br/>pass-1 boot: /man dump), used at boot when the key matches;<br/>T72: + the 54 hub probe questions' rows"]
+        RANK["memrank.rs: design A rules (T72)<br/>54 probe questions, hub = mean cos of the 10 nearest,<br/>owner: relation words + alias table,<br/>penalty = 0.5 hub + owner 0.03 / 0.06, frozen weights"]
         MST["mstore.rs: /var/lib/ringzero/mem stores<br/>append-only records (len + checksum),<br/>journal, facts, episodes; torn tail cut at boot"]
         SMP["smp.rs<br/>TSC, x2APIC, AP release, parking"]
         CON["console.rs<br/>COM1 + framebuffer glyphs,<br/>ANSI SGR colors on both"]
@@ -56,7 +57,7 @@ flowchart TB
         DOC["docstate.rs: document states (M4.8c)<br/>/read PATH: file as a user turn + fixed reply,<br/>state of its tokens (ids, KV rows, R) cached in<br/>/var/lib/ringzero/cache/docs, key = boot key +<br/>context ids + file ids; 512 MiB cap, LRU"]
         HIB["hib.rs: hibernation (M4.7b)<br/>/hibernate, !poweroff, disk to /sys/power/state<br/>-> /var/lib/ringzero/hib/image.bin<br/>(tree, chunks, transcript, settings),<br/>resume at boot when the key matches"]
         EMB["embed.rs: second model<br/>Qwen3-Embedding g_ctx saved + swapped per call (+ matmul fp16 mode),<br/>embed(text, is_query): Instruct prefix, + endoftext,<br/>last-token x * w_final, Matryoshka dim, L2"]
-        IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>BM25 + stopwords, gated RRF fusion,<br/>save / load with a header (/var/lib/ringzero/mem/index.bin)"]
+        IDX["memidx.rs: memory index<br/>4096 Q8_0 rows, search = one tp_matmul_q8_0,<br/>score = cos - penalty, BM25 + stopwords, gated RRF fusion,<br/>T72: a date per entry, hub scores from the probe rows,<br/>save / load with a header (/var/lib/ringzero/mem/index.bin, v2)"]
         ENG["engine.rs<br/>FFI, output capture"]
         Q4T["q4test.rs (M7)<br/>boot check: Q4_0 kernel vs Q8_0 kernel<br/>on the unpacked rows, bit-identical"]
     end
@@ -109,6 +110,8 @@ flowchart TB
     AGD -- "next_chunk / advance, boot scan<br/>(size + mtime vs the table)" --> FIDX
     AGD -- "embed::begin / resume (stop between forward calls)" --> EMB
     AGD -- "store rows, retain, search,<br/>save / load index.bin" --> IDX
+    AGD -- "penalties(q)" --> RANK
+    RANK -- "texts, hub scores" --> IDX
     AGD -- "append, load (recover torn tail)" --> MST
     MST --> FS
     AGD -- "/consolidate: fwd_block (one prefill block)<br/>or fwd + pick_next per step, output to CAP only" --> LLM
@@ -151,7 +154,8 @@ flowchart TB
     BLK -- "DMA pages, bounce ring, map_mmio" --> MEM
     SYS -- "sync before poweroff / reboot" --> FS
     SH -- "!cmd" --> SYS
-    SH -- "/embed /index /search" --> IDX
+    SH -- "/embed /index" --> IDX
+    SH -- "/search (ranked answer)" --> AGD
     IDX -- "embed doc / query" --> EMB
     IDX -- "tp_matmul_q8_0 over the rows" --> WK
     EMB -- "load embedder g_ctx, forward per token,<br/>2B g_ctx back before return" --> TR
@@ -251,9 +255,10 @@ sequenceDiagram
     A->>L: feed <|im_end|>\n (close the system turn)
     A->>D: slot(q)
     D->>D: facts, newest first, within 120 tok
-    D->>X: embed the queued memory texts, then search(q): top 24, split into manual sections and the rest (top 4)
-    D->>D: T22: if q asks how to do something (how do I, come faccio, come + first-person verb, ...): the best manual section with cos >= 0.55, one line, within 200 tok
-    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...), of the top 4 keep cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars (file chunk >= 8), not q, at most 3, within 200 tok (each candidate logged)
+    D->>X: embed the queued memory texts, then search(q, penalties from memrank.rs): top 24 by cos - (0.5 hub + owner), split into manual sections and the rest
+    D->>D: T72 supersession: of the top 8 non-manual, the near-same records of the first (vector cos >= 0.6, within 0.2): the newest first, the older ones out
+    D->>D: the best manual section first if q asks how to do something (T22) or it scores 0.06 over the rest (T72), with raw cos >= 0.55, one line, within 200 tok
+    X-->>D: hits ([said] ..., [episode N] ..., [/path] ...), of the top 4 keep raw cos >= 0.55 (BM25 match: >= 0.40), >= 20 chars (file chunk >= 8), not q, at most 3, within 200 tok (each candidate logged)
     D-->>A: "[memory from earlier conversations, ...]\n- user_name: Cris\n- the user said earlier: ...\n\n" (logged: ids, cos, tokens, ms)
     A->>D: on_user(q): journal 'U' record, "[said] q" queued when the turn ends (statements with a first-person word, and only if no tool but remember / forget / recall ran)
     A->>L: user turn = slot + q, then the usual tool loop
@@ -362,12 +367,14 @@ Legend:
 - **Memory index** (memidx.rs): up to 4096 texts (2 KiB each, 1 MiB in all) with their embeddings as
   Q8_0 rows (int8 + fp16 block scales, the engine's weight layout; dim 1024 by default, `/index dim N` on an empty
   index). A search embeds the query and scores every row with one `tp_matmul_q8_0` on all cores, ranks by
-  cosine, and runs BM25 (k1 1.5, b 0.75, IT/EN stopwords) over the texts. BM25 joins the ranking (RRF, k 60) only
+  cosine minus the caller's penalty (T72: memrank.rs, half the hub score plus the owner penalties; the raw cosine
+  is kept for the floors), and runs BM25 (k1 1.5, b 0.75, IT/EN stopwords) over the texts. BM25 joins the ranking (RRF, k 60) only
   when the query looks like an identifier or path (`a/b.c`, `HL-L2350DW`, `casa-wifi`, letters+digits, all caps)
   or when its top hit has every query term and at least 1.5x the second score. Used by `/index`, `/search` and the
   agent's `recall` tool (via agentd). Persistence: `/var/lib/ringzero/mem/index.bin` = a 72-byte header (embedder sample hash,
   dim, row stride, layout id, fidx chunker version, counts, FNV of the payload), agentd's extra lines (store sizes
-  the index covers, the table of indexed files with size and mtime), then offsets, rows and texts. Loaded at boot
+  the index covers, the table of indexed files with size and mtime), then offsets, rows, texts and (version 2,
+  T72) each entry's date; a version 1 file loads and its entries are dated by file mtime or boot date. Loaded at boot
   in about a millisecond; any header mismatch or a bad checksum means a rebuild in idle time. Records past the
   covered store sizes, and files whose size or mtime changed on the disk, are embedded again; nothing else.
   Entries: `[/path] chunk`, `[fact] key: value`, `[episode N] text`, `[said] user statement` (T35: only a statement
