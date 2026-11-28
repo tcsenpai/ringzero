@@ -1,6 +1,6 @@
 # ringzero beta
 
-The first public test build of ringzero: an experimental operating system with a Qwen3.5 language model and the
+Test builds of ringzero (current: 0.1.1, release notes in [release/NOTES.md](../release/NOTES.md)): an experimental operating system with a Qwen3.5 language model and the
 Qwen3-Embedding-0.6B memory model running inside its own kernel (ring 0). It is for people who want to try the
 idea and tell us what breaks. It is not a daily-driver OS: it runs in QEMU/KVM, keeps your files on one FAT32
 disk image, and the model can be wrong.
@@ -9,15 +9,16 @@ disk image, and the model can be wrong.
 
 | File | Edition (boot banner) | Model | Guest RAM | Decode |
 |---|---|---|---:|---:|
-| `ringzero-beta-4b-q4.iso` | `ringzero Qwen35@4b.q4-Qwen3@0.6b` | Qwen3.5-4B, MLP in Q4_0, the rest Q8_0 (**recommended**: best tool use) | 8G | about 20 tok/s |
-| `ringzero-beta-2b-q8.iso` | `ringzero Qwen35@2b-Qwen3@0.6b` | Qwen3.5-2B Q8_0 (faster, weaker tool use) | 6G | about 34 tok/s |
+| `ringzero-0.1.1-4b-q4.iso` | `ringzero Qwen35@4b.q4-Qwen3@0.6b` | Qwen3.5-4B, MLP in Q4_0, the rest Q8_0 (**recommended**: best tool use) | 8G | about 20 tok/s |
+| `ringzero-0.1.1-2b-q8.iso` | `ringzero Qwen35@2b-Qwen3@0.6b` | Qwen3.5-2B Q8_0 (faster, weaker tool use) | 6G | about 34 tok/s |
 | `disk.img` | - | the data disk for either ISO: 512 MiB FAT32 with python3, sqlite3, jq, lua, qjs, rg, coreutils, kibi in `/bin`, CPython's library in `/lib/python3.15`, the demo inputs in `/demo` | - | - |
 
 Both editions include Qwen3-Embedding-0.6B for the memory index and the built-in manual with its vectors.
 
-`make beta` builds all three into `build/beta` with a `SHA256SUMS` file. Two builds from clean (kernel, MicroPython
+`make beta` builds all three into `build/beta` with a `SHA256SUMS` file (as `ringzero-beta-*`); `tools/release.sh
+VERSION` runs it and names the files `ringzero-VERSION-*` (INFO.md, Releases). For 0.1.0: two builds from clean (kernel, MicroPython
 package, manual vectors and `build/beta` deleted before each; 90 s each with the models, the Limine and MicroPython
-checkouts and the WASI programs already on the box) gave the same bytes. The sums below are from one build of the
+checkouts and the WASI programs already on the box) gave the same bytes. The 0.1.0 sums below are from one build of its
 release commit (the two-build check ran on an earlier commit of the same day; the builds take the commit time as
 `SOURCE_DATE_EPOCH`, so rebuilding this commit from a clean checkout should give these sums):
 
@@ -71,7 +72,7 @@ Serial console in the terminal (Ctrl-A X quits QEMU; inside ringzero, `!poweroff
 
 ```sh
 qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 8G -smp 8 \
-  -cdrom ringzero-beta-4b-q4.iso -boot d -no-reboot -display none -serial mon:stdio \
+  -cdrom ringzero-0.1.1-4b-q4.iso -boot d -no-reboot -display none -serial mon:stdio \
   -drive file=my-disk.img,if=none,id=disk0,format=raw -device virtio-blk-pci,drive=disk0
 ```
 
@@ -79,11 +80,11 @@ A window (framebuffer and PS/2 keyboard; `!kbd us` or `!kbd it` sets the layout)
 
 ```sh
 qemu-system-x86_64 -enable-kvm -cpu host -M q35 -m 8G -smp 8 \
-  -cdrom ringzero-beta-4b-q4.iso -boot d -no-reboot -vga std -display gtk -serial mon:stdio \
+  -cdrom ringzero-0.1.1-4b-q4.iso -boot d -no-reboot -vga std -display gtk -serial mon:stdio \
   -drive file=my-disk.img,if=none,id=disk0,format=raw -device virtio-blk-pci,drive=disk0
 ```
 
-For the 2B edition use `ringzero-beta-2b-q8.iso` and `-m 6G`. `-smp` is the number of cores the engine uses;
+For the 2B edition use `ringzero-0.1.1-2b-q8.iso` and `-m 6G`. `-smp` is the number of cores the engine uses;
 `-cpu host` passes AVX2, FMA and F16C to the guest. The first boot prefills the system prompt (about 20 s on
 the 4B) and caches it on the disk; later boots load it. The prompt is `ringzero[main]>`: type a sentence for
 the agent, `/help` for the commands, `/man TOPIC` for the manual. Examples to paste: [DEMOS.md](DEMOS.md).
@@ -120,8 +121,8 @@ make beta                                    # build/beta: both ISOs, disk.img, 
   on a trusted network only.
 - A hibernation image resumes only on the same edition (model, prompt and engine); another ISO boots fresh.
 - Files written by the agent's tools are at most 64 KiB; `cat` returns at most 8 KiB.
-- Builds after 0.1.0 move ringzero's data from FAT `/sys` to `/var/lib/ringzero` at their first boot (the saved
-  hibernation is not resumed across that upgrade). The 0.1.0 ISO booted on such a disk afterwards finds an empty
+- 0.1.1 and later move ringzero's data from FAT `/sys` to `/var/lib/ringzero` at their first boot on a 0.1.0 disk
+  (the saved hibernation is not resumed across that upgrade; how to check it: release/NOTES.md). The 0.1.0 ISO booted on such a disk afterwards finds an empty
   memory; INFO.md has the copy-back recipe, and what 0.1.0 writes then is kept apart (`/agentd merge-legacy`).
 
 ## Reporting issues
@@ -162,3 +163,18 @@ last kernel changes after them (the `/help` text, the snapshot pool fix) were ch
 | 20 | Serial console typed into during boot | **pass** after a fix | input before the kernel's UART init failed its loopback self-test and left no serial console (4 of 4 boots of the 4B with the test driver); the init now retries |
 | 21 | Documented QEMU command (serial) | **pass** | the "How to run" command boots the 4B ISO to the prompt with a fresh disk |
 | 22 | User sign-off after their own runs | **open** | |
+
+## Checks for 0.1.1
+
+Run on 2026-11-28 on the Linux build box, QEMU/KVM, 8 vCPUs, one test guest at a time next to an unrelated
+running VM, on the files of `tools/release.sh 0.1.1` (INFO.md, Releases). The final files were rebuilt after the
+commit that records these results (the build takes the commit time as its epoch); they were booted again before publishing.
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1 | Boot, both ISOs, BIOS and UEFI, fresh disk | **pass** | 2B: `SELFTEST PASS` (BIOS banner at 12.8 s, UEFI 26.4 s); 4B: self-test ids printed (the golden reference is the 2B), prompt reached; banner, `/proc/version` and `/etc/os-release` say `0.1.1 beta` |
+| 2 | Fresh disk | **pass** | `layout: new disk, ringzero's data goes to /var/lib/ringzero`; `/agentd`: `stores /var/lib/ringzero/mem`; `!ls /var/lib/ringzero`: `mem/`, `layout`, `bootsnap.bin` |
+| 3 | rztest (`!run rztest check A "B C"`) | **pass** | `rztest: PASS 20/20` on both editions. The test disk carried an rztest.wasm from before T55 (make wasm-apps kept an old build); `tools/wasm_apps.sh` now rebuilds it when its source changes, so the final disk has the T55 checks |
+| 4 | Upgrade from a 0.1.0 disk | **pass** | 0.1.0 2B ISO on a copy of the 0.1.0 `disk.img`: two `/remember` facts, a note, one turn, `!poweroff`. First 0.1.1 boot: `layout: copied /sys/mem/journal.log ... (170 B, verified)`, `facts.log (82 B, verified)`, commit marker, `layout: migrated 2 files, 0 KiB, 2 old caches dropped`; `/facts` lists both facts, `/agentd` `journal 5 records, 2 facts`, the note is intact, `/search dog Pixel` ranks the fact first (cos 0.747). Second boot: no `layout:` line, boot cache hit, the same facts |
+| 5 | tooleval, M45 protocol (4B q4 8G, `SLOT=200`, constrain on, confidence on, fresh disk, 120 s idle) | **pass**: equal to main | spike 24/30 correct, 22 first call right, 9 args exact; in-OS 26/32 correct, 24 first call right, info 5/8; calls 42 + 36; malformed 0, schema errors 0, grammar lines not valid 1; decode of the call rounds 20.4 / 19.2 tok/s (lower than on main: the box was shared, 84% RAM in use) |
+| 6 | `tools/surfaces_check.sh` | **pass** | |

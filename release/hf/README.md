@@ -30,12 +30,16 @@ Limine bootloader and the converted weights of both models.
 
 | File | Edition | Guest RAM |
 |---|---|---|
-| `ringzero-beta-4b-q4.iso` | Qwen3.5-4B (Q4 MLP, Q8 attention) + Qwen3-Embedding-0.6B, recommended | 8 GB |
-| `ringzero-beta-2b-q8.iso` | Qwen3.5-2B Q8 + Qwen3-Embedding-0.6B, smaller and faster | 6 GB |
-| `SHA256SUMS` | checksums | |
+| `ringzero-0.1.1-4b-q4.iso` | Qwen3.5-4B (Q4 MLP, Q8 attention) + Qwen3-Embedding-0.6B, recommended | 8 GB |
+| `ringzero-0.1.1-2b-q8.iso` | Qwen3.5-2B Q8 + Qwen3-Embedding-0.6B, smaller and faster | 6 GB |
+| `SHA256SUMS` | checksums of the 0.1.1 files | |
+
+Current release: 0.1.1 "QweQwe" (beta). The 0.1.0 images (`ringzero-beta-*.iso`) stay in this repository; their
+checksums are on the GitHub release v0.1.0-beta.
 
 The data disk with the preinstalled programs (python3, sqlite3, jq, lua, QuickJS, ripgrep, coreutils, an
-editor) is on the GitHub release page of the repository.
+editor) is on the GitHub release page of the repository
+(v0.1.1, `ringzero-0.1.1-disk.img.xz`).
 
 ## Run
 

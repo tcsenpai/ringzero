@@ -51,7 +51,8 @@ crate() { # crate NAME VERSION [cargo flags...]: cargo install into $OUT/root
     cargo install -q -j "$J" --locked --target $T --root "$OUT/root" "$@" "$n@$v"
 }
 
-[ -e "$OUT/rztest.wasm" ] || {
+# our own program: rebuilt when its source is newer (a kept rztest.wasm missed the T55 checks)
+[ -e "$OUT/rztest.wasm" ] && [ -z "$(find tools/wasm/rztest -type f -newer "$OUT/rztest.wasm" -not -path '*/target/*')" ] || {
     cargo build -q --release --target $T --manifest-path tools/wasm/rztest/Cargo.toml --target-dir "$OUT/target"
     cp "$OUT/target/$T/release/rztest.wasm" "$OUT/"
 }

@@ -76,7 +76,8 @@ ringzero[main]> count the lines of /demo/stats.py with wc
 
 ## Try it
 
-You need a Linux machine with KVM and about 16 GB of RAM. The full list of build tools is in
+Prebuilt images of the latest beta (0.1.1, both editions, and the data disk) and how to run them:
+[docs/BETA.md](docs/BETA.md). To build it yourself you need a Linux machine with KVM and about 16 GB of RAM. The full list of build tools is in
 [INFO.md](INFO.md#build-and-run).
 
 ```sh
