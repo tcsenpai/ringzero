@@ -1,0 +1,15 @@
+eval side: 259 questions, 197 entries, 43 paths, 120 entity words
+| class | records | shares a 3-gram with an eval question | shares a 4-gram |
+|---|---|---|---|
+| para | 400 | 154 (38%) | 62 (16%) |
+| exact | 400 | 124 (31%) | 0 (0%) |
+| pointer | 400 | 50 (12%) | 0 (0%) |
+| sibling | 252 | 15 (6%) | 0 (0%) |
+| hub | 400 | 106 (26%) | 0 (0%) |
+| owner | 400 | 400 (100%) | 212 (53%) |
+| raw | 120 | 27 (22%) | 6 (5%) |
+| table | 400 | 0 (0%) | 0 (0%) |
+| temporal | 400 | 101 (25%) | 34 (8%) |
+| contradiction | 400 | 256 (64%) | 127 (32%) |
+| multihop | 400 | 220 (55%) | 105 (26%) |
+hard leaks: 0 of 3972 records {}

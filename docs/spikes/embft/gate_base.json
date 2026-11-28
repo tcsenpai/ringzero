@@ -1,0 +1,31 @@
+{
+ "general_pairs": 181,
+ "base": {
+  "general_top1": 13.8,
+  "general_mrr10": 0.2266,
+  "t69_heldout_top1": 51,
+  "t69_heldout_n": 114,
+  "t69_noanswer_right": 12,
+  "t69_noanswer_n": 25,
+  "t69_median_top_cos": 0.6353
+ },
+ "ft": {
+  "general_top1": 13.8,
+  "general_mrr10": 0.2266,
+  "t69_heldout_top1": 51,
+  "t69_heldout_n": 114,
+  "t69_noanswer_right": 12,
+  "t69_noanswer_n": 25,
+  "t69_median_top_cos": 0.6353
+ },
+ "agreement_mean": 1.0,
+ "agreement_min": 1.0,
+ "checks": {
+  "general_top1": true,
+  "general_mrr10": true,
+  "agreement": true,
+  "noanswer": true,
+  "calibration": true
+ },
+ "pass": true
+}
