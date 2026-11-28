@@ -1,6 +1,6 @@
 # Roadmap
 
-Generated from the mycelium plan (`myc list --all`), 2026-11-27.
+Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 
 ```text
 
@@ -66,6 +66,8 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 │   │   └── ✓ 🟠 Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B [E1]
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
+○ 🟢 4B extra streams vs snapshot pool [E1]
+○ 🟢 Guard manual section size in surfaces_check [E1]
 ○ 🟢 Decision-model second opinion on low-margin calls (host prototype) [E1]
 ○ 🟢 T55 follow-ups: 2**100 first call, 2B drivers answer [E1]
 ○ 🟢 Type-ahead prefill: prefill while the user types [E1]
@@ -83,5 +85,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-27.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 60 task(s) shown
+ℹ️ 62 task(s) shown
 ```
