@@ -7,7 +7,7 @@ with y/N, `recall`), and every agentd decision is logged (`/agentd log`, kernel 
 
 All numbers are real runs on the Fedora box (Ryzen AI 9 HX 370, QEMU 10.2.2/KVM, `-cpu host -M q35 -m 6G -smp 8`,
 BIOS unless noted). Tests ran on a test guest (`make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test
-DISK=build/disk-test.img`, or a fresh `build/disk-a.img`), driven by `tools/accept.py` from the Mac over Tailscale
+DISK=build/disk-test.img`, or a fresh `build/disk-a.img`), driven by `tools/accept.py` from the Mac over a VPN
 (HOST-ADDRESS); boot times with `tools/boottest.py`. The user's instance was stopped (`!sync` first). Another
 session was running its own guests from `~/coding/ringzero-prefill` during part of the tests (host load average
 5-6): runs taken under that load are marked.
@@ -18,7 +18,7 @@ session was running its own guests from `~/coding/ringzero-prefill` during part 
 nc HOST-ADDRESS 4555                 # serial shell: press Enter to get "ringzero[main]> "
 stty -echo -icanon; nc HOST-ADDRESS 4555; stty sane    # without the double local echo (Tab works too)
 open vnc://HOST-ADDRESS:5901         # framebuffer + PS/2 keyboard, password: aios
-ssh fedorascale 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
+ssh BUILD-BOX 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
 ```
 
 The disk `build/disk.img` holds the M4 test files plus agentd's `/sys/mem` and `/sys/bootsnap.bin`. Restart on

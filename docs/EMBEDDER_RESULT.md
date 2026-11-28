@@ -13,11 +13,11 @@ at a time, host RAM 46-58% used during them). Architecture: [ARCHITECTURE.md](AR
 
 ```sh
 nc LAN-ADDRESS0 4555                 # serial shell: press Enter to get "ringzero[main]> "
-nc HOST-ADDRESS 4555                 # same over Tailscale (the LAN address did not answer from the Mac today)
+nc HOST-ADDRESS 4555                 # same over a VPN (the LAN address did not answer from the Mac today)
 stty -echo -icanon; nc LAN-ADDRESS0 4555; stty sane    # without the double local echo (Tab works too)
 open vnc://LAN-ADDRESS0:5901         # framebuffer + PS/2 keyboard, password: aios (or vnc://HOST-ADDRESS:5901)
-ssh fedoralan 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
-ssh fedoralan 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/ringzero/build/screen.png .
+ssh BUILD-BOX 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
+ssh BUILD-BOX 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp BUILD-BOX:coding/ringzero/build/screen.png .
 ```
 
 Restart on Fedora (stop the old guest first; `make run-remote` now needs 8 GiB available):

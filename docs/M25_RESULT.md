@@ -2,12 +2,12 @@
 
 Shell UX inversion, 32768-token context with an FP16 KV cache, 8 KiB tool results, and native context
 compaction by the agent. Edition name: **AI OS Qwen35@2b** (boot banner). All numbers come from real runs
-on the Fedora box (`fedoralan`, Ryzen AI 9 HX 370, QEMU 10.2.2/KVM, `-cpu host -M q35 -m 4G -smp 8`,
+on the Fedora box (Ryzen AI 9 HX 370, QEMU 10.2.2/KVM, `-cpu host -M q35 -m 4G -smp 8`,
 BIOS). The tests ran on a second guest (`make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test`)
 next to the user's instance. That one was in use, so host load was 4 to 11 during the measurements (noted
 per row). Architecture and diagrams: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## How to connect (instance left running on fedoralan, new build)
+## How to connect (instance left running on the build box, new build)
 
 ```sh
 nc LAN-ADDRESS0 4555                 # serial shell: press Enter to get "aios> "
@@ -22,8 +22,8 @@ lists the commands, up/down recall history, Ctrl-C stops a generation.
 Observability (Fedora paths, relative to `~/coding/ringzero`):
 
 ```sh
-ssh fedoralan 'tail -f ~/coding/ringzero/build/remote-serial.log'
-ssh fedoralan 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/ringzero/build/screen.png .
+ssh BUILD-BOX 'tail -f ~/coding/ringzero/build/remote-serial.log'
+ssh BUILD-BOX 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp BUILD-BOX:coding/ringzero/build/screen.png .
 ```
 
 Restart on Fedora (stop the old guest first):

@@ -6,20 +6,20 @@ branch in the prompt, recovery instead of reset for Ctrl-C, interrupted compacti
 a point before every compaction, the pool with thinning, replay and eviction. Also in this round: the
 project rename to **ringzero** (edition "ringzero Qwen35@2b" in the boot banner).
 
-All numbers are real runs on the Fedora box (`fedoralan`, Ryzen AI 9 HX 370, QEMU 10.2.2/KVM,
+All numbers are real runs on the Fedora box (Ryzen AI 9 HX 370, QEMU 10.2.2/KVM,
 `-cpu host -M q35 -m 4G -smp 8`, BIOS), on a test guest (`make run-remote REMOTE_PORT=4556 REMOTE_VNC=2
 REMOTE_NAME=test`), scripted from the Mac with `tools/accept.py LAN-ADDRESS0 4556 ...`. The user's
 instance was stopped during the tests (one guest only), host load 1-4. Architecture:
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## How to connect (instance left running on fedoralan, this build)
+## How to connect (instance left running on the build box, this build)
 
 ```sh
 nc LAN-ADDRESS0 4555                 # serial shell: press Enter to get "ringzero[main]> "
 stty -echo -icanon; nc LAN-ADDRESS0 4555; stty sane    # same, without the double local echo (Tab works too)
 open vnc://LAN-ADDRESS0:5901         # framebuffer + PS/2 keyboard (macOS Screen Sharing), password: aios
-ssh fedoralan 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
-ssh fedoralan 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/ringzero/build/screen.png .
+ssh BUILD-BOX 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
+ssh BUILD-BOX 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp BUILD-BOX:coding/ringzero/build/screen.png .
 ```
 
 Restart on Fedora (stop the old guest first):

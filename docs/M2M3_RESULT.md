@@ -1,12 +1,11 @@
 # M2 + M3 result (2026-11-26)
 
 Shell, kernel log, keyboard layouts (M2) and the system agent with native tool calls and a boot-time
-prefix snapshot (M3), minimal versions. All numbers come from real runs on the Fedora box (`fedoralan`,
-Ryzen AI 9 HX 370, QEMU 10.2.2/KVM, `-cpu host -M q35 -m 4G -smp 8`, BIOS), host load 1.3 to 5.5. The
+prefix snapshot (M3), minimal versions. All numbers come from real runs on the Fedora box (Ryzen AI 9 HX 370, QEMU 10.2.2/KVM, `-cpu host -M q35 -m 4G -smp 8`, BIOS), host load 1.3 to 5.5. The
 acceptance run was driven from the Mac over TCP with `tools/accept.py`. Full transcript:
 [m2m3_accept.txt](m2m3_accept.txt). Architecture and diagram: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## How to connect (instance left running on fedoralan)
+## How to connect (instance left running on the build box)
 
 ```sh
 nc LAN-ADDRESS0 4555                 # serial shell: press Enter to get "aios> "
@@ -22,9 +21,9 @@ Observability for the main session (Fedora paths, relative to `~/coding/ringzero
 
 ```sh
 # everything the guest printed on serial, including the echoed input of whoever is connected (append mode)
-ssh fedoralan 'tail -f ~/coding/ringzero/build/remote-serial.log'
+ssh BUILD-BOX 'tail -f ~/coding/ringzero/build/remote-serial.log'
 # framebuffer screenshot through the QEMU monitor (read-only for the guest), PPM -> PNG
-ssh fedoralan 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp fedoralan:coding/ringzero/build/screen.png .
+ssh BUILD-BOX 'cd ~/coding/ringzero && python3 tools/screenshot.py build/remote-monitor.sock build/screen.png' && scp BUILD-BOX:coding/ringzero/build/screen.png .
 ```
 
 Restart on Fedora (one guest at a time; stop the old one first):

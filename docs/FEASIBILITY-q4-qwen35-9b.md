@@ -172,7 +172,7 @@ Q8 9B (8.9 GiB of weights): ~11.7 GiB -> 12-14G.
 
 ### Micro-benchmark [M]
 
-`~/coding/q4study/qbench.c` on fedorascale (Ryzen AI 9 HX 370, 4 Zen5 + 8 Zen5c cores; AVX-512, AVX-512-VNNI and AVX-VNNI present).
+`~/coding/q4study/qbench.c` on the build box (Ryzen AI 9 HX 370, 4 Zen5 + 8 Zen5c cores; AVX-512, AVX-512-VNNI and AVX-VNNI present).
 gcc 16 `-O2 -mavx2 -mfma -mf16c -mavxvnni -fopenmp`, `OMP_PLACES=cores OMP_PROC_BIND=close`, 2 MiB THP buffers, K=4096.
 Kernels have the same shape as `INT8_1ROW_4BLK`, and a scalar self-check passes. "L2" = 128 rows per thread repeated (compute ceiling).
 "DRAM" = 24576 rows (Q8 107 MB, Q4 57 MB, larger than L3). Gw/s = 1e9 weights/s. Host load average 8-10 during all runs (other guests and

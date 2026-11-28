@@ -1,6 +1,6 @@
 # M0 result (2026-11-26)
 
-All numbers below come from runs on the Fedora build box (`fedoralan`, Ryzen AI 9 HX 370,
+All numbers below come from runs on the Fedora build box (Ryzen AI 9 HX 370,
 QEMU/KVM `-cpu host -M q35 -m 4G -smp 8`, OVMF from `/usr/share/edk2/ovmf`).
 Toolchain: rustc 1.92.0, NASM 3.02, Limine 11.2.1 (`v11.2.1-binary`, commit deba356b).
 

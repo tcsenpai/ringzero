@@ -6,7 +6,7 @@ shell is idle. Edition unchanged: **ringzero Qwen35@2b-Qwen3@0.6b** (no new mode
 
 All numbers are real runs on the Fedora box (Ryzen AI 9 HX 370, QEMU 10.2.2/KVM, `-cpu host -M q35 -m 6G
 -smp 8`, BIOS unless noted). Tests ran on a test guest (`make run-remote REMOTE_PORT=4556 REMOTE_VNC=2
-REMOTE_NAME=test`), driven by `tools/accept.py` from the Mac over Tailscale (HOST-ADDRESS). The user's
+REMOTE_NAME=test`), driven by `tools/accept.py` from the Mac over a VPN (HOST-ADDRESS). The user's
 instance was stopped during the tests: one guest at a time, host RAM 45-60% used. Architecture:
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -16,7 +16,7 @@ instance was stopped during the tests: one guest at a time, host RAM 45-60% used
 nc HOST-ADDRESS 4555                 # serial shell: press Enter to get "ringzero[main]> "
 stty -echo -icanon; nc HOST-ADDRESS 4555; stty sane    # without the double local echo (Tab works too)
 open vnc://HOST-ADDRESS:5901         # framebuffer + PS/2 keyboard, password: aios
-ssh fedorascale 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
+ssh BUILD-BOX 'tail -f ~/coding/ringzero/build/remote-serial.log'                  # everything on serial
 ```
 
 The disk `build/disk.img` already holds the test files (`!ls /notes`). The memory index starts empty at every

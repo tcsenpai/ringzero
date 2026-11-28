@@ -1,6 +1,6 @@
 # M1 result (2026-11-26)
 
-All numbers come from real runs on the Fedora build box (`fedoralan`, Ryzen AI 9 HX 370, QEMU 10.2.2/KVM,
+All numbers come from real runs on the Fedora build box (Ryzen AI 9 HX 370, QEMU 10.2.2/KVM,
 `-cpu host -M q35 -m 4G`). The box is shared with a torch job from another agent, so host load moved
 between about 1 and 25 during the session. Every speed below was measured next to the asm OS under the
 same conditions, and the ranges are kept rather than a single best number.
@@ -8,7 +8,7 @@ same conditions, and the ranges are kept rather than a single best number.
 **Status: M1 PASS.** Golden self-test passes at 8 and at 1 vCPU, on BIOS and UEFI. Decode speed
 matches the asm OS. The REPL works over TCP from the Mac, and a remote instance is running.
 
-## How to connect (instance left running on fedoralan)
+## How to connect (instance left running on the build box)
 
 ```sh
 nc LAN-ADDRESS0 4555                 # serial console: press Enter to get "aios> "

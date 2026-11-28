@@ -5,7 +5,7 @@ Qwen35@2b-Qwen3@0.6b** (no new model). Architecture: [ARCHITECTURE.md](ARCHITECT
 
 All numbers are real runs on the Fedora box (Ryzen AI 9 HX 370, QEMU 10.2.2/KVM, `-cpu host -M q35 -m 6G -smp 8`,
 BIOS), on a test guest (`make run-remote REMOTE_PORT=4556 REMOTE_VNC=2 REMOTE_NAME=test DISK=build/disk-test.img`,
-a copy of the user's `build/disk.img`), driven from the Mac over Tailscale with `tools/accept.py` and
+a copy of the user's `build/disk.img`), driven from the Mac over a VPN with `tools/accept.py` and
 `tools/tooleval.py`. The user's instance was stopped (`!poweroff`) during the tests. **Another session ran its own
 guest from `~/coding/ringzero-prefill` during most of the tests: host load average 10-15**, so absolute speeds are
 lower and noisier than in M4.5 (boot bench 16-38 tok/s on the same build); compare numbers taken side by side.
@@ -15,7 +15,7 @@ lower and noisier than in M4.5 (boot bench 16-38 tok/s on the same build); compa
 ```sh
 nc HOST-ADDRESS 4555                 # serial shell: press Enter to get "ringzero[main]> "
 open vnc://HOST-ADDRESS:5901         # framebuffer + PS/2 keyboard, password: aios
-ssh fedorascale 'tail -f ~/coding/ringzero/build/remote-serial.log'
+ssh BUILD-BOX 'tail -f ~/coding/ringzero/build/remote-serial.log'
 ```
 
 `build/disk.img` keeps its data (not reformatted). Restart: `echo quit | socat - UNIX-CONNECT:build/remote-monitor.sock`
