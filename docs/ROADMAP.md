@@ -97,8 +97,11 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │   │   └── T67: Decide the memory design (from T66) (circular)
 │   └── ✓ 🟢 Host test: design C (kernel-validated wiki written by the 2B) [E2]
 │       └── T67: Decide the memory design (from T66) (circular)
-○ 🟢 Embedder fine-tune: training run + gate (user go) [E2]
+✓ 🟢 Embedder fine-tune: training run + gate (user go) [E2]
 ✓ 🟢 Embedder fine-tune for recall: scaffold + data (training later) [E2]
+○ 🔵 USB input for real PCs: xHCI + HID (keyboard, mouse) [E3]
+○ 🔵 GUI spike: /dev/fb0 + /dev/input/mice + a WASI window with the agent chat (QEMU) [E3]
+    └── ○ 🔵 GUI basic desktop: windows, file manager, editor, /proc gauges [E3] [blocked by T76]
 
-ℹ️ 75 task(s) shown
+ℹ️ 78 task(s) shown
 ```
