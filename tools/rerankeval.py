@@ -185,12 +185,12 @@ def free_gb():
     return int(re.search(r"MemAvailable:\s+(\d+)", open("/proc/meminfo").read()).group(1)) >> 20
 
 
-def run(out):
-    """Embedder pass first (then freed), reranker one pair per forward (no padding); OUT.partial resumes a stop."""
-    import gc, torch
-    from transformers import AutoTokenizer, AutoModel, AutoModelForCausalLM
+def embedder():
+    """emb(text) -> (L2-normalized last-token vector, tokens), as kernel/src/embed.rs (host: fp32, CPU, 8 threads).
+    Dropping emb frees the model."""
+    import torch
+    from transformers import AutoTokenizer, AutoModel
     torch.set_num_threads(8)
-    C = corpus()
     et = AutoTokenizer.from_pretrained("Qwen/Qwen3-Embedding-0.6B")
     em = AutoModel.from_pretrained("Qwen/Qwen3-Embedding-0.6B", dtype=torch.float32).eval()
 
@@ -199,6 +199,15 @@ def run(out):
         with torch.no_grad():
             h = em(input_ids=torch.tensor([ids])).last_hidden_state[0, -1]
         return torch.nn.functional.normalize(h, dim=-1), len(ids)
+    return emb
+
+
+def run(out):
+    """Embedder pass first (then freed), reranker one pair per forward (no padding); OUT.partial resumes a stop."""
+    import gc, torch
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    C = corpus()
+    emb = embedder()
     D = torch.stack([emb(t)[0] for _, _, t in C])
     rows = []
     for i, (q, pool, kind, gold) in enumerate(Q):
@@ -211,7 +220,7 @@ def run(out):
                      "gold": sorted(gold), "q_tokens": nq, "embed_ms": e_ms,
                      "top20": [{"key": C[d][0], "cos": cos[d]} for d in order[:20]],
                      "gold_rank_embed": next((n for n, d in enumerate(order) if ok(C[d][0], gold)), None)})
-    del em, D
+    del emb, D
     gc.collect()
     text = {k: t for k, _, t in C}
     rt = AutoTokenizer.from_pretrained("Qwen/Qwen3-Reranker-0.6B")

@@ -10,7 +10,7 @@ MEM = [
     "User's name is Ada, he lives in Italy and prefers to be addressed informally.",  # 0
     "L'utente preferisce risposte brevi e in italiano, senza emoji.",  # 1
     "Default shell on the Fedora box is fish; bash heredocs do not work there.",  # 2
-    "Il server Fedora si raggiunge con ssh fedoralan e ha 32 GB di RAM.",  # 3
+    "Il server Fedora si raggiunge con ssh buildbox e ha 32 GB di RAM.",  # 3
     "Tool result: df -h showed /home at 91% usage, 18 GB free.",  # 4
     "Tool result: free -m reported 2057 MiB free out of 4095 MiB total.",  # 5
     "Task: renew the TLS certificate for the home NAS before December 15.",  # 6
