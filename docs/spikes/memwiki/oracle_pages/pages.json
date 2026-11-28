@@ -1,0 +1,1516 @@
+{
+ "user": [
+  {
+   "date": "2024-05-01",
+   "text": "la mia email e' ada.moretti@libero.it, segnatela",
+   "live": false,
+   "sup": "2026-11-12",
+   "keys": [
+    "m74"
+   ],
+   "sess": 0
+  },
+  {
+   "date": "2025-03-01",
+   "text": "Hi, I'm Ada, I live in Italy. Talk to me informally, please.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m0"
+   ],
+   "sess": 1
+  },
+  {
+   "date": "2025-06-01",
+   "text": "ricordati che lavoro come insegnante di matematica al liceo",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m44"
+   ],
+   "sess": 6
+  },
+  {
+   "date": "2025-06-01",
+   "text": "abito a Bologna",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m45"
+   ],
+   "sess": 6
+  },
+  {
+   "date": "2025-09-01",
+   "text": "my birthday is March 3rd",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m20"
+   ],
+   "sess": 11
+  },
+  {
+   "date": "2025-11-01",
+   "text": "il mio colore preferito e' il verde",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m43"
+   ],
+   "sess": 13
+  },
+  {
+   "date": "2026-01-22",
+   "text": "il mio numero di scarpe e' 43",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m134"
+   ],
+   "sess": 18
+  },
+  {
+   "date": "2026-04-11",
+   "text": "di solito vado a letto verso mezzanotte e mi sveglio alle 7",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m125"
+   ],
+   "sess": 29
+  },
+  {
+   "date": "2026-11-12",
+   "text": "la mia nuova email e' ada.m@proton.me, quella di libero non la uso piu'",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m75"
+   ],
+   "sess": 68
+  }
+ ],
+ "preferences": [
+  {
+   "date": "2025-03-01",
+   "text": "e rispondimi in italiano, risposte brevi, senza emoji",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m1"
+   ],
+   "sess": 1
+  },
+  {
+   "date": "2025-03-01",
+   "text": "I dislike long explanations: the action first, the details later.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m15"
+   ],
+   "sess": 1
+  },
+  {
+   "date": "2025-03-01",
+   "text": "never run destructive commands without my explicit confirmation",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m31"
+   ],
+   "sess": 1
+  }
+ ],
+ "diet": [
+  {
+   "date": "2025-03-01",
+   "text": "sono vegetariano da due anni, niente carne e niente pesce",
+   "live": false,
+   "sup": "2026-10-05",
+   "keys": [
+    "m66"
+   ],
+   "sess": 1
+  },
+  {
+   "date": "2026-10-05",
+   "text": "ho ricominciato a mangiare pesce, adesso sono pescetariano",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m67"
+   ],
+   "sess": 51
+  }
+ ],
+ "machine": [
+  {
+   "date": "2025-04-10",
+   "text": "what CPU does this machine have?; model name : AMD Ryzen 9 5900X 12-Core Processor\n24",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m23"
+   ],
+   "sess": 2
+  },
+  {
+   "date": "2025-04-10",
+   "text": "and how long has it been up?; up 18 days, load average: 2.79, 2.41, 2.20",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m16"
+   ],
+   "sess": 2
+  },
+  {
+   "date": "2025-04-10",
+   "text": "quanta memoria libera c'e'?; Mem: total 4095 used 2038 free 2057",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m5"
+   ],
+   "sess": 2
+  },
+  {
+   "date": "2025-04-10",
+   "text": "e lo spazio su /home?; /dev/sda2 200G 182G 18G 91% /home",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m4"
+   ],
+   "sess": 2
+  },
+  {
+   "date": "2025-04-12",
+   "text": "is nginx installed?; fstab group hostname hosts os-release passwd profile",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m10"
+   ],
+   "sess": 3
+  },
+  {
+   "date": "2025-04-12",
+   "text": "is sshd running?; sshd.service - OpenSSH server\n   Active: active (running)",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m39"
+   ],
+   "sess": 3
+  },
+  {
+   "date": "2025-04-12",
+   "text": "does the network work?; 4 packets transmitted, 4 received, 0% packet loss, rtt avg 12 ms",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m30"
+   ],
+   "sess": 3
+  },
+  {
+   "date": "2025-08-01",
+   "text": "metti la tastiera italiana; keyboard layout: it",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m54"
+   ],
+   "sess": 9
+  },
+  {
+   "date": "2025-08-01",
+   "text": "quanto spazio c'e' sul disco di ringzero?; ringzero disk: 1.2 GB free of 4 GB",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m46"
+   ],
+   "sess": 9
+  }
+ ],
+ "fedora_server": [
+  {
+   "date": "2025-05-05",
+   "text": "il server Fedora lo raggiungo con ssh buildbox, ha 32 GB di RAM",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m3"
+   ],
+   "sess": 4
+  },
+  {
+   "date": "2025-05-05",
+   "text": "on the Fedora box the default shell is fish, so bash heredocs don't work there",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m2"
+   ],
+   "sess": 4
+  }
+ ],
+ "dev_tools": [
+  {
+   "date": "2025-05-05",
+   "text": "I prefer bun over npm, and uv for Python projects",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m8"
+   ],
+   "sess": 4
+  },
+  {
+   "date": "2025-05-05",
+   "text": "for multi-service apps I prefer docker compose",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m38"
+   ],
+   "sess": 4
+  },
+  {
+   "date": "2025-05-20",
+   "text": "my editor is Helix, with the catppuccin theme",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m26"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2025-05-20",
+   "text": "my favourite programming language is Rust",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m52"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2025-07-01",
+   "text": "uso Syncthing per sincronizzare il vault Obsidian tra i computer",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m9"
+   ],
+   "sess": 8
+  }
+ ],
+ "aios": [
+  {
+   "date": "2025-05-20",
+   "text": "lo sviluppo di AIOS avviene su un branch chiamato agentd",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m14"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2025-05-20",
+   "text": "the QEMU guest for AIOS runs with 4 GiB of RAM and 8 vCPUs",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m28"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2025-06-15",
+   "text": "compila il progetto Rust; error[E0554]: #![feature] may not be used on the stable release channel\nerror: could not compile `agentd`",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m24"
+   ],
+   "sess": 7
+  },
+  {
+   "date": "2025-06-15",
+   "text": "remember: the kernel panics if the model module is missing at boot",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m13"
+   ],
+   "sess": 7
+  }
+ ],
+ "school": [
+  {
+   "date": "2025-06-01",
+   "text": "il mio preside e' Paolo Ferri",
+   "live": false,
+   "sup": "2026-09-20",
+   "keys": [
+    "m64"
+   ],
+   "sess": 6
+  },
+  {
+   "date": "2026-09-20",
+   "text": "Paolo Ferri e' andato in pensione, la nuova preside della scuola e' Elena Costa",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m65"
+   ],
+   "sess": 48
+  },
+  {
+   "date": "2026-11-09",
+   "text": "la riunione con i genitori degli studenti e' in aula 12",
+   "live": false,
+   "sup": "2026-11-16",
+   "keys": [
+    "m86"
+   ],
+   "sess": 65
+  },
+  {
+   "date": "2026-11-16",
+   "text": "hanno cambiato aula: la riunione con i genitori e' in aula magna",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m87"
+   ],
+   "sess": 71
+  },
+  {
+   "date": "2026-11-19",
+   "text": "Elena Costa ha fissato il collegio docenti per il 5 dicembre",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m105"
+   ],
+   "sess": 74
+  }
+ ],
+ "acme": [
+  {
+   "date": "2025-06-01",
+   "text": "I have a meeting with the client Acme every Tuesday at 10:00 CET",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m12"
+   ],
+   "sess": 6
+  },
+  {
+   "date": "2026-10-02",
+   "text": "il referente di Acme e' Marco Bianchi",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m97"
+   ],
+   "sess": 50
+  },
+  {
+   "date": "2026-11-10",
+   "text": "Acme call today: the deadline for the CSV export is November 30",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m61"
+   ],
+   "sess": 66
+  }
+ ],
+ "home": [
+  {
+   "date": "2025-07-01",
+   "text": "pago 750 euro al mese di affitto",
+   "live": false,
+   "sup": "2026-11-25",
+   "keys": [
+    "m70"
+   ],
+   "sess": 8
+  },
+  {
+   "date": "2026-05-19",
+   "text": "the spare house keys are with the neighbour on the second floor",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m130"
+   ],
+   "sess": 33
+  },
+  {
+   "date": "2026-07-01",
+   "text": "I always forget to water the basil on the balcony",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m126"
+   ],
+   "sess": 37
+  },
+  {
+   "date": "2026-11-25",
+   "text": "da gennaio l'affitto sale a 820 euro al mese",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m71"
+   ],
+   "sess": 80
+  }
+ ],
+ "passwords": [
+  {
+   "date": "2025-07-01",
+   "text": "my password manager is Bitwarden, I use it with the bw CLI, read-only",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m17"
+   ],
+   "sess": 8
+  },
+  {
+   "date": "2025-07-01",
+   "text": "la password del Wi-Fi di casa e' salvata in Bitwarden sotto 'casa-wifi'",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m35"
+   ],
+   "sess": 8
+  }
+ ],
+ "demo": [
+  {
+   "date": "2025-08-10",
+   "text": "run /demo/stats.py with python3; {\"people\": 5, \"mean_age\": 38.8, ...}\nwritten /demo/report.json",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m49"
+   ],
+   "sess": 10
+  },
+  {
+   "date": "2026-11-06",
+   "text": "run hello.lua in /demo; the 3\nbrown 1\ndog 1\nfib(20) = 6765 in 2 ms\npcall: false something went wrong\nwritten by Lua 5.4",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m120"
+   ],
+   "sess": 63
+  },
+  {
+   "date": "2026-11-08",
+   "text": "print /demo/data.json with jq",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m123"
+   ],
+   "sess": 64
+  },
+  {
+   "date": "2026-11-08",
+   "text": "{\n  \"os\": \"ringzero\",\n  \"version\": \"0.8\",\n  \"models\": [\n    { \"name\": \"Qwen3.5-2B\", \"quant\": \"q8_0\", \"size_mb\": 2210 },\n    { \"name\": \"Qwen3-Embedding-0.6B\", \"quant\": \"q8_0\", \"size_mb\": 640 }\n  ],\n  \"apps\": [\"coreutils\", \"ripgrep\", \"jq\", \"sqlite3\", \"lua\", \"python3\", \"qjs\", \"kibi\"]\n}",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/demo/data.json"
+   ],
+   "sess": 64
+  }
+ ],
+ "car": [
+  {
+   "date": "2025-09-01",
+   "text": "ho una Fiat Panda grigia del 2015",
+   "live": false,
+   "sup": "2026-10-15",
+   "keys": [
+    "m57"
+   ],
+   "sess": 11
+  },
+  {
+   "date": "2025-09-01",
+   "text": "l'auto deve fare la revisione a febbraio",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m32"
+   ],
+   "sess": 11
+  },
+  {
+   "date": "2026-10-15",
+   "text": "ho venduto la Panda, adesso guido una Toyota Yaris hybrid",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m58"
+   ],
+   "sess": 54
+  }
+ ],
+ "giulia": [
+  {
+   "date": "2025-09-01",
+   "text": "my partner is called Giulia, our anniversary is on June 12",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m25"
+   ],
+   "sess": 11
+  },
+  {
+   "date": "2025-12-12",
+   "text": "Giulia lavora come architetta a Modena",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m101"
+   ],
+   "sess": 15
+  },
+  {
+   "date": "2026-02-01",
+   "text": "il compleanno di Giulia e' l'8 settembre",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m96"
+   ],
+   "sess": 19
+  },
+  {
+   "date": "2026-04-04",
+   "text": "il gatto di Giulia si chiama Mochi",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m108"
+   ],
+   "sess": 28
+  }
+ ],
+ "mom": [
+  {
+   "date": "2025-10-10",
+   "text": "mia madre vive a Ravenna",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m112"
+   ],
+   "sess": 12
+  },
+  {
+   "date": "2026-04-02",
+   "text": "il compleanno di mia madre e' il 12 maggio",
+   "live": false,
+   "sup": "2026-05-03",
+   "keys": [
+    "m84"
+   ],
+   "sess": 27
+  },
+  {
+   "date": "2026-05-01",
+   "text": "per il compleanno di mia madre voglio regalarle un corso di ceramica",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m98"
+   ],
+   "sess": 30
+  },
+  {
+   "date": "2026-05-03",
+   "text": "mi sbagliavo, il compleanno di mia madre e' il 21 maggio",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m85"
+   ],
+   "sess": 31
+  }
+ ],
+ "luca": [
+  {
+   "date": "2025-10-10",
+   "text": "mio fratello si chiama Luca e vive a Torino",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m41"
+   ],
+   "sess": 12
+  },
+  {
+   "date": "2026-05-05",
+   "text": "mio fratello lavora come ingegnere alla Ferrari",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m111"
+   ],
+   "sess": 32
+  },
+  {
+   "date": "2026-07-07",
+   "text": "mio fratello ha un iPhone 13",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m106"
+   ],
+   "sess": 38
+  }
+ ],
+ "rocco": [
+  {
+   "date": "2025-10-10",
+   "text": "il cane di mia sorella si chiama Rocco",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m40"
+   ],
+   "sess": 12
+  },
+  {
+   "date": "2026-07-20",
+   "text": "Rocco, il cane di mia sorella, non puo' mangiare cereali",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m113"
+   ],
+   "sess": 40
+  },
+  {
+   "date": "2026-11-11",
+   "text": "Rocco deve fare il vaccino a gennaio",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m99"
+   ],
+   "sess": 67
+  }
+ ],
+ "pixel": [
+  {
+   "date": "2025-10-10",
+   "text": "il mio gatto si chiama Pixel ed e' allergico al pollo",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m11"
+   ],
+   "sess": 12
+  },
+  {
+   "date": "2026-01-05",
+   "text": "il veterinario di Pixel e' in via Roma 12, Bologna",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m51"
+   ],
+   "sess": 16
+  }
+ ],
+ "davide": [
+  {
+   "date": "2025-11-01",
+   "text": "il mio migliore amico e' Davide",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m93"
+   ],
+   "sess": 13
+  },
+  {
+   "date": "2026-01-10",
+   "text": "il compleanno di Davide e' il 3 febbraio",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m95"
+   ],
+   "sess": 17
+  },
+  {
+   "date": "2026-08-30",
+   "text": "Davide si e' trasferito a Lisbona per lavoro",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m94"
+   ],
+   "sess": 43
+  }
+ ],
+ "japanese": [
+  {
+   "date": "2025-11-01",
+   "text": "I'm learning Japanese, I'm at JLPT N4 level now",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m36"
+   ],
+   "sess": 13
+  }
+ ],
+ "music": [
+  {
+   "date": "2025-11-01",
+   "text": "when I need to focus I listen to lo-fi and Brian Eno ambient albums",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m33"
+   ],
+   "sess": 13
+  }
+ ],
+ "internet": [
+  {
+   "date": "2025-12-01",
+   "text": "il mio provider e' TIM, fibra 200 mega",
+   "live": false,
+   "sup": "2026-09-12",
+   "keys": [
+    "m62"
+   ],
+   "sess": 14
+  },
+  {
+   "date": "2025-12-01",
+   "text": "the router is a FritzBox 7590 in the hallway, admin page at fritz.box",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m47"
+   ],
+   "sess": 14
+  },
+  {
+   "date": "2026-09-12",
+   "text": "sono passato a Fastweb, la fibra adesso e' da 1 giga",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m63"
+   ],
+   "sess": 46
+  },
+  {
+   "date": "2026-10-20",
+   "text": "fatto: ho aggiornato il firmware del router",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m27"
+   ],
+   "sess": 55
+  }
+ ],
+ "backup": [
+  {
+   "date": "2025-12-01",
+   "text": "the backup job runs nightly at 02:00 with restic to a Backblaze bucket",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m22"
+   ],
+   "sess": 14
+  },
+  {
+   "date": "2026-11-21",
+   "text": "did last night's backup run?; 2026-11-20 02:00 restic: backup finished without errors",
+   "live": false,
+   "sup": "2026-11-22",
+   "keys": [
+    "m76"
+   ],
+   "sess": 76
+  },
+  {
+   "date": "2026-11-22",
+   "text": "check the backup log again, the bucket dashboard shows an error; 2026-11-20 02:14 restic: Fatal: unable to save snapshot: bucket full",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m77"
+   ],
+   "sess": 77
+  }
+ ],
+ "nas": [
+  {
+   "date": "2025-12-01",
+   "text": "I have to renew the TLS certificate of the home NAS before December 15",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m6"
+   ],
+   "sess": 14
+  }
+ ],
+ "laptop": [
+  {
+   "date": "2025-12-12",
+   "text": "my laptop is a ThinkPad X1 Carbon gen 11 with 32 GB",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m53"
+   ],
+   "sess": 15
+  }
+ ],
+ "coffee": [
+  {
+   "date": "2025-12-12",
+   "text": "il mio caffe' preferito e' un espresso ristretto senza zucchero",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m21"
+   ],
+   "sess": 15
+  },
+  {
+   "date": "2025-12-12",
+   "text": "a casa uso una moka da 3 tazze, caffe' macinato fine",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m48"
+   ],
+   "sess": 15
+  },
+  {
+   "date": "2026-08-21",
+   "text": "I only drink decaf after 4 pm",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m132"
+   ],
+   "sess": 42
+  }
+ ],
+ "running": [
+  {
+   "date": "2026-01-05",
+   "text": "il mio obiettivo di corsa: 10 km sotto i 50 minuti",
+   "live": false,
+   "sup": "2026-11-15",
+   "keys": [
+    "m68"
+   ],
+   "sess": 16
+  },
+  {
+   "date": "2026-03-30",
+   "text": "mi piace correre la mattina presto prima del lavoro",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m131"
+   ],
+   "sess": 26
+  },
+  {
+   "date": "2026-11-15",
+   "text": "il mio nuovo obiettivo e' la mezza maratona di Bologna a marzo",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m69"
+   ],
+   "sess": 70
+  }
+ ],
+ "gym": [
+  {
+   "date": "2026-01-05",
+   "text": "vado in palestra il lunedi', mercoledi' e venerdi' alle 7",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m29"
+   ],
+   "sess": 16
+  }
+ ],
+ "bills": [
+  {
+   "date": "2026-01-05",
+   "text": "promemoria: devo pagare la bolletta della luce entro il 30 del mese",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m7"
+   ],
+   "sess": 16
+  }
+ ],
+ "work": [
+  {
+   "date": "2026-01-10",
+   "text": "I have to write the M4 milestone report for the agent subsystem",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m19"
+   ],
+   "sess": 17
+  }
+ ],
+ "todo": [
+  {
+   "date": "2026-01-22",
+   "text": "how many open items are in notes/todo.md?; 14",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m34"
+   ],
+   "sess": 18
+  },
+  {
+   "date": "2026-11-17",
+   "text": "aggiungi due cose a /home/todo.md: comprare le lampadine e chiamare l'idraulico; 2 lines added",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m118"
+   ],
+   "sess": 72
+  }
+ ],
+ "phone": [
+  {
+   "date": "2026-02-10",
+   "text": "ho un Motorola g54, il numero finisce con 4411",
+   "live": false,
+   "sup": "2026-11-02",
+   "keys": [
+    "m55"
+   ],
+   "sess": 20
+  },
+  {
+   "date": "2026-11-02",
+   "text": "ho cambiato telefono, adesso ho un iPhone 15",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m56"
+   ],
+   "sess": 59
+  }
+ ],
+ "doctor": [
+  {
+   "date": "2026-02-10",
+   "text": "il medico di base riceve il giovedi' pomeriggio, bisogna prenotare",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m37"
+   ],
+   "sess": 20
+  },
+  {
+   "date": "2026-06-01",
+   "text": "la dottoressa Bianchi e' il mio medico di base",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m50"
+   ],
+   "sess": 34
+  },
+  {
+   "date": "2026-11-05",
+   "text": "la dottoressa Bianchi mi ha prescritto la vitamina D",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m100"
+   ],
+   "sess": 62
+  }
+ ],
+ "piano": [
+  {
+   "date": "2026-02-12",
+   "text": "my piano lessons are on Thursday at 18:00",
+   "live": false,
+   "sup": "2026-10-08",
+   "keys": [
+    "m72"
+   ],
+   "sess": 21
+  },
+  {
+   "date": "2026-10-08",
+   "text": "I moved the piano lesson to Saturday morning at 10",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m73"
+   ],
+   "sess": 52
+  }
+ ],
+ "chiara": [
+  {
+   "date": "2026-02-20",
+   "text": "il compleanno di mia sorella Chiara e' il 9 ottobre",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m107"
+   ],
+   "sess": 22
+  },
+  {
+   "date": "2026-03-15",
+   "text": "mia sorella Chiara vive a Parma",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m92"
+   ],
+   "sess": 25
+  },
+  {
+   "date": "2026-06-01",
+   "text": "mia sorella usa un MacBook Air",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m110"
+   ],
+   "sess": 34
+  },
+  {
+   "date": "2026-06-06",
+   "text": "Chiara ha due figli, Tommaso e Irene",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m102"
+   ],
+   "sess": 35
+  },
+  {
+   "date": "2026-11-18",
+   "text": "sabato sera ceno da mia sorella",
+   "live": false,
+   "sup": "2026-11-21",
+   "keys": [
+    "m80"
+   ],
+   "sess": 73
+  },
+  {
+   "date": "2026-11-21",
+   "text": "la cena da mia sorella salta, ci vediamo domenica a pranzo",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m81"
+   ],
+   "sess": 76
+  }
+ ],
+ "health": [
+  {
+   "date": "2026-02-27",
+   "text": "I'm allergic to penicillin, write it down",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m128"
+   ],
+   "sess": 23
+  }
+ ],
+ "dad": [
+  {
+   "date": "2026-03-03",
+   "text": "il medico di mio padre e' il dottor Neri",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m109"
+   ],
+   "sess": 24
+  }
+ ],
+ "food": [
+  {
+   "date": "2026-06-10",
+   "text": "non sopporto il coriandolo, non mettermelo mai nelle ricette",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m124"
+   ],
+   "sess": 36
+  }
+ ],
+ "ideas": [
+  {
+   "date": "2026-07-15",
+   "text": "ho messo le idee nel file idee.md",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m122"
+   ],
+   "sess": 39
+  }
+ ],
+ "files": [
+  {
+   "date": "2026-08-08",
+   "text": "le ricette sono in /home",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m119"
+   ],
+   "sess": 41
+  },
+  {
+   "date": "2026-09-01",
+   "text": "cosa c'e' in /notes?; idee.md  spesa.txt  todo.txt",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m42"
+   ],
+   "sess": 44
+  },
+  {
+   "date": "2026-09-01",
+   "text": "la lista della spesa e' in /notes/spesa.txt",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m117"
+   ],
+   "sess": 44
+  }
+ ],
+ "sport": [
+  {
+   "date": "2026-09-03",
+   "text": "la mia squadra del cuore e' il Bologna, ho l'abbonamento allo stadio",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m127"
+   ],
+   "sess": 45
+  }
+ ],
+ "marta": [
+  {
+   "date": "2026-09-15",
+   "text": "Marta e' la mia collega di matematica",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m104"
+   ],
+   "sess": 47
+  },
+  {
+   "date": "2026-11-26",
+   "text": "Marta arriva in stazione alle 18",
+   "live": false,
+   "sup": "2026-11-26",
+   "keys": [
+    "m88"
+   ],
+   "sess": 81
+  },
+  {
+   "date": "2026-11-26",
+   "text": "Marta ha perso il treno, arriva alle 20:30",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m89"
+   ],
+   "sess": 82
+  }
+ ],
+ "printer": [
+  {
+   "date": "2026-09-25",
+   "text": "la stampante dell'ufficio e' una Brother HL-L2350DW collegata via Wi-Fi",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m18"
+   ],
+   "sess": 49
+  },
+  {
+   "date": "2026-09-25",
+   "text": "scrivi i dettagli in /home/stampante.txt: IP 10.0.0.50, toner TN-2420 comprato a settembre",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/home/stampante.txt"
+   ],
+   "sess": 49
+  },
+  {
+   "date": "2026-09-25",
+   "text": "3 lines written",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m121"
+   ],
+   "sess": 49
+  }
+ ],
+ "japan": [
+  {
+   "date": "2026-10-02",
+   "text": "fammi vedere il piano del viaggio in Giappone",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m114"
+   ],
+   "sess": 50
+  },
+  {
+   "date": "2026-10-02",
+   "text": "# Viaggio in Giappone\nPartenza 3 aprile da Bologna, ritorno 17 aprile.\nTokyo 5 notti, poi Kyoto (ryokan vicino a Gion) e Osaka. JR Pass di 14 giorni.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/home/viaggio_giappone.md"
+   ],
+   "sess": 50
+  },
+  {
+   "date": "2026-10-30",
+   "text": "in Giappone vado con Davide",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m103"
+   ],
+   "sess": 56
+  }
+ ],
+ "ebike": [
+  {
+   "date": "2026-10-12",
+   "text": "my neighbour Franco has a spare charger for my e-bike",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m135"
+   ],
+   "sess": 53
+  }
+ ],
+ "dentist": [
+  {
+   "date": "2026-10-20",
+   "text": "ho l'appuntamento dal dentista il 4 novembre alle 9",
+   "live": false,
+   "sup": "2026-11-01",
+   "keys": [
+    "m59"
+   ],
+   "sess": 55
+  },
+  {
+   "date": "2026-11-01",
+   "text": "il dentista ha spostato l'appuntamento al 18 novembre alle 15",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m60"
+   ],
+   "sess": 58
+  }
+ ],
+ "travel": [
+  {
+   "date": "2026-10-31",
+   "text": "ho paura di volare, in aereo prendo sempre il posto corridoio",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m129"
+   ],
+   "sess": 57
+  },
+  {
+   "date": "2026-11-24",
+   "text": "my train to Milano leaves at 7:40 on Friday",
+   "live": false,
+   "sup": "2026-11-25",
+   "keys": [
+    "m82"
+   ],
+   "sess": 79
+  },
+  {
+   "date": "2026-11-25",
+   "text": "correction: the train to Milano leaves at 8:10, not 7:40",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m83"
+   ],
+   "sess": 80
+  }
+ ],
+ "people_csv": [
+  {
+   "date": "2026-11-03",
+   "text": "show me /demo/people.csv",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m116"
+   ],
+   "sess": 60
+  },
+  {
+   "date": "2026-11-03",
+   "text": "name,city,age,email\nAnna Rossi,Roma,34,anna.rossi@example.org\nMarco Bianchi,Milano,41,marco@example.com\nGiulia Verdi,Roma,29,giulia.verdi@example.org\nLuca Neri,Torino,52,luca.neri@example.net\nSara Gallo,Milano,38,sara@example.com",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/demo/people.csv"
+   ],
+   "sess": 60
+  }
+ ],
+ "library": [
+  {
+   "date": "2026-11-04",
+   "text": "devo restituire il libro in biblioteca il 2 dicembre",
+   "live": false,
+   "sup": "2026-11-28",
+   "keys": [
+    "m90"
+   ],
+   "sess": 61
+  },
+  {
+   "date": "2026-11-28",
+   "text": "ho rinnovato il prestito, il libro va restituito il 16 dicembre",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m91"
+   ],
+   "sess": 85
+  }
+ ],
+ "books": [
+  {
+   "date": "2026-11-10",
+   "text": "sto leggendo Il nome della rosa, sono a meta'",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m133"
+   ],
+   "sess": 66
+  }
+ ],
+ "recipes": [
+  {
+   "date": "2026-11-14",
+   "text": "leggimi la ricetta della carbonara mentre cucino",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m115"
+   ],
+   "sess": 69
+  },
+  {
+   "date": "2026-11-14",
+   "text": "Carbonara per 2: 200 g di spaghetti, 100 g di guanciale, 3 tuorli, 50 g di pecorino. Rosolare il guanciale senza olio, mescolare tuorli e pecorino, unire fuori dal fuoco con un po' di acqua di cottura. Niente panna.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/home/ricetta_carbonara.txt"
+   ],
+   "sess": 69
+  }
+ ],
+ "parcel": [
+  {
+   "date": "2026-11-20",
+   "text": "il pacco di Amazon arriva giovedi'",
+   "live": false,
+   "sup": "2026-11-23",
+   "keys": [
+    "m78"
+   ],
+   "sess": 75
+  },
+  {
+   "date": "2026-11-23",
+   "text": "il corriere ha scritto che il pacco arriva solo lunedi' prossimo",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m79"
+   ],
+   "sess": 78
+  }
+ ]
+}

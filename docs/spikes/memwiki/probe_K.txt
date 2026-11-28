@@ -1,0 +1,50 @@
+== 2 2025-04-10 shown ['user', 'preferences', 'diet'] (538 in, 50 out)
+EPISODE: The user asked about the CPU, uptime, free memory, and disk space of the RingZero OS machine.
+FACT: user
+FACT: machine
+FACT: cpu
+FACT: uptime
+FACT: memory
+FACT: disk
+   ok  EPISODE  [] EPISODE: The user asked about the CPU, uptime, free memory, and disk space of the RingZero
+== 14 2025-12-01 shown ['passwords', 'machine', 'dev_tools'] (331 in, 82 out)
+EPISODE: User is a developer using a home NAS with a FritzBox 7590 router and a backup job running nightly.
+FACT: user is a developer
+FACT: user uses a FritzBox 7590 router
+FACT: user has a backup job running nightly at 02:00
+FACT: user needs to renew a TLS certificate before December 15
+   ok  EPISODE  [] EPISODE: User is a developer using a home NAS with a FritzBox 7590 router and a backup job
+== 48 2026-09-20 shown ['school', 'user', 'marta'] (287 in, 27 out)
+EPISODE: User asked about Paolo Ferri's retirement and the new principal Elena Costa.
+FACT: user_work = ringzero
+   ok  EPISODE  [] EPISODE: User asked about Paolo Ferri's retirement and the new principal Elena Costa.
+   REJ PAGE not grounded [] FACT: user_work = ringzero
+== 50 2026-10-02 shown ['files', 'user', 'todo'] (417 in, 54 out)
+EPISODE: The user asked for a Japan travel itinerary and received a brief summary. Marco Bianchi was identified as the Acme contact.
+FACT: acme = Marco Bianchi
+FACT: japanese = requested itinerary
+FACT: user = asked for travel plan
+   ok  EPISODE  [] EPISODE: The user asked for a Japan travel itinerary and received a brief summary. Marco B
+   ok  OLD  ['m12'] (same key) acme
+   ok  PAGE  ['m97'] FACT: acme = Marco Bianchi
+   REJ PAGE not grounded [] FACT: japanese = requested itinerary
+   REJ PAGE not grounded [] FACT: user = asked for travel plan
+== 59 2026-11-02 shown ['phone', 'internet', 'passwords'] (289 in, 43 out)
+EPISODE: Ringzero, an OS agent, asked the user to summarize their conversation. The user explained they changed phones and now have an iPhone 15.
+FACT: phone = iPhone 15
+   ok  EPISODE  [] EPISODE: Ringzero, an OS agent, asked the user to summarize their conversation. The user e
+   ok  OLD  ['m55'] (same key) phone
+   ok  PAGE  ['m56'] FACT: phone = iPhone 15
+== 77 2026-11-22 shown ['backup', 'dev_tools', 'files'] (382 in, 27 out)
+EPISODE: The user asked about a backup log error and the system reported a full bucket.
+FACT: backup_error_bucket_full
+   ok  EPISODE  ['m77'] EPISODE: The user asked about a backup log error and the system reported a full bucket.
+== 82 2026-11-26 shown ['travel', 'marta', 'running'] (304 in, 26 out)
+EPISODE: Marta lost her train and will arrive at 20:30.
+FACT: marta lost train
+   ok  EPISODE  [] EPISODE: Marta lost her train and will arrive at 20:30.
+== 84 2026-11-27 shown ['machine', 'aios', 'files'] (294 in, 37 out)
+EPISODE: The user greeted me in Italian and asked me to summarize the conversation.
+FACT: user_greeted_in_italian
+FACT: user_asked_for_summary
+   ok  EPISODE  [] EPISODE: The user greeted me in Italian and asked me to summarize the conversation.

@@ -1,0 +1,1133 @@
+{
+ "episodes": [
+  {
+   "date": "2024-05-01",
+   "text": "The user asked for their email to be saved and requested a summary of the conversation.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 0
+  },
+  {
+   "date": "2025-03-01",
+   "text": "Ada, an Italian vegetarian user, requested informal and brief responses without emojis.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 1
+  },
+  {
+   "date": "2025-04-10",
+   "text": "The user asked about the CPU, uptime, free memory, and disk space of the RingZero OS machine.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 2
+  },
+  {
+   "date": "2025-04-12",
+   "text": "The user asked about nginx, sshd, and network connectivity, and I confirmed nginx is not installed while sshd is running and the network is functional.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 3
+  },
+  {
+   "date": "2025-05-05",
+   "text": "The user asked about accessing a Fedora server via SSH and their preferences for development tools.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 4
+  },
+  {
+   "date": "2025-05-20",
+   "text": "User introduced themselves as an editor using Helix with the catppuccin theme, a Rust developer, and mentioned an AIOS development branch named agentd.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 5
+  },
+  {
+   "date": "2025-06-01",
+   "text": "User shared personal details about their work, location, and a meeting schedule.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 6
+  },
+  {
+   "date": "2025-06-15",
+   "text": "The user asked to compile a Rust project and received an error about missing features, then mentioned a kernel panic condition.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 7
+  },
+  {
+   "date": "2025-07-01",
+   "text": "The user shared their living expenses, password manager, Wi-Fi password, and file synchronization setup.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 8
+  },
+  {
+   "date": "2025-08-01",
+   "text": "L'utente ha chiesto di impostare la tastiera italiana e ha chiesto informazioni sul disco di ringzero.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 9
+  },
+  {
+   "date": "2025-09-01",
+   "text": "The user asked for a summary of their conversation history and provided details about their car, birthday, and partner.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 11
+  },
+  {
+   "date": "2025-10-10",
+   "text": "User shared personal details about family members and pets.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 12
+  },
+  {
+   "date": "2025-11-01",
+   "text": "User shared their name is Davide, their favorite color is green, and they listen to lo-fi and Brian Eno ambient music when they need to focus.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 13
+  },
+  {
+   "date": "2025-12-01",
+   "text": "User requested a summary of their conversation with RingZero.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 14
+  },
+  {
+   "date": "2025-12-12",
+   "text": "The user shared their work as an architect in Modena, their laptop model (ThinkPad X1 Carbon gen 11 with 32 GB), and their coffee preferences ( ristretto espresso without sugar, using a 3-cup moka pot with ground coffee).",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 15
+  },
+  {
+   "date": "2026-01-05",
+   "text": "User set a 10km goal under 50 minutes, plans to train on Mondays, Wednesdays, and Fridays at 7 AM, and noted a bill due on the 30th.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 16
+  },
+  {
+   "date": "2026-01-10",
+   "text": "The user asked for a memory consolidation report for the agent subsystem.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m19"
+   ],
+   "sess": 17
+  },
+  {
+   "date": "2026-01-22",
+   "text": "The user asked about the number of open items in a specific markdown file, and the system provided the count.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 18
+  },
+  {
+   "date": "2026-02-01",
+   "text": "The user asked for a brief OS response and then requested a summary of the conversation in a specific format.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 19
+  },
+  {
+   "date": "2026-02-10",
+   "text": "The user asked for help with a phone number ending in 4411 and a doctor's appointment.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 20
+  },
+  {
+   "date": "2026-02-12",
+   "text": "You mentioned your piano lessons are on Thursday at 18:00.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m72"
+   ],
+   "sess": 21
+  },
+  {
+   "date": "2026-02-20",
+   "text": "The user asked for a brief OS response about their sister's birthday.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 22
+  },
+  {
+   "date": "2026-02-27",
+   "text": "User requested to write down their penicillin allergy.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m128"
+   ],
+   "sess": 23
+  },
+  {
+   "date": "2026-03-03",
+   "text": "The user mentioned their father's doctor is Dr. Neri.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 24
+  },
+  {
+   "date": "2026-03-15",
+   "text": "The user asked about their sister's location in Parma.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 25
+  },
+  {
+   "date": "2026-03-30",
+   "text": "The user expressed a preference for running in the morning before work.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 26
+  },
+  {
+   "date": "2026-04-02",
+   "text": "The user mentioned their mother's birthday is May 12th.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 27
+  },
+  {
+   "date": "2026-04-04",
+   "text": "The user introduced their cat's name as Mochi.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 28
+  },
+  {
+   "date": "2026-04-11",
+   "text": "RingZero is an OS agent that briefly acknowledges the user's sleep schedule.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 29
+  },
+  {
+   "date": "2026-05-01",
+   "text": "The user asked for a ceramic course as a birthday gift for their mother.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 30
+  },
+  {
+   "date": "2026-05-03",
+   "text": "The user corrected RingZero about their mother's birthday.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 31
+  },
+  {
+   "date": "2026-05-05",
+   "text": "The user mentioned their brother works as an engineer at Ferrari.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 32
+  },
+  {
+   "date": "2026-05-19",
+   "text": "The user asked for a summary of the conversation and provided a specific format for the output.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 33
+  },
+  {
+   "date": "2026-06-01",
+   "text": "The user introduced their sister using a MacBook Air and mentioned their doctor is Dr. Bianchi.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 34
+  },
+  {
+   "date": "2026-06-06",
+   "text": "The user introduced their family details and requested a summary of the conversation.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 35
+  },
+  {
+   "date": "2026-06-10",
+   "text": "User requested to avoid coriander in recipes.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 36
+  },
+  {
+   "date": "2026-07-01",
+   "text": "The user asked about forgetting to water basil on the balcony, and the OS responded with a brief acknowledgment.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 37
+  },
+  {
+   "date": "2026-07-07",
+   "text": "Ringzero asked the user about their brother's iPhone 13, and the user replied that their brother has an iPhone 13.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 38
+  },
+  {
+   "date": "2026-07-15",
+   "text": "The user asked how to save ideas in a file and I confirmed it's done.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 39
+  },
+  {
+   "date": "2026-07-20",
+   "text": "Rocco, the sister's dog, cannot eat cereals.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 40
+  },
+  {
+   "date": "2026-08-08",
+   "text": "The user asked for a summary of the conversation and requested specific output formats.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 41
+  },
+  {
+   "date": "2026-08-21",
+   "text": "User stated they drink decaf after 4 pm.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m132"
+   ],
+   "sess": 42
+  },
+  {
+   "date": "2026-08-30",
+   "text": "Davide moved to Lisbon for work.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 43
+  },
+  {
+   "date": "2026-09-01",
+   "text": "The user asked about the contents of the /notes directory and confirmed that the shopping list is located in /notes/spesa.txt.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 44
+  },
+  {
+   "date": "2026-09-03",
+   "text": "The user identified their team as Bologna and confirmed they have a stadium subscription.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 45
+  },
+  {
+   "date": "2026-09-12",
+   "text": "The user switched to Fastweb and noticed their fiber speed is now 1 Giga.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 46
+  },
+  {
+   "date": "2026-09-15",
+   "text": "Marta, la collega di matematica, ha scritto al sistema RingZero.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m104"
+   ],
+   "sess": 47
+  },
+  {
+   "date": "2026-09-20",
+   "text": "The user informed RingZero about Paolo Ferri's retirement and Elena Costa's appointment as the new principal.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 48
+  },
+  {
+   "date": "2026-09-25",
+   "text": "The user provided details about a Brother HL-L2350DW Wi-Fi printer and asked to save specific information to a file.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 49
+  },
+  {
+   "date": "2026-10-02",
+   "text": "The user asked for a Japan itinerary and received a brief summary. Marco Bianchi was identified as the contact for Acme.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 50
+  },
+  {
+   "date": "2026-10-05",
+   "text": "The user started eating fish and became pescetarian.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 51
+  },
+  {
+   "date": "2026-10-08",
+   "text": "The user moved their piano lesson to Saturday morning at 10.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m73"
+   ],
+   "sess": 52
+  },
+  {
+   "date": "2026-10-12",
+   "text": "User mentioned their neighbor Franco has a spare charger for their e-bike.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m135"
+   ],
+   "sess": 53
+  },
+  {
+   "date": "2026-10-15",
+   "text": "The user sold their Panda and now drives a Toyota Yaris hybrid.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m58"
+   ],
+   "sess": 54
+  },
+  {
+   "date": "2026-10-20",
+   "text": "The user scheduled a dentist appointment for November 4th at 9 AM and then reported updating their router firmware.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 55
+  },
+  {
+   "date": "2026-10-30",
+   "text": "The user mentioned they are traveling to Japan with Davide.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 56
+  },
+  {
+   "date": "2026-10-31",
+   "text": "The user expressed fear of flying and chose to sit in the aisle seat.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 57
+  },
+  {
+   "date": "2026-11-01",
+   "text": "The user informed RingZero about a dentist appointment rescheduled to November 18th at 15:00.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 58
+  },
+  {
+   "date": "2026-11-02",
+   "text": "The user changed their phone to an iPhone 15.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 59
+  },
+  {
+   "date": "2026-11-03",
+   "text": "User asked for a CSV file of demo people and received a list of 5 people with their details.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 60
+  },
+  {
+   "date": "2026-11-04",
+   "text": "The user asked to return a book on December 2nd and received a brief confirmation.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 61
+  },
+  {
+   "date": "2026-11-05",
+   "text": "The user asked for a summary of the conversation and received a brief confirmation.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 62
+  },
+  {
+   "date": "2026-11-06",
+   "text": "The user asked to run a Lua script in a demo environment, and the system executed it, printing results and writing output to a file.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 63
+  },
+  {
+   "date": "2026-11-08",
+   "text": "User asked for a JSON file with jq, and the system executed the command successfully.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 64
+  },
+  {
+   "date": "2026-11-09",
+   "text": "The user requested a brief response in Italian about a meeting location.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 65
+  },
+  {
+   "date": "2026-11-10",
+   "text": "The user is reading \"The Name of the Rose\" and is halfway through the story.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 66
+  },
+  {
+   "date": "2026-11-11",
+   "text": "Rocco requested a vaccine in January.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 67
+  },
+  {
+   "date": "2026-11-12",
+   "text": "The user introduced their new email address and mentioned discarding an old one.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 68
+  },
+  {
+   "date": "2026-11-14",
+   "text": "The user asked for the Carbonara recipe while cooking, and I provided the ingredients and instructions.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 69
+  },
+  {
+   "date": "2026-11-15",
+   "text": "The user set a goal to run a half marathon in Bologna in March.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 70
+  },
+  {
+   "date": "2026-11-16",
+   "text": "The user informed RingZero that the meeting with parents has moved to the Aula Magna.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 71
+  },
+  {
+   "date": "2026-11-17",
+   "text": "The user asked to add two items to a todo list and requested a memory consolidation summary.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 72
+  },
+  {
+   "date": "2026-11-18",
+   "text": "User asked for dinner plans with their sister.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 73
+  },
+  {
+   "date": "2026-11-19",
+   "text": "Elena Costa requested the school schedule for December 5th.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 74
+  },
+  {
+   "date": "2026-11-20",
+   "text": "The user asked about an Amazon package arriving on Thursday.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 75
+  },
+  {
+   "date": "2026-11-21",
+   "text": "The user asked about a backup run and received confirmation, then discussed a family dinner plan.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 76
+  },
+  {
+   "date": "2026-11-22",
+   "text": "The user asked about a backup log error and the system reported a full bucket.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m77"
+   ],
+   "sess": 77
+  },
+  {
+   "date": "2026-11-23",
+   "text": "The user asked about a news report regarding a package delivery date.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 78
+  },
+  {
+   "date": "2026-11-24",
+   "text": "You asked for a brief OS response about your train to Milano, and I confirmed the departure time.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 79
+  },
+  {
+   "date": "2026-11-25",
+   "text": "The user corrected a train schedule and mentioned a new rent increase.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 80
+  },
+  {
+   "date": "2026-11-26",
+   "text": "Marta arrived at the station at 18.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m88"
+   ],
+   "sess": 81
+  },
+  {
+   "date": "2026-11-26",
+   "text": "Marta lost her train and arrives at 20:30.",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m89"
+   ],
+   "sess": 82
+  },
+  {
+   "date": "2026-11-26",
+   "text": "The user asked about the cost of a specific ratio and the capital of Portugal.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 83
+  },
+  {
+   "date": "2026-11-27",
+   "text": "The user greeted me in Italian and asked me to summarize the conversation.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 84
+  },
+  {
+   "date": "2026-11-28",
+   "text": "The user asked about renewing a loan and the return date of a book.",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 85
+  }
+ ],
+ "email": [
+  {
+   "date": "2024-05-01",
+   "text": "ada.moretti@libero.it",
+   "live": false,
+   "sup": "2026-11-12",
+   "keys": [
+    "m74"
+   ],
+   "sess": 0
+  },
+  {
+   "date": "2026-11-12",
+   "text": "ada.m@proton.me",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m75"
+   ],
+   "sess": 68
+  }
+ ],
+ "user_editor": [
+  {
+   "date": "2025-05-20",
+   "text": "Helix",
+   "live": false,
+   "sup": "2025-06-15",
+   "keys": [
+    "m26"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2025-06-15",
+   "text": "rust",
+   "live": false,
+   "sup": "2026-10-02",
+   "keys": [
+    "m24"
+   ],
+   "sess": 7
+  },
+  {
+   "date": "2026-10-02",
+   "text": "Acme",
+   "live": false,
+   "sup": "2026-11-08",
+   "keys": [
+    "m97"
+   ],
+   "sess": 50
+  },
+  {
+   "date": "2026-11-08",
+   "text": "ringzero",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/demo/data.json"
+   ],
+   "sess": 64
+  }
+ ],
+ "user_theme": [
+  {
+   "date": "2025-05-20",
+   "text": "catppuccin",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m26"
+   ],
+   "sess": 5
+  }
+ ],
+ "user_language": [
+  {
+   "date": "2025-05-20",
+   "text": "Rust",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m52"
+   ],
+   "sess": 5
+  }
+ ],
+ "user_branch": [
+  {
+   "date": "2025-05-20",
+   "text": "agentd",
+   "live": false,
+   "sup": "2026-05-05",
+   "keys": [
+    "m14"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2026-05-05",
+   "text": "Ferrari",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m111"
+   ],
+   "sess": 32
+  }
+ ],
+ "user_memory": [
+  {
+   "date": "2025-05-20",
+   "text": "4 GiB",
+   "live": false,
+   "sup": "2025-08-01",
+   "keys": [
+    "m28"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2025-08-01",
+   "text": "1.2 GB",
+   "live": false,
+   "sup": "2025-12-12",
+   "keys": [
+    "m46"
+   ],
+   "sess": 9
+  },
+  {
+   "date": "2025-12-12",
+   "text": "Architecture, Modena, ThinkPad X1 Carbon gen 11, 32 GB, ristretto espresso, moka pot",
+   "live": false,
+   "sup": "2026-01-10",
+   "keys": [
+    "m53"
+   ],
+   "sess": 15
+  },
+  {
+   "date": "2026-01-10",
+   "text": "M4 milestone report",
+   "live": false,
+   "sup": "2026-01-22",
+   "keys": [
+    "m19"
+   ],
+   "sess": 17
+  },
+  {
+   "date": "2026-01-22",
+   "text": "14 open items",
+   "live": false,
+   "sup": "2026-11-14",
+   "keys": [
+    "m34"
+   ],
+   "sess": 18
+  },
+  {
+   "date": "2026-11-14",
+   "text": "Carbonara recipe",
+   "live": false,
+   "sup": "2026-11-26",
+   "keys": [
+    "f:/home/ricetta_carbonara.txt",
+    "m115"
+   ],
+   "sess": 69
+  },
+  {
+   "date": "2026-11-26",
+   "text": "17 per 23",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m137"
+   ],
+   "sess": 83
+  }
+ ],
+ "user_vcpus": [
+  {
+   "date": "2025-05-20",
+   "text": "8",
+   "live": false,
+   "sup": "2025-06-01",
+   "keys": [
+    "m28"
+   ],
+   "sess": 5
+  },
+  {
+   "date": "2025-06-01",
+   "text": "1",
+   "live": false,
+   "sup": "2026-01-05",
+   "keys": [],
+   "sess": 6
+  },
+  {
+   "date": "2026-01-05",
+   "text": "2",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 16
+  }
+ ],
+ "user_name": [
+  {
+   "date": "2025-11-01",
+   "text": "Davide",
+   "live": false,
+   "sup": "2025-12-12",
+   "keys": [
+    "m93"
+   ],
+   "sess": 13
+  },
+  {
+   "date": "2025-12-12",
+   "text": "Giulia",
+   "live": false,
+   "sup": "2026-01-10",
+   "keys": [
+    "m101"
+   ],
+   "sess": 15
+  },
+  {
+   "date": "2026-01-10",
+   "text": "Davide",
+   "live": false,
+   "sup": "2026-02-01",
+   "keys": [
+    "m95"
+   ],
+   "sess": 17
+  },
+  {
+   "date": "2026-02-01",
+   "text": "Giulia",
+   "live": false,
+   "sup": "2026-02-20",
+   "keys": [
+    "m96"
+   ],
+   "sess": 19
+  },
+  {
+   "date": "2026-02-20",
+   "text": "Chiara",
+   "live": false,
+   "sup": "2026-04-04",
+   "keys": [
+    "m107"
+   ],
+   "sess": 22
+  },
+  {
+   "date": "2026-04-04",
+   "text": "Giulia",
+   "live": false,
+   "sup": "2026-06-01",
+   "keys": [
+    "m108"
+   ],
+   "sess": 28
+  },
+  {
+   "date": "2026-06-01",
+   "text": "Mia",
+   "live": false,
+   "sup": "2026-06-06",
+   "keys": [],
+   "sess": 34
+  },
+  {
+   "date": "2026-06-06",
+   "text": "Chiara",
+   "live": false,
+   "sup": "2026-08-30",
+   "keys": [
+    "m102"
+   ],
+   "sess": 35
+  },
+  {
+   "date": "2026-08-30",
+   "text": "Davide",
+   "live": false,
+   "sup": "2026-09-15",
+   "keys": [
+    "m94"
+   ],
+   "sess": 43
+  },
+  {
+   "date": "2026-09-15",
+   "text": "Marta",
+   "live": false,
+   "sup": "2026-09-20",
+   "keys": [
+    "m104"
+   ],
+   "sess": 47
+  },
+  {
+   "date": "2026-09-20",
+   "text": "Paolo Ferri",
+   "live": false,
+   "sup": "2026-10-12",
+   "keys": [
+    "m65"
+   ],
+   "sess": 48
+  },
+  {
+   "date": "2026-10-12",
+   "text": "Franco",
+   "live": false,
+   "sup": "2026-10-30",
+   "keys": [
+    "m135"
+   ],
+   "sess": 53
+  },
+  {
+   "date": "2026-10-30",
+   "text": "Davide",
+   "live": false,
+   "sup": "2026-11-08",
+   "keys": [
+    "m103"
+   ],
+   "sess": 56
+  },
+  {
+   "date": "2026-11-08",
+   "text": "RingZero",
+   "live": false,
+   "sup": "2026-11-10",
+   "keys": [
+    "f:/demo/data.json"
+   ],
+   "sess": 64
+  },
+  {
+   "date": "2026-11-10",
+   "text": "Acme",
+   "live": false,
+   "sup": "2026-11-19",
+   "keys": [
+    "m61"
+   ],
+   "sess": 66
+  },
+  {
+   "date": "2026-11-19",
+   "text": "Elena Costa",
+   "live": false,
+   "sup": "2026-11-26",
+   "keys": [
+    "m105"
+   ],
+   "sess": 74
+  },
+  {
+   "date": "2026-11-26",
+   "text": "Marta",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m88"
+   ],
+   "sess": 81
+  }
+ ],
+ "user_music": [
+  {
+   "date": "2025-11-01",
+   "text": "lo-fi and Brian Eno ambient",
+   "live": false,
+   "sup": "2026-02-12",
+   "keys": [
+    "m33"
+   ],
+   "sess": 13
+  },
+  {
+   "date": "2026-02-12",
+   "text": "piano",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m72"
+   ],
+   "sess": 21
+  }
+ ],
+ "printer_ip": [
+  {
+   "date": "2026-09-25",
+   "text": "10.0.0.50",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/home/stampante.txt"
+   ],
+   "sess": 49
+  }
+ ],
+ "printer_toner": [
+  {
+   "date": "2026-09-25",
+   "text": "TN-2420",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "f:/home/stampante.txt"
+   ],
+   "sess": 49
+  }
+ ]
+}

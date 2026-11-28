@@ -1,0 +1,120 @@
+== 2 2025-04-10 shown ['user', 'preferences', 'diet'] (726 in, 15 out)
+WIKI: page = Ada Moretti
+OLD: page n
+   REJ PAGE not grounded [] WIKI: page = Ada Moretti
+   REJ other not PAGE or OLD  OLD: page n
+== 14 2025-12-01 shown ['passwords', 'machine', 'dev_tools'] (899 in, 14 out)
+WIKI: page = password_manager
+OLD: page n
+   REJ PAGE not grounded [] WIKI: page = password_manager
+   REJ other not PAGE or OLD  OLD: page n
+== 48 2026-09-20 shown ['school', 'user', 'marta'] (568 in, 220 out)
+WIKI: page = school
+OLD: page n
+WIKI: page = marta
+OLD: page n
+WIKI: page = chiara
+OLD: page n
+WIKI: page = dad
+OLD: page n
+WIKI: page = mom
+OLD: page n
+WIKI: page = doctor
+OLD: page n
+WIKI: page = fedora_server
+OLD: page n
+WIKI: page = running
+OLD: page n
+WIKI: page = gym
+OLD: page n
+WIKI: page = health
+OLD: page n
+WIKI: page = music
+OLD: page n
+WIKI: page = laptop
+OLD: page n
+WIKI: page = phone
+OLD: page n
+WIKI: page = password
+OLD: page n
+WIKI: page = internet
+OLD: page n
+WIKI: page = japanese
+OLD: page n
+WIKI: page = coffee
+OLD
+   REJ PAGE not grounded [] WIKI: page = school
+   REJ PAGE not grounded [] WIKI: page = marta
+   REJ PAGE not grounded [] WIKI: page = chiara
+   REJ PAGE not grounded [] WIKI: page = dad
+   REJ PAGE not grounded [] WIKI: page = mom
+   REJ PAGE not grounded [] WIKI: page = doctor
+   REJ PAGE over the line cap [] WIKI: page = fedora_server
+   REJ PAGE over the line cap [] WIKI: page = running
+   REJ PAGE over the line cap [] WIKI: page = gym
+   REJ PAGE over the line cap [] WIKI: page = health
+   REJ PAGE over the line cap [] WIKI: page = music
+   REJ PAGE over the line cap [] WIKI: page = laptop
+   REJ PAGE over the line cap [] WIKI: page = phone
+   REJ PAGE over the line cap [] WIKI: page = password
+   REJ PAGE over the line cap [] WIKI: page = internet
+   REJ PAGE over the line cap [] WIKI: page = japanese
+   REJ PAGE over the line cap [] WIKI: page = coffee
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD
+== 50 2026-10-02 shown ['files', 'user', 'todo'] (756 in, 15 out)
+WIKI: page = Marco Bianchi
+OLD: page n
+   ok  PAGE  ['m97'] WIKI: page = Marco Bianchi
+   REJ other not PAGE or OLD  OLD: page n
+== 59 2026-11-02 shown ['phone', 'internet', 'passwords'] (500 in, 13 out)
+WIKI: page = phone
+OLD: page n
+   ok  PAGE  [] WIKI: page = phone
+   REJ other not PAGE or OLD  OLD: page n
+== 77 2026-11-22 shown ['backup', 'dev_tools', 'files'] (689 in, 40 out)
+WIKI: page = backup
+OLD: page n
+WIKI: page = dev_tools
+OLD: page n
+WIKI: page = files
+OLD: page n
+   ok  PAGE  ['m77'] WIKI: page = backup
+   REJ PAGE not grounded [] WIKI: page = dev_tools
+   REJ PAGE not grounded [] WIKI: page = files
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+== 82 2026-11-26 shown ['travel', 'marta', 'running'] (494 in, 40 out)
+WIKI: page = marta
+OLD: page n
+WIKI: page = travel
+OLD: page n
+WIKI: page = running
+OLD: page n
+   ok  PAGE  ['m89'] WIKI: page = marta
+   REJ PAGE not grounded [] WIKI: page = travel
+   REJ PAGE not grounded [] WIKI: page = running
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+   REJ other not PAGE or OLD  OLD: page n
+== 84 2026-11-27 shown ['machine', 'aios', 'files'] (887 in, 14 out)
+WIKI: page = ringzero
+OLD: page n
+   REJ PAGE not grounded [] WIKI: page = ringzero
+   REJ other not PAGE or OLD  OLD: page n

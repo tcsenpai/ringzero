@@ -1,0 +1,571 @@
+{
+ "quality": {
+  "memories": 136,
+  "kept": 31,
+  "lost": 105,
+  "lines": 41,
+  "untraced": 3,
+  "pages": 11,
+  "episode_lines": 85,
+  "kept_with_episodes": 37,
+  "noise_lines": 1,
+  "proposed": 207,
+  "rejected": 166,
+  "rejected_why": {
+   "duplicate of a live line": 2,
+   "not grounded": 133,
+   "over the line cap": 29,
+   "placeholder": 2
+  },
+  "old_proposed": 30,
+  "old_rejected": 0,
+  "other_lines": 0,
+  "pairs": 18,
+  "superseded_right": 1,
+  "superseded_missed": 0,
+  "pair_not_written": 17,
+  "superseded_wrong": 29
+ },
+ "cost": {
+  "sessions": 86,
+  "prompt_tok_mean": 250.2325581395349,
+  "ask_tok_mean": 163.56976744186048,
+  "out_tok_mean": 42.58139534883721,
+  "out_tok_max": 220,
+  "embed_tok_mean": 69.16279069767442,
+  "host_s_gen_mean": 13.78313953488372,
+  "host_s_select_mean": 0.23127906976744186,
+  "ring0_s_mean_E": 2.3585828976624,
+  "ring0_s_max_E": 7.097250645994832
+ },
+ "baseline": {
+  "para": {
+   "ho_t1": 24,
+   "ho_n": 27,
+   "ho_t3": 25,
+   "all_t1": 49,
+   "all_n": 55,
+   "all_t3": 50
+  },
+  "exact": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 7,
+   "all_n": 12,
+   "all_t3": 10
+  },
+  "pointer": {
+   "ho_t1": 5,
+   "ho_n": 9,
+   "ho_t3": 7,
+   "all_t1": 9,
+   "all_n": 19,
+   "all_t3": 14
+  },
+  "sibling": {
+   "ho_t1": 6,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 3,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 4,
+   "all_n": 13,
+   "all_t3": 7
+  },
+  "owner": {
+   "ho_t1": 2,
+   "ho_n": 10,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 20,
+   "all_t3": 16
+  },
+  "raw": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 2,
+   "all_t1": 4,
+   "all_n": 14,
+   "all_t3": 7
+  },
+  "table": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 3,
+   "all_t1": 5,
+   "all_n": 15,
+   "all_t3": 8
+  },
+  "temporal": {
+   "ho_t1": 3,
+   "ho_n": 12,
+   "ho_t3": 9,
+   "all_t1": 5,
+   "all_n": 24,
+   "all_t3": 17
+  },
+  "contradiction": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 7,
+   "all_t1": 1,
+   "all_n": 15,
+   "all_t3": 14
+  },
+  "multihop": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 2,
+   "all_t1": 7,
+   "all_n": 25,
+   "all_t3": 10
+  },
+  "noanswer": {
+   "ho_t1": 8,
+   "ho_n": 12,
+   "ho_t3": 8,
+   "all_t1": 12,
+   "all_n": 25,
+   "all_t3": 12
+  },
+  "answerable": {
+   "ho_t1": 51,
+   "ho_n": 114,
+   "ho_t3": 76,
+   "all_t1": 111,
+   "all_n": 234,
+   "all_t3": 163
+  }
+ },
+ "add_line": {
+  "para": {
+   "ho_t1": 22,
+   "ho_n": 27,
+   "ho_t3": 25,
+   "all_t1": 44,
+   "all_n": 55,
+   "all_t3": 50
+  },
+  "exact": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 7,
+   "all_n": 12,
+   "all_t3": 10
+  },
+  "pointer": {
+   "ho_t1": 4,
+   "ho_n": 9,
+   "ho_t3": 7,
+   "all_t1": 8,
+   "all_n": 19,
+   "all_t3": 14
+  },
+  "sibling": {
+   "ho_t1": 5,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 9,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 2,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 3,
+   "all_n": 13,
+   "all_t3": 7
+  },
+  "owner": {
+   "ho_t1": 2,
+   "ho_n": 10,
+   "ho_t3": 5,
+   "all_t1": 10,
+   "all_n": 20,
+   "all_t3": 14
+  },
+  "raw": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 2,
+   "all_t1": 3,
+   "all_n": 14,
+   "all_t3": 6
+  },
+  "table": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 3,
+   "all_t1": 5,
+   "all_n": 15,
+   "all_t3": 8
+  },
+  "temporal": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 8,
+   "all_t1": 4,
+   "all_n": 24,
+   "all_t3": 14
+  },
+  "contradiction": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 5,
+   "all_t1": 1,
+   "all_n": 15,
+   "all_t3": 11
+  },
+  "multihop": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 1,
+   "all_t1": 6,
+   "all_n": 25,
+   "all_t3": 7
+  },
+  "noanswer": {
+   "ho_t1": 8,
+   "ho_n": 12,
+   "ho_t3": 8,
+   "all_t1": 11,
+   "all_n": 25,
+   "all_t3": 11
+  },
+  "answerable": {
+   "ho_t1": 44,
+   "ho_n": 114,
+   "ho_t3": 71,
+   "all_t1": 100,
+   "all_n": 234,
+   "all_t3": 151
+  }
+ },
+ "replace_line": {
+  "para": {
+   "ho_t1": 11,
+   "ho_n": 27,
+   "ho_t3": 11,
+   "all_t1": 19,
+   "all_n": 55,
+   "all_t3": 21
+  },
+  "exact": {
+   "ho_t1": 1,
+   "ho_n": 6,
+   "ho_t3": 1,
+   "all_t1": 2,
+   "all_n": 12,
+   "all_t3": 3
+  },
+  "pointer": {
+   "ho_t1": 5,
+   "ho_n": 9,
+   "ho_t3": 9,
+   "all_t1": 13,
+   "all_n": 19,
+   "all_t3": 18
+  },
+  "sibling": {
+   "ho_t1": 5,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 9,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 1,
+   "ho_n": 6,
+   "ho_t3": 2,
+   "all_t1": 2,
+   "all_n": 13,
+   "all_t3": 3
+  },
+  "owner": {
+   "ho_t1": 0,
+   "ho_n": 10,
+   "ho_t3": 0,
+   "all_t1": 0,
+   "all_n": 20,
+   "all_t3": 0
+  },
+  "raw": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 1,
+   "all_t1": 3,
+   "all_n": 14,
+   "all_t3": 3
+  },
+  "table": {
+   "ho_t1": 2,
+   "ho_n": 7,
+   "ho_t3": 4,
+   "all_t1": 9,
+   "all_n": 15,
+   "all_t3": 12
+  },
+  "temporal": {
+   "ho_t1": 1,
+   "ho_n": 12,
+   "ho_t3": 2,
+   "all_t1": 3,
+   "all_n": 24,
+   "all_t3": 7
+  },
+  "contradiction": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 2,
+   "all_t1": 2,
+   "all_n": 15,
+   "all_t3": 4
+  },
+  "multihop": {
+   "ho_t1": 0,
+   "ho_n": 12,
+   "ho_t3": 0,
+   "all_t1": 1,
+   "all_n": 25,
+   "all_t3": 0
+  },
+  "noanswer": {
+   "ho_t1": 10,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 16,
+   "all_n": 25,
+   "all_t3": 16
+  },
+  "answerable": {
+   "ho_t1": 28,
+   "ho_n": 114,
+   "ho_t3": 38,
+   "all_t1": 63,
+   "all_n": 234,
+   "all_t3": 81
+  }
+ },
+ "add_page": {
+  "para": {
+   "ho_t1": 23,
+   "ho_n": 27,
+   "ho_t3": 25,
+   "all_t1": 48,
+   "all_n": 55,
+   "all_t3": 50
+  },
+  "exact": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 7,
+   "all_n": 12,
+   "all_t3": 10
+  },
+  "pointer": {
+   "ho_t1": 5,
+   "ho_n": 9,
+   "ho_t3": 7,
+   "all_t1": 8,
+   "all_n": 19,
+   "all_t3": 14
+  },
+  "sibling": {
+   "ho_t1": 5,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 9,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 3,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 4,
+   "all_n": 13,
+   "all_t3": 7
+  },
+  "owner": {
+   "ho_t1": 2,
+   "ho_n": 10,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 20,
+   "all_t3": 16
+  },
+  "raw": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 2,
+   "all_t1": 4,
+   "all_n": 14,
+   "all_t3": 7
+  },
+  "table": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 3,
+   "all_t1": 5,
+   "all_n": 15,
+   "all_t3": 8
+  },
+  "temporal": {
+   "ho_t1": 3,
+   "ho_n": 12,
+   "ho_t3": 9,
+   "all_t1": 6,
+   "all_n": 24,
+   "all_t3": 18
+  },
+  "contradiction": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 6,
+   "all_t1": 1,
+   "all_n": 15,
+   "all_t3": 13
+  },
+  "multihop": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 2,
+   "all_t1": 7,
+   "all_n": 25,
+   "all_t3": 9
+  },
+  "noanswer": {
+   "ho_t1": 8,
+   "ho_n": 12,
+   "ho_t3": 8,
+   "all_t1": 12,
+   "all_n": 25,
+   "all_t3": 12
+  },
+  "answerable": {
+   "ho_t1": 49,
+   "ho_n": 114,
+   "ho_t3": 75,
+   "all_t1": 109,
+   "all_n": 234,
+   "all_t3": 162
+  }
+ },
+ "replace_page": {
+  "para": {
+   "ho_t1": 11,
+   "ho_n": 27,
+   "ho_t3": 11,
+   "all_t1": 20,
+   "all_n": 55,
+   "all_t3": 21
+  },
+  "exact": {
+   "ho_t1": 1,
+   "ho_n": 6,
+   "ho_t3": 1,
+   "all_t1": 3,
+   "all_n": 12,
+   "all_t3": 3
+  },
+  "pointer": {
+   "ho_t1": 8,
+   "ho_n": 9,
+   "ho_t3": 9,
+   "all_t1": 17,
+   "all_n": 19,
+   "all_t3": 18
+  },
+  "sibling": {
+   "ho_t1": 6,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 2,
+   "ho_n": 6,
+   "ho_t3": 2,
+   "all_t1": 3,
+   "all_n": 13,
+   "all_t3": 3
+  },
+  "owner": {
+   "ho_t1": 0,
+   "ho_n": 10,
+   "ho_t3": 0,
+   "all_t1": 0,
+   "all_n": 20,
+   "all_t3": 0
+  },
+  "raw": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 1,
+   "all_t1": 2,
+   "all_n": 14,
+   "all_t3": 3
+  },
+  "table": {
+   "ho_t1": 4,
+   "ho_n": 7,
+   "ho_t3": 5,
+   "all_t1": 12,
+   "all_n": 15,
+   "all_t3": 13
+  },
+  "temporal": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 2,
+   "all_t1": 4,
+   "all_n": 24,
+   "all_t3": 6
+  },
+  "contradiction": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 2,
+   "all_t1": 0,
+   "all_n": 15,
+   "all_t3": 3
+  },
+  "multihop": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 0,
+   "all_t1": 3,
+   "all_n": 25,
+   "all_t3": 1
+  },
+  "noanswer": {
+   "ho_t1": 10,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 19,
+   "all_n": 25,
+   "all_t3": 19
+  },
+  "answerable": {
+   "ho_t1": 36,
+   "ho_n": 114,
+   "ho_t3": 39,
+   "all_t1": 74,
+   "all_n": 234,
+   "all_t3": 81
+  }
+ }
+}

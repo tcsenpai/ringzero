@@ -1,0 +1,1597 @@
+{
+ "model": "Qwen/Qwen3.5-4B",
+ "ask": "B",
+ "prefill": "",
+ "runs": [
+  {
+   "sess": 0,
+   "date": "2024-05-01",
+   "prompt_tok": 199,
+   "session_tok": 54,
+   "ask_tok": 145,
+   "out_tok": 25,
+   "query_embed_tok": 0,
+   "reembed_tok": 30,
+   "s_select": 0.0,
+   "s_gen": 44.73,
+   "shown": [],
+   "out": "WIKI: page = ada_moretti_email = ada.moretti@libero.it\nOLD: page 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: page = ada_moretti_email = ada.moretti@libero.it",
+     "ok": true,
+     "page": "page",
+     "keys": [
+      "m74"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: page 1",
+     "ok": false,
+     "why": "page not shown"
+    }
+   ]
+  },
+  {
+   "sess": 1,
+   "date": "2025-03-01",
+   "prompt_tok": 330,
+   "session_tok": 149,
+   "ask_tok": 181,
+   "out_tok": 23,
+   "query_embed_tok": 98,
+   "reembed_tok": 0,
+   "s_select": 0.38,
+   "s_gen": 48.39,
+   "shown": [
+    "page"
+   ],
+   "out": "WIKI: ada_moretti_email = ada.moretti@libero.it\nOLD: page 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = ada.moretti@libero.it",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: page 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 6,
+   "date": "2025-06-01",
+   "prompt_tok": 302,
+   "session_tok": 121,
+   "ask_tok": 181,
+   "out_tok": 109,
+   "query_embed_tok": 79,
+   "reembed_tok": 94,
+   "s_select": 0.2,
+   "s_gen": 138.11,
+   "shown": [
+    "page"
+   ],
+   "out": "WIKI: paolo_ferri = Paolo Ferri is the user's principal\nWIKI: ada_moretti_email = ada_moretti@libero.it is the user's email\nWIKI: user_profession = The user works as a mathematics teacher at a high school\nWIKI: user_location = The user lives in Bologna\nWIKI: acme_meeting = The user has a meeting with client Acme every Tuesday at 10:00 CET\n\nOLD: page 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: paolo_ferri = Paolo Ferri is the user's principal",
+     "ok": true,
+     "page": "paolo_ferri",
+     "keys": [
+      "m64"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = ada_moretti@libero.it is the user's email",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_profession = The user works as a mathematics teacher at a high school",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = The user lives in Bologna",
+     "ok": true,
+     "page": "user_location",
+     "keys": [
+      "m45"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = The user has a meeting with client Acme every Tuesday at 10:00 CET",
+     "ok": true,
+     "page": "acme_meeting",
+     "keys": [
+      "m12"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: page 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 8,
+   "date": "2025-07-01",
+   "prompt_tok": 396,
+   "session_tok": 138,
+   "ask_tok": 258,
+   "out_tok": 64,
+   "query_embed_tok": 95,
+   "reembed_tok": 0,
+   "s_select": 0.62,
+   "s_gen": 97.17,
+   "shown": [
+    "user_location",
+    "acme_meeting",
+    "page"
+   ],
+   "out": "WIKI: user_location = The user lives in Bologna\nWIKI: acme_meeting = The user has a meeting with client Acme every Tuesday at 10:00 CET\nWIKI: ada_moretti_email = ada_moretti_email = ada.moretti@libero.it",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = The user lives in Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = The user has a meeting with client Acme every Tuesday at 10:00 CET",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = ada_moretti_email = ada.moretti@libero.it",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 11,
+   "date": "2025-09-01",
+   "prompt_tok": 365,
+   "session_tok": 117,
+   "ask_tok": 248,
+   "out_tok": 78,
+   "query_embed_tok": 77,
+   "reembed_tok": 68,
+   "s_select": 0.2,
+   "s_gen": 109.85,
+   "shown": [
+    "paolo_ferri",
+    "user_location",
+    "page"
+   ],
+   "out": "WIKI: user_location = Bologna\nWIKI: user_birthday = March 3rd\nWIKI: user_partner = Giulia\nWIKI: user_anniversary = June 12\nWIKI: user_principal = Paolo Ferri\nWIKI: ada_moretti_email = ada.moretti@libero.it\n\nOLD: page 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = March 3rd",
+     "ok": true,
+     "page": "user_birthday",
+     "keys": [
+      "m20"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Giulia",
+     "ok": true,
+     "page": "user_partner",
+     "keys": [
+      "m25"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = June 12",
+     "ok": true,
+     "page": "user_anniversary",
+     "keys": [
+      "m25"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_principal = Paolo Ferri",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = ada.moretti@libero.it",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: page 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 14,
+   "date": "2025-12-01",
+   "prompt_tok": 407,
+   "session_tok": 145,
+   "ask_tok": 262,
+   "out_tok": 88,
+   "query_embed_tok": 101,
+   "reembed_tok": 0,
+   "s_select": 0.59,
+   "s_gen": 124.03,
+   "shown": [
+    "user_anniversary",
+    "user_birthday",
+    "acme_meeting"
+   ],
+   "out": "WIKI: user_anniversary = 2025-09-01 June 12\nWIKI: user_birthday = 2025-09-01 March 3rd\nWIKI: acme_meeting = 2025-06-01 The user has a meeting with client Acme every Tuesday at 10:00 CET",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = 2025-09-01 June 12",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = 2025-09-01 March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = 2025-06-01 The user has a meeting with client Acme every Tuesday at 10:00 CET",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 16,
+   "date": "2026-01-05",
+   "prompt_tok": 405,
+   "session_tok": 143,
+   "ask_tok": 262,
+   "out_tok": 65,
+   "query_embed_tok": 111,
+   "reembed_tok": 20,
+   "s_select": 0.24,
+   "s_gen": 98.88,
+   "shown": [
+    "user_location",
+    "user_birthday",
+    "acme_meeting"
+   ],
+   "out": "WIKI: user_location = Bologna\nWIKI: user_birthday = March 3rd\nWIKI: acme_meeting = Tuesday at 10:00 CET\nOLD: user_location 1\nOLD: user_birthday 1\nOLD: acme_meeting 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = Bologna",
+     "ok": true,
+     "page": "user_location",
+     "keys": [
+      "m51"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = Tuesday at 10:00 CET",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 1",
+     "ok": true,
+     "page": "user_location",
+     "keys": [
+      "m45"
+     ],
+     "text": "The user lives in Bologna"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_birthday 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: acme_meeting 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 20,
+   "date": "2026-02-10",
+   "prompt_tok": 325,
+   "session_tok": 81,
+   "ask_tok": 244,
+   "out_tok": 25,
+   "query_embed_tok": 67,
+   "reembed_tok": 0,
+   "s_select": 0.32,
+   "s_gen": 50.26,
+   "shown": [
+    "user_partner",
+    "page",
+    "user_location"
+   ],
+   "out": "WIKI: user_partner = Giulia\nWIKI: user_location = Bologna\nOLD: user_partner 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Giulia",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 21,
+   "date": "2026-02-12",
+   "prompt_tok": 309,
+   "session_tok": 51,
+   "ask_tok": 258,
+   "out_tok": 31,
+   "query_embed_tok": 39,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 55.42,
+   "shown": [
+    "acme_meeting",
+    "user_location",
+    "user_birthday"
+   ],
+   "out": "WIKI: user_location = Bologna\nWIKI: user_birthday = March 3rd\nOLD: acme_meeting 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: acme_meeting 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 27,
+   "date": "2026-04-02",
+   "prompt_tok": 292,
+   "session_tok": 51,
+   "ask_tok": 241,
+   "out_tok": 58,
+   "query_embed_tok": 40,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 83.09,
+   "shown": [
+    "user_anniversary",
+    "user_birthday",
+    "user_partner"
+   ],
+   "out": "WIKI: user_partner = Giulia\nWIKI: user_birthday = March 3rd\nWIKI: user_anniversary = June 12\nOLD: user_anniversary 1\nOLD: user_birthday 1\nOLD: user_partner 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Giulia",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = June 12",
+     "ok": false,
+     "why": "duplicate of a live line",
+     "keys": [
+      "m84"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_anniversary 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_birthday 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 31,
+   "date": "2026-05-03",
+   "prompt_tok": 296,
+   "session_tok": 55,
+   "ask_tok": 241,
+   "out_tok": 47,
+   "query_embed_tok": 45,
+   "reembed_tok": 0,
+   "s_select": 0.16,
+   "s_gen": 71.55,
+   "shown": [
+    "user_birthday",
+    "user_anniversary",
+    "user_partner"
+   ],
+   "out": "WIKI: user_birthday = 2025-09-01 May 21\nOLD: user_birthday 1\nOLD: user_anniversary 1\nOLD: user_partner 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = 2025-09-01 May 21",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_birthday 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_anniversary 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 46,
+   "date": "2026-09-12",
+   "prompt_tok": 302,
+   "session_tok": 54,
+   "ask_tok": 248,
+   "out_tok": 39,
+   "query_embed_tok": 45,
+   "reembed_tok": 35,
+   "s_select": 0.15,
+   "s_gen": 63.37,
+   "shown": [
+    "page",
+    "user_partner",
+    "user_anniversary"
+   ],
+   "out": "WIKI: user_partner = Giulia\nWIKI: user_anniversary = June 12\nWIKI: user_location = Fastweb\nOLD: user_partner 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Giulia",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = June 12",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = Fastweb",
+     "ok": true,
+     "page": "user_location",
+     "keys": [
+      "m63"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 48,
+   "date": "2026-09-20",
+   "prompt_tok": 313,
+   "session_tok": 58,
+   "ask_tok": 255,
+   "out_tok": 38,
+   "query_embed_tok": 50,
+   "reembed_tok": 0,
+   "s_select": 0.3,
+   "s_gen": 63.28,
+   "shown": [
+    "paolo_ferri",
+    "page",
+    "user_partner"
+   ],
+   "out": "WIKI: paolo_ferri = Paolo Ferri is the user's principal\nWIKI: user_partner = Giulia\nOLD: paolo_ferri 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: paolo_ferri = Paolo Ferri is the user's principal",
+     "ok": false,
+     "why": "not grounded",
+     "keys": [
+      "m65"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Giulia",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: paolo_ferri 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 51,
+   "date": "2026-10-05",
+   "prompt_tok": 294,
+   "session_tok": 53,
+   "ask_tok": 241,
+   "out_tok": 20,
+   "query_embed_tok": 45,
+   "reembed_tok": 23,
+   "s_select": 0.15,
+   "s_gen": 42.65,
+   "shown": [
+    "user_birthday",
+    "user_anniversary",
+    "user_partner"
+   ],
+   "out": "WIKI: user_diet = pescetarian\nOLD: user_diet = vegetarian",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_diet = pescetarian",
+     "ok": true,
+     "page": "user_diet",
+     "keys": []
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: user_diet = vegetarian",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    }
+   ]
+  },
+  {
+   "sess": 52,
+   "date": "2026-10-08",
+   "prompt_tok": 328,
+   "session_tok": 50,
+   "ask_tok": 278,
+   "out_tok": 28,
+   "query_embed_tok": 37,
+   "reembed_tok": 0,
+   "s_select": 0.27,
+   "s_gen": 53.64,
+   "shown": [
+    "user_location",
+    "acme_meeting",
+    "user_anniversary"
+   ],
+   "out": "WIKI: user_location = 2026-09-12 Fastweb\nOLD: user_location 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-09-12 Fastweb",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 54,
+   "date": "2026-10-15",
+   "prompt_tok": 297,
+   "session_tok": 52,
+   "ask_tok": 245,
+   "out_tok": 72,
+   "query_embed_tok": 41,
+   "reembed_tok": 51,
+   "s_select": 0.15,
+   "s_gen": 98.22,
+   "shown": [
+    "user_partner",
+    "user_birthday",
+    "user_anniversary"
+   ],
+   "out": "WIKI: user_partner = Giulia\nWIKI: user_birthday = March 3rd\nWIKI: user_anniversary = June 12\nWIKI: user_location = Italy\nWIKI: user_partner = Toyota Yaris hybrid\nWIKI: user_partner = Panda\n\nOLD: user_partner = Panda",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Giulia",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = June 12",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = Italy",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Toyota Yaris hybrid",
+     "ok": true,
+     "page": "user_partner",
+     "keys": [
+      "m58"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Panda",
+     "ok": true,
+     "page": "user_partner",
+     "keys": [
+      "m58"
+     ]
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: user_partner = Panda",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    }
+   ]
+  },
+  {
+   "sess": 55,
+   "date": "2026-10-20",
+   "prompt_tok": 363,
+   "session_tok": 73,
+   "ask_tok": 290,
+   "out_tok": 100,
+   "query_embed_tok": 53,
+   "reembed_tok": 58,
+   "s_select": 0.32,
+   "s_gen": 133.1,
+   "shown": [
+    "user_location",
+    "user_partner",
+    "user_anniversary"
+   ],
+   "out": "WIKI: acme_meeting = 4 novembre 9\nWIKI: user_location = 2026-01-05 Bologna\nWIKI: user_partner = 2025-09-01 Giulia\nWIKI: user_anniversary = 2025-09-01 June 12\nOLD: user_location 2\nOLD: user_partner 2\nOLD: user_partner 3",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = 4 novembre 9",
+     "ok": true,
+     "page": "acme_meeting",
+     "keys": [
+      "m59"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-01-05 Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = 2025-09-01 Giulia",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = 2025-09-01 June 12",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 2",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 2",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 3",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 58,
+   "date": "2026-11-01",
+   "prompt_tok": 353,
+   "session_tok": 56,
+   "ask_tok": 297,
+   "out_tok": 26,
+   "query_embed_tok": 46,
+   "reembed_tok": 60,
+   "s_select": 0.33,
+   "s_gen": 53.38,
+   "shown": [
+    "user_location",
+    "acme_meeting",
+    "user_birthday"
+   ],
+   "out": "WIKI: acme_meeting = 18 novembre 15\nOLD: acme_meeting 2",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = 18 novembre 15",
+     "ok": true,
+     "page": "acme_meeting",
+     "keys": [
+      "m60"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: acme_meeting 2",
+     "ok": true,
+     "page": "acme_meeting",
+     "keys": [
+      "m59"
+     ],
+     "text": "4 novembre 9"
+    }
+   ]
+  },
+  {
+   "sess": 59,
+   "date": "2026-11-02",
+   "prompt_tok": 334,
+   "session_tok": 49,
+   "ask_tok": 285,
+   "out_tok": 23,
+   "query_embed_tok": 39,
+   "reembed_tok": 0,
+   "s_select": 0.32,
+   "s_gen": 48.76,
+   "shown": [
+    "user_partner",
+    "page",
+    "user_anniversary"
+   ],
+   "out": "WIKI: user_partner = Giulia\nOLD: user_partner 2\nOLD: user_partner 3",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_partner = Giulia",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 2",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_partner 3",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 61,
+   "date": "2026-11-04",
+   "prompt_tok": 311,
+   "session_tok": 50,
+   "ask_tok": 261,
+   "out_tok": 91,
+   "query_embed_tok": 41,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 119.81,
+   "shown": [
+    "user_location",
+    "user_anniversary",
+    "user_birthday"
+   ],
+   "out": "WIKI: user_location = 2026-01-05 Bologna\nWIKI: user_anniversary = 2025-09-01 June 12\nWIKI: user_birthday = 2025-09-01 March 3rd\nOLD: user_location 2\nOLD: user_anniversary 1\nOLD: user_birthday 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-01-05 Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = 2025-09-01 June 12",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = 2025-09-01 March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 2",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_anniversary 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_birthday 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 65,
+   "date": "2026-11-09",
+   "prompt_tok": 351,
+   "session_tok": 52,
+   "ask_tok": 299,
+   "out_tok": 37,
+   "query_embed_tok": 45,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 65.04,
+   "shown": [
+    "acme_meeting",
+    "user_location",
+    "user_anniversary"
+   ],
+   "out": "WIKI: acme_meeting = 2026-11-01 18 novembre 15\nOLD: acme_meeting 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = 2026-11-01 18 novembre 15",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: acme_meeting 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 68,
+   "date": "2026-11-12",
+   "prompt_tok": 356,
+   "session_tok": 59,
+   "ask_tok": 297,
+   "out_tok": 31,
+   "query_embed_tok": 48,
+   "reembed_tok": 27,
+   "s_select": 0.16,
+   "s_gen": 58.9,
+   "shown": [
+    "page",
+    "user_location",
+    "user_partner"
+   ],
+   "out": "WIKI: ada_moretti_email = ada.m@proton.me\nOLD: ada_moretti_email = ada.moretti@libero.it",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = ada.m@proton.me",
+     "ok": true,
+     "page": "ada_moretti_email",
+     "keys": [
+      "m75"
+     ]
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: ada_moretti_email = ada.moretti@libero.it",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    }
+   ]
+  },
+  {
+   "sess": 70,
+   "date": "2026-11-15",
+   "prompt_tok": 357,
+   "session_tok": 53,
+   "ask_tok": 304,
+   "out_tok": 40,
+   "query_embed_tok": 46,
+   "reembed_tok": 0,
+   "s_select": 0.29,
+   "s_gen": 68.56,
+   "shown": [
+    "user_location",
+    "acme_meeting",
+    "user_birthday"
+   ],
+   "out": "WIKI: user_location = 2026-01-05 Bologna\nWIKI: user_birthday = March 3rd\nOLD: user_location 2",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-01-05 Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 2",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 71,
+   "date": "2026-11-16",
+   "prompt_tok": 356,
+   "session_tok": 52,
+   "ask_tok": 304,
+   "out_tok": 29,
+   "query_embed_tok": 46,
+   "reembed_tok": 63,
+   "s_select": 0.15,
+   "s_gen": 56.7,
+   "shown": [
+    "user_location",
+    "acme_meeting",
+    "user_anniversary"
+   ],
+   "out": "WIKI: acme_meeting = la riunione con i genitori e' in aula magna\nOLD: acme_meeting 2",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = la riunione con i genitori e' in aula magna",
+     "ok": true,
+     "page": "acme_meeting",
+     "keys": [
+      "m87"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: acme_meeting 2",
+     "ok": true,
+     "page": "acme_meeting",
+     "keys": [
+      "m60"
+     ],
+     "text": "18 novembre 15"
+    }
+   ]
+  },
+  {
+   "sess": 73,
+   "date": "2026-11-18",
+   "prompt_tok": 353,
+   "session_tok": 47,
+   "ask_tok": 306,
+   "out_tok": 19,
+   "query_embed_tok": 35,
+   "reembed_tok": 54,
+   "s_select": 0.33,
+   "s_gen": 48.24,
+   "shown": [
+    "acme_meeting",
+    "page",
+    "ada_moretti_email"
+   ],
+   "out": "WIKI: user_location = cene da mia sorella\nOLD: user_location",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = cene da mia sorella",
+     "ok": true,
+     "page": "user_location",
+     "keys": [
+      "m80"
+     ]
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: user_location",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    }
+   ]
+  },
+  {
+   "sess": 75,
+   "date": "2026-11-20",
+   "prompt_tok": 353,
+   "session_tok": 47,
+   "ask_tok": 306,
+   "out_tok": 22,
+   "query_embed_tok": 37,
+   "reembed_tok": 0,
+   "s_select": 0.31,
+   "s_gen": 49.01,
+   "shown": [
+    "ada_moretti_email",
+    "acme_meeting",
+    "page"
+   ],
+   "out": "WIKI: ada_moretti_email = ada.m@proton.me\nOLD: page 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = ada.m@proton.me",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: page 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 76,
+   "date": "2026-11-21",
+   "prompt_tok": 430,
+   "session_tok": 145,
+   "ask_tok": 285,
+   "out_tok": 80,
+   "query_embed_tok": 86,
+   "reembed_tok": 0,
+   "s_select": 0.21,
+   "s_gen": 116.73,
+   "shown": [
+    "user_location",
+    "user_diet",
+    "user_anniversary"
+   ],
+   "out": "WIKI: user_location = 2026-11-18 cene da mia sorella\nWIKI: user_diet = pescetarian\nWIKI: user_anniversary = 2025-09-01 June 12\nOLD: user_location = 2026-09-12 Fastweb",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-11-18 cene da mia sorella",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_diet = pescetarian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_anniversary = 2025-09-01 June 12",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: user_location = 2026-09-12 Fastweb",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    }
+   ]
+  },
+  {
+   "sess": 77,
+   "date": "2026-11-22",
+   "prompt_tok": 416,
+   "session_tok": 131,
+   "ask_tok": 285,
+   "out_tok": 62,
+   "query_embed_tok": 78,
+   "reembed_tok": 0,
+   "s_select": 0.2,
+   "s_gen": 96.6,
+   "shown": [
+    "user_location",
+    "user_anniversary",
+    "user_diet"
+   ],
+   "out": "WIKI: user_location = 2026-11-18 cene da mia sorella\nWIKI: user_diet = 2026-10-05 pescetarian\nOLD: user_location 1\nOLD: user_location 2",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-11-18 cene da mia sorella",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_diet = 2026-10-05 pescetarian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 2",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 78,
+   "date": "2026-11-23",
+   "prompt_tok": 350,
+   "session_tok": 53,
+   "ask_tok": 297,
+   "out_tok": 32,
+   "query_embed_tok": 46,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 59.49,
+   "shown": [
+    "page",
+    "ada_moretti_email",
+    "user_location"
+   ],
+   "out": "WIKI: user_location = 2026-11-18 cene da mia sorella\nOLD: user_location 3",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-11-18 cene da mia sorella",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 3",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 79,
+   "date": "2026-11-24",
+   "prompt_tok": 382,
+   "session_tok": 51,
+   "ask_tok": 331,
+   "out_tok": 220,
+   "query_embed_tok": 39,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 263.25,
+   "shown": [
+    "user_location",
+    "acme_meeting",
+    "ada_moretti_email"
+   ],
+   "out": "WIKI: user_location = 2026-01-05 Bologna\nWIKI: user_location = 2026-09-12 Fastweb\nWIKI: user_location = 2026-11-18 cene da mia sorella\nWIKI: acme_meeting = 2025-06-01 The user has a meeting with client Acme every Tuesday at 10:00 CET\nWIKI: acme_meeting = 2026-11-16 la riunione con i genitori e' in aula magna\nWIKI: ada_moretti_email = 2026-11-12 ada.m@proton.me\n\nOLD: user_location = 2026-01-05 Bologna\nOLD: user_location = 2026-09-12 Fastweb\nOLD: user_location = 2026-11-18 cene da",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-01-05 Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-09-12 Fastweb",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-11-18 cene da mia sorella",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = 2025-06-01 The user has a meeting with client Acme every Tuesday at 10:00 CET",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: acme_meeting = 2026-11-16 la riunione con i genitori e' in aula magna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = 2026-11-12 ada.m@proton.me",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: user_location = 2026-01-05 Bologna",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: user_location = 2026-09-12 Fastweb",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    },
+    {
+     "kind": "other",
+     "raw": "OLD: user_location = 2026-11-18 cene da",
+     "ok": false,
+     "why": "not PAGE or OLD"
+    }
+   ]
+  },
+  {
+   "sess": 80,
+   "date": "2026-11-25",
+   "prompt_tok": 382,
+   "session_tok": 85,
+   "ask_tok": 297,
+   "out_tok": 102,
+   "query_embed_tok": 65,
+   "reembed_tok": 0,
+   "s_select": 0.18,
+   "s_gen": 136.99,
+   "shown": [
+    "user_location",
+    "ada_moretti_email",
+    "page"
+   ],
+   "out": "WIKI: user_location = 2026-01-05 Bologna\nWIKI: ada_moretti_email = ada.m@proton.me\nWIKI: page = 2024-05-01 ada_moretti_email = ada.moretti@libero.it\nOLD: user_location 1\nOLD: user_location 2\nOLD: user_location 3\nOLD: ada_moretti_email 1\nOLD: page 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-01-05 Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: ada_moretti_email = ada.m@proton.me",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: page = 2024-05-01 ada_moretti_email = ada.moretti@libero.it",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 2",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 3",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: ada_moretti_email 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: page 1",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 81,
+   "date": "2026-11-26",
+   "prompt_tok": 344,
+   "session_tok": 47,
+   "ask_tok": 297,
+   "out_tok": 46,
+   "query_embed_tok": 36,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 74.01,
+   "shown": [
+    "user_location",
+    "page",
+    "ada_moretti_email"
+   ],
+   "out": "WIKI: user_location = 2026-11-18 cene da mia sorella\nOLD: user_location 1\nOLD: user_location 2\nOLD: user_location 3",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-11-18 cene da mia sorella",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 1",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 2",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 3",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 82,
+   "date": "2026-11-26",
+   "prompt_tok": 346,
+   "session_tok": 53,
+   "ask_tok": 293,
+   "out_tok": 58,
+   "query_embed_tok": 42,
+   "reembed_tok": 0,
+   "s_select": 0.16,
+   "s_gen": 86.84,
+   "shown": [
+    "user_location",
+    "page",
+    "user_birthday"
+   ],
+   "out": "WIKI: user_location = 2026-01-05 Bologna\nWIKI: user_birthday = 2025-09-01 March 3rd\nOLD: user_location 2\nOLD: user_location 3",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_location = 2026-01-05 Bologna",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = 2025-09-01 March 3rd",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 2",
+     "ok": false,
+     "why": "no new line on that page"
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_location 3",
+     "ok": false,
+     "why": "no new line on that page"
+    }
+   ]
+  },
+  {
+   "sess": 85,
+   "date": "2026-11-28",
+   "prompt_tok": 316,
+   "session_tok": 55,
+   "ask_tok": 261,
+   "out_tok": 21,
+   "query_embed_tok": 48,
+   "reembed_tok": 24,
+   "s_select": 0.16,
+   "s_gen": 45.13,
+   "shown": [
+    "page",
+    "user_anniversary",
+    "user_birthday"
+   ],
+   "out": "WIKI: user_birthday = 16 dicembre\nOLD: user_birthday 1",
+   "log": [
+    {
+     "kind": "PAGE",
+     "raw": "WIKI: user_birthday = 16 dicembre",
+     "ok": true,
+     "page": "user_birthday",
+     "keys": [
+      "m91"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "OLD: user_birthday 1",
+     "ok": true,
+     "page": "user_birthday",
+     "keys": [
+      "m20"
+     ],
+     "text": "March 3rd"
+    }
+   ]
+  }
+ ]
+}

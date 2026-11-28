@@ -1,0 +1,548 @@
+{
+ "quality": {
+  "memories": 136,
+  "kept": 136,
+  "lost": 0,
+  "lines": 141,
+  "untraced": 0,
+  "pages": 52,
+  "episode_lines": 0,
+  "kept_with_episodes": 136,
+  "noise_lines": 0,
+  "pairs": 18,
+  "superseded_right": 18,
+  "superseded_missed": 0,
+  "pair_not_written": 0,
+  "superseded_wrong": 0
+ },
+ "baseline": {
+  "para": {
+   "ho_t1": 24,
+   "ho_n": 27,
+   "ho_t3": 25,
+   "all_t1": 49,
+   "all_n": 55,
+   "all_t3": 50
+  },
+  "exact": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 7,
+   "all_n": 12,
+   "all_t3": 10
+  },
+  "pointer": {
+   "ho_t1": 5,
+   "ho_n": 9,
+   "ho_t3": 7,
+   "all_t1": 9,
+   "all_n": 19,
+   "all_t3": 14
+  },
+  "sibling": {
+   "ho_t1": 6,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 3,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 4,
+   "all_n": 13,
+   "all_t3": 7
+  },
+  "owner": {
+   "ho_t1": 2,
+   "ho_n": 10,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 20,
+   "all_t3": 16
+  },
+  "raw": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 2,
+   "all_t1": 4,
+   "all_n": 14,
+   "all_t3": 7
+  },
+  "table": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 3,
+   "all_t1": 5,
+   "all_n": 15,
+   "all_t3": 8
+  },
+  "temporal": {
+   "ho_t1": 3,
+   "ho_n": 12,
+   "ho_t3": 9,
+   "all_t1": 5,
+   "all_n": 24,
+   "all_t3": 17
+  },
+  "contradiction": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 7,
+   "all_t1": 1,
+   "all_n": 15,
+   "all_t3": 14
+  },
+  "multihop": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 2,
+   "all_t1": 7,
+   "all_n": 25,
+   "all_t3": 10
+  },
+  "noanswer": {
+   "ho_t1": 8,
+   "ho_n": 12,
+   "ho_t3": 8,
+   "all_t1": 12,
+   "all_n": 25,
+   "all_t3": 12
+  },
+  "answerable": {
+   "ho_t1": 51,
+   "ho_n": 114,
+   "ho_t3": 76,
+   "all_t1": 111,
+   "all_n": 234,
+   "all_t3": 163
+  }
+ },
+ "add_line": {
+  "para": {
+   "ho_t1": 24,
+   "ho_n": 27,
+   "ho_t3": 25,
+   "all_t1": 49,
+   "all_n": 55,
+   "all_t3": 50
+  },
+  "exact": {
+   "ho_t1": 5,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 7,
+   "all_n": 12,
+   "all_t3": 9
+  },
+  "pointer": {
+   "ho_t1": 4,
+   "ho_n": 9,
+   "ho_t3": 6,
+   "all_t1": 8,
+   "all_n": 19,
+   "all_t3": 13
+  },
+  "sibling": {
+   "ho_t1": 5,
+   "ho_n": 11,
+   "ho_t3": 5,
+   "all_t1": 9,
+   "all_n": 22,
+   "all_t3": 9
+  },
+  "hub": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 5,
+   "all_n": 13,
+   "all_t3": 8
+  },
+  "owner": {
+   "ho_t1": 2,
+   "ho_n": 10,
+   "ho_t3": 7,
+   "all_t1": 10,
+   "all_n": 20,
+   "all_t3": 17
+  },
+  "raw": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 5,
+   "all_t1": 5,
+   "all_n": 14,
+   "all_t3": 9
+  },
+  "table": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 3,
+   "all_t1": 5,
+   "all_n": 15,
+   "all_t3": 8
+  },
+  "temporal": {
+   "ho_t1": 4,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 6,
+   "all_n": 24,
+   "all_t3": 21
+  },
+  "contradiction": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 7,
+   "all_t1": 2,
+   "all_n": 15,
+   "all_t3": 14
+  },
+  "multihop": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 1,
+   "all_t1": 7,
+   "all_n": 25,
+   "all_t3": 6
+  },
+  "noanswer": {
+   "ho_t1": 8,
+   "ho_n": 12,
+   "ho_t3": 8,
+   "all_t1": 12,
+   "all_n": 25,
+   "all_t3": 12
+  },
+  "answerable": {
+   "ho_t1": 53,
+   "ho_n": 114,
+   "ho_t3": 78,
+   "all_t1": 113,
+   "all_n": 234,
+   "all_t3": 164
+  }
+ },
+ "replace_line": {
+  "para": {
+   "ho_t1": 23,
+   "ho_n": 27,
+   "ho_t3": 25,
+   "all_t1": 47,
+   "all_n": 55,
+   "all_t3": 49
+  },
+  "exact": {
+   "ho_t1": 5,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 8,
+   "all_n": 12,
+   "all_t3": 9
+  },
+  "pointer": {
+   "ho_t1": 5,
+   "ho_n": 9,
+   "ho_t3": 9,
+   "all_t1": 10,
+   "all_n": 19,
+   "all_t3": 18
+  },
+  "sibling": {
+   "ho_t1": 6,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 3,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 7,
+   "all_n": 13,
+   "all_t3": 8
+  },
+  "owner": {
+   "ho_t1": 5,
+   "ho_n": 10,
+   "ho_t3": 8,
+   "all_t1": 12,
+   "all_n": 20,
+   "all_t3": 16
+  },
+  "raw": {
+   "ho_t1": 3,
+   "ho_n": 7,
+   "ho_t3": 5,
+   "all_t1": 7,
+   "all_n": 14,
+   "all_t3": 10
+  },
+  "table": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 5,
+   "all_t1": 4,
+   "all_n": 15,
+   "all_t3": 10
+  },
+  "temporal": {
+   "ho_t1": 9,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 19,
+   "all_n": 24,
+   "all_t3": 22
+  },
+  "contradiction": {
+   "ho_t1": 5,
+   "ho_n": 7,
+   "ho_t3": 7,
+   "all_t1": 12,
+   "all_n": 15,
+   "all_t3": 15
+  },
+  "multihop": {
+   "ho_t1": 2,
+   "ho_n": 12,
+   "ho_t3": 4,
+   "all_t1": 7,
+   "all_n": 25,
+   "all_t3": 13
+  },
+  "noanswer": {
+   "ho_t1": 10,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 19,
+   "all_n": 25,
+   "all_t3": 19
+  },
+  "answerable": {
+   "ho_t1": 67,
+   "ho_n": 114,
+   "ho_t3": 88,
+   "all_t1": 143,
+   "all_n": 234,
+   "all_t3": 180
+  }
+ },
+ "add_page": {
+  "para": {
+   "ho_t1": 24,
+   "ho_n": 27,
+   "ho_t3": 25,
+   "all_t1": 49,
+   "all_n": 55,
+   "all_t3": 50
+  },
+  "exact": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 6,
+   "all_n": 12,
+   "all_t3": 9
+  },
+  "pointer": {
+   "ho_t1": 5,
+   "ho_n": 9,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 19,
+   "all_t3": 13
+  },
+  "sibling": {
+   "ho_t1": 6,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 6,
+   "all_n": 13,
+   "all_t3": 8
+  },
+  "owner": {
+   "ho_t1": 2,
+   "ho_n": 10,
+   "ho_t3": 8,
+   "all_t1": 10,
+   "all_n": 20,
+   "all_t3": 18
+  },
+  "raw": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 3,
+   "all_t1": 4,
+   "all_n": 14,
+   "all_t3": 8
+  },
+  "table": {
+   "ho_t1": 1,
+   "ho_n": 7,
+   "ho_t3": 3,
+   "all_t1": 5,
+   "all_n": 15,
+   "all_t3": 8
+  },
+  "temporal": {
+   "ho_t1": 3,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 5,
+   "all_n": 24,
+   "all_t3": 19
+  },
+  "contradiction": {
+   "ho_t1": 0,
+   "ho_n": 7,
+   "ho_t3": 7,
+   "all_t1": 1,
+   "all_n": 15,
+   "all_t3": 14
+  },
+  "multihop": {
+   "ho_t1": 3,
+   "ho_n": 12,
+   "ho_t3": 5,
+   "all_t1": 8,
+   "all_n": 25,
+   "all_t3": 13
+  },
+  "noanswer": {
+   "ho_t1": 8,
+   "ho_n": 12,
+   "ho_t3": 8,
+   "all_t1": 12,
+   "all_n": 25,
+   "all_t3": 12
+  },
+  "answerable": {
+   "ho_t1": 53,
+   "ho_n": 114,
+   "ho_t3": 82,
+   "all_t1": 114,
+   "all_n": 234,
+   "all_t3": 170
+  }
+ },
+ "replace_page": {
+  "para": {
+   "ho_t1": 23,
+   "ho_n": 27,
+   "ho_t3": 24,
+   "all_t1": 41,
+   "all_n": 55,
+   "all_t3": 47
+  },
+  "exact": {
+   "ho_t1": 4,
+   "ho_n": 6,
+   "ho_t3": 5,
+   "all_t1": 8,
+   "all_n": 12,
+   "all_t3": 9
+  },
+  "pointer": {
+   "ho_t1": 6,
+   "ho_n": 9,
+   "ho_t3": 9,
+   "all_t1": 14,
+   "all_n": 19,
+   "all_t3": 18
+  },
+  "sibling": {
+   "ho_t1": 6,
+   "ho_n": 11,
+   "ho_t3": 6,
+   "all_t1": 10,
+   "all_n": 22,
+   "all_t3": 10
+  },
+  "hub": {
+   "ho_t1": 3,
+   "ho_n": 6,
+   "ho_t3": 4,
+   "all_t1": 7,
+   "all_n": 13,
+   "all_t3": 8
+  },
+  "owner": {
+   "ho_t1": 4,
+   "ho_n": 10,
+   "ho_t3": 6,
+   "all_t1": 11,
+   "all_n": 20,
+   "all_t3": 13
+  },
+  "raw": {
+   "ho_t1": 2,
+   "ho_n": 7,
+   "ho_t3": 5,
+   "all_t1": 6,
+   "all_n": 14,
+   "all_t3": 9
+  },
+  "table": {
+   "ho_t1": 2,
+   "ho_n": 7,
+   "ho_t3": 4,
+   "all_t1": 8,
+   "all_n": 15,
+   "all_t3": 11
+  },
+  "temporal": {
+   "ho_t1": 9,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 16,
+   "all_n": 24,
+   "all_t3": 21
+  },
+  "contradiction": {
+   "ho_t1": 7,
+   "ho_n": 7,
+   "ho_t3": 7,
+   "all_t1": 13,
+   "all_n": 15,
+   "all_t3": 14
+  },
+  "multihop": {
+   "ho_t1": 6,
+   "ho_n": 12,
+   "ho_t3": 9,
+   "all_t1": 14,
+   "all_n": 25,
+   "all_t3": 20
+  },
+  "noanswer": {
+   "ho_t1": 10,
+   "ho_n": 12,
+   "ho_t3": 10,
+   "all_t1": 20,
+   "all_n": 25,
+   "all_t3": 20
+  },
+  "answerable": {
+   "ho_t1": 72,
+   "ho_n": 114,
+   "ho_t3": 89,
+   "all_t1": 148,
+   "all_n": 234,
+   "all_t3": 180
+  }
+ }
+}
