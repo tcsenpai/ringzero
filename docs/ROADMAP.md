@@ -10,7 +10,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │       ├── ✓ 🟢 After the beta: tell llm.asm and ProbeLogits authors about ringzero [E1]
 │       ├── ○ 🟢 POSIX shell or a compiler on ringzero (post-beta study) [E1]
 │       ├── ✓ 🟠 Unix compatibility layer (design principle) [E1]
-│       └── ○ 🟢 Release cadence: post-beta updates, then weekly [E1]
+│       └── ✓ 🟢 Release cadence: post-beta updates, then weekly [E1]
 ✓ 🔴 M0 scaffold: Limine boot + Rust hello [E1]
 │   └── ✓ 🔴 M1 engine in ring 0 [E1]
 │       └── ✓ 🟠 M2 console and shell with @ agent prefix [E1]
@@ -66,6 +66,8 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │   │   └── ✓ 🟠 Embedder in kernel: Qwen3-Embedding-0.6B next to Qwen3.5-2B [E1]
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
+✓ 🟢 Agent-specific fine-tunes <= 4B (eval) [E1]
+✓ 🟢 Reranker over the embedder's recall (spike) [E1]
 ○ 🟢 4B extra streams vs snapshot pool [E1]
 ✓ 🟢 Guard manual section size in surfaces_check [E1]
 ○ 🟢 Decision-model second opinion on low-margin calls (host prototype) [E1]
@@ -85,5 +87,5 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
     └── T34: Beta release gate (circular)
 
-ℹ️ 62 task(s) shown
+ℹ️ 64 task(s) shown
 ```
