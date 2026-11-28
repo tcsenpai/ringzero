@@ -1,0 +1,8793 @@
+[
+ {
+  "q": "come si chiama il mio animale domestico?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m40",
+    0.656,
+    "emb"
+   ],
+   [
+    "m11",
+    0.56,
+    "emb"
+   ],
+   [
+    "m108",
+    0.6,
+    "emb"
+   ],
+   [
+    "m0",
+    0.529,
+    "emb"
+   ],
+   [
+    "m51",
+    0.433,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how much disk space is left on my home partition?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m46",
+    0.571,
+    "emb"
+   ],
+   [
+    "m119",
+    0.463,
+    "emb"
+   ],
+   [
+    "m16",
+    0.47,
+    "emb"
+   ],
+   [
+    "m42",
+    0.535,
+    "emb"
+   ],
+   [
+    "m118",
+    0.481,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quanta memoria libera aveva la macchina?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m28",
+    0.461,
+    "emb"
+   ],
+   [
+    "m5",
+    0.505,
+    "emb"
+   ],
+   [
+    "m53",
+    0.437,
+    "emb"
+   ],
+   [
+    "m110",
+    0.441,
+    "emb"
+   ],
+   [
+    "m3",
+    0.387,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when do I have to pay the electricity bill?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m7",
+    0.652,
+    "emb"
+   ],
+   [
+    "m71",
+    0.426,
+    "emb"
+   ],
+   [
+    "m70",
+    0.494,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r3",
+    0.501,
+    "emb"
+   ],
+   [
+    "m20",
+    0.422,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which javascript package manager should you use for me?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m8",
+    0.568,
+    "emb"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.471,
+    "emb"
+   ],
+   [
+    "m17",
+    0.496,
+    "emb"
+   ],
+   [
+    "m38",
+    0.416,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.514,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what CPU does this machine have?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m23",
+    0.666,
+    "emb"
+   ],
+   [
+    "m53",
+    0.605,
+    "emb"
+   ],
+   [
+    "m28",
+    0.58,
+    "emb"
+   ],
+   [
+    "m110",
+    0.548,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.53,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando ho la riunione settimanale col cliente?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m12",
+    0.653,
+    "emb"
+   ],
+   [
+    "m37",
+    0.47,
+    "emb"
+   ],
+   [
+    "m86",
+    0.497,
+    "emb"
+   ],
+   [
+    "m29",
+    0.401,
+    "emb"
+   ],
+   [
+    "m87",
+    0.428,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "is the web server installed?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m10",
+    0.539,
+    "emb"
+   ],
+   [
+    "m63",
+    0.415,
+    "emb"
+   ],
+   [
+    "m16",
+    0.483,
+    "emb"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.462,
+    "emb"
+   ],
+   [
+    "m3",
+    0.435,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che tipo di risposte preferisco?",
+  "cls": "hub",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m1",
+    0.617,
+    "emb"
+   ],
+   [
+    "m15",
+    0.589,
+    "emb"
+   ],
+   [
+    "m42",
+    0.65,
+    "emb"
+   ],
+   [
+    "m137",
+    0.585,
+    "emb"
+   ],
+   [
+    "m123",
+    0.545,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "where is the wifi password stored?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m35",
+    0.74,
+    "emb"
+   ],
+   [
+    "m17",
+    0.544,
+    "emb"
+   ],
+   [
+    "m18",
+    0.396,
+    "emb"
+   ],
+   [
+    "m47",
+    0.397,
+    "emb"
+   ],
+   [
+    "m130",
+    0.322,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando e' il compleanno dell'utente?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m20",
+    0.622,
+    "emb"
+   ],
+   [
+    "m25",
+    0.617,
+    "emb"
+   ],
+   [
+    "m96",
+    0.533,
+    "emb"
+   ],
+   [
+    "m32",
+    0.486,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.507,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how are my files backed up?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m22",
+    0.536,
+    "emb"
+   ],
+   [
+    "m9",
+    0.506,
+    "emb"
+   ],
+   [
+    "m17",
+    0.483,
+    "emb"
+   ],
+   [
+    "m35",
+    0.377,
+    "emb"
+   ],
+   [
+    "m77",
+    0.455,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "is the network connection working?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m30",
+    0.589,
+    "emb"
+   ],
+   [
+    "m16",
+    0.516,
+    "emb"
+   ],
+   [
+    "m39",
+    0.463,
+    "emb"
+   ],
+   [
+    "m10",
+    0.441,
+    "emb"
+   ],
+   [
+    "m47",
+    0.48,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che stampante ho in ufficio?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/home/stampante.txt#0",
+    0.689,
+    "emb"
+   ],
+   [
+    "m121",
+    0.61,
+    "emb"
+   ],
+   [
+    "m53",
+    0.473,
+    "emb"
+   ],
+   [
+    "m48",
+    0.38,
+    "emb"
+   ],
+   [
+    "m47",
+    0.424,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what should I remember to do about the car?",
+  "cls": "raw",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m32",
+    0.458,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.502,
+    "emb"
+   ],
+   [
+    "m57",
+    0.483,
+    "emb"
+   ],
+   [
+    "m58",
+    0.456,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.444,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "HL-L2350DW",
+  "cls": "exact",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/home/stampante.txt#0",
+    0.508,
+    "bm25"
+   ],
+   [
+    "m120",
+    0.397,
+    "emb"
+   ],
+   [
+    "m62",
+    0.325,
+    "emb"
+   ],
+   [
+    "m36",
+    0.293,
+    "emb"
+   ],
+   [
+    "m47",
+    0.351,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "restic Backblaze",
+  "cls": "exact",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m22",
+    0.744,
+    "bm25"
+   ],
+   [
+    "m17",
+    0.601,
+    "emb"
+   ],
+   [
+    "m9",
+    0.449,
+    "emb"
+   ],
+   [
+    "m76",
+    0.469,
+    "emb"
+   ],
+   [
+    "m77",
+    0.488,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "notes/todo.md",
+  "cls": "exact",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m42",
+    0.776,
+    "bm25"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.516,
+    "bm25"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.459,
+    "bm25"
+   ],
+   [
+    "m114",
+    0.474,
+    "bm25"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.381,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "casa-wifi",
+  "cls": "exact",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m35",
+    0.616,
+    "bm25"
+   ],
+   [
+    "m18",
+    0.459,
+    "emb"
+   ],
+   [
+    "m47",
+    0.501,
+    "emb"
+   ],
+   [
+    "m63",
+    0.389,
+    "emb"
+   ],
+   [
+    "m130",
+    0.401,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "JLPT",
+  "cls": "exact",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m36",
+    0.617,
+    "bm25"
+   ],
+   [
+    "m54",
+    0.451,
+    "emb"
+   ],
+   [
+    "m72",
+    0.349,
+    "emb"
+   ],
+   [
+    "f:/demo/hello.lua#0",
+    0.321,
+    "emb"
+   ],
+   [
+    "m114",
+    0.41,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiama il mio gatto?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m108",
+    0.677,
+    "emb"
+   ],
+   [
+    "m11",
+    0.616,
+    "emb"
+   ],
+   [
+    "m40",
+    0.653,
+    "emb"
+   ],
+   [
+    "m51",
+    0.508,
+    "emb"
+   ],
+   [
+    "m113",
+    0.561,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiama mio fratello?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m41",
+    0.634,
+    "emb"
+   ],
+   [
+    "m111",
+    0.545,
+    "emb"
+   ],
+   [
+    "m40",
+    0.601,
+    "emb"
+   ],
+   [
+    "m0",
+    0.548,
+    "emb"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.496,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiama la mia ragazza?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m25",
+    0.56,
+    "emb"
+   ],
+   [
+    "m40",
+    0.589,
+    "emb"
+   ],
+   [
+    "m0",
+    0.575,
+    "emb"
+   ],
+   [
+    "m108",
+    0.476,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.449,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "qual e' il mio colore preferito?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m43",
+    0.751,
+    "emb"
+   ],
+   [
+    "m26",
+    0.597,
+    "emb"
+   ],
+   [
+    "m52",
+    0.556,
+    "emb"
+   ],
+   [
+    "m134",
+    0.49,
+    "emb"
+   ],
+   [
+    "m33",
+    0.469,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che lavoro faccio?",
+  "cls": "raw",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m44",
+    0.44,
+    "emb"
+   ],
+   [
+    "m42",
+    0.574,
+    "emb"
+   ],
+   [
+    "m117",
+    0.503,
+    "emb"
+   ],
+   [
+    "m131",
+    0.351,
+    "emb"
+   ],
+   [
+    "m119",
+    0.455,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "in che citta' vivo?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m45",
+    0.592,
+    "emb"
+   ],
+   [
+    "m112",
+    0.572,
+    "emb"
+   ],
+   [
+    "m0",
+    0.56,
+    "emb"
+   ],
+   [
+    "m92",
+    0.475,
+    "emb"
+   ],
+   [
+    "m94",
+    0.439,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how much free space is left on the ringzero disk?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:What ringzero is",
+    0.713,
+    "emb"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.625,
+    "emb"
+   ],
+   [
+    "f:/etc/os-release#0",
+    0.567,
+    "emb"
+   ],
+   [
+    "m4",
+    0.559,
+    "emb"
+   ],
+   [
+    "m5",
+    0.583,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what router do I have?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m47",
+    0.664,
+    "emb"
+   ],
+   [
+    "m27",
+    0.551,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.499,
+    "emb"
+   ],
+   [
+    "m30",
+    0.506,
+    "emb"
+   ],
+   [
+    "m62",
+    0.468,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come faccio il caffe' a casa?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m48",
+    0.681,
+    "emb"
+   ],
+   [
+    "m21",
+    0.469,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.47,
+    "emb"
+   ],
+   [
+    "m132",
+    0.483,
+    "emb"
+   ],
+   [
+    "m119",
+    0.473,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what did the stats script print last time?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/demo/stats.py#0",
+    0.427,
+    "emb"
+   ],
+   [
+    "m16",
+    0.59,
+    "emb"
+   ],
+   [
+    "m5",
+    0.566,
+    "emb"
+   ],
+   [
+    "m23",
+    0.533,
+    "emb"
+   ],
+   [
+    "m4",
+    0.507,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiama il mio medico?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m50",
+    0.569,
+    "emb"
+   ],
+   [
+    "m37",
+    0.529,
+    "emb"
+   ],
+   [
+    "m109",
+    0.544,
+    "emb"
+   ],
+   [
+    "m59",
+    0.408,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.485,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando riceve il medico?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m37",
+    0.609,
+    "bm25"
+   ],
+   [
+    "m50",
+    0.501,
+    "bm25"
+   ],
+   [
+    "m109",
+    0.419,
+    "bm25"
+   ],
+   [
+    "m59",
+    0.413,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.49,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove porto Pixel dal veterinario?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m51",
+    0.611,
+    "emb"
+   ],
+   [
+    "m11",
+    0.577,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.561,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.422,
+    "emb"
+   ],
+   [
+    "m47",
+    0.428,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which language do I like to code in?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m52",
+    0.669,
+    "emb"
+   ],
+   [
+    "m8",
+    0.488,
+    "emb"
+   ],
+   [
+    "m26",
+    0.45,
+    "emb"
+   ],
+   [
+    "m33",
+    0.44,
+    "emb"
+   ],
+   [
+    "m2",
+    0.459,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che portatile ho?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m53",
+    0.528,
+    "emb"
+   ],
+   [
+    "m56",
+    0.475,
+    "emb"
+   ],
+   [
+    "m55",
+    0.433,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.51,
+    "emb"
+   ],
+   [
+    "m57",
+    0.421,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "did we change the keyboard layout?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "man:Keyboard layout",
+    0.821,
+    "emb"
+   ],
+   [
+    "m54",
+    0.767,
+    "emb"
+   ],
+   [
+    "m26",
+    0.474,
+    "emb"
+   ],
+   [
+    "m53",
+    0.521,
+    "emb"
+   ],
+   [
+    "m121",
+    0.515,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "X1 Carbon",
+  "cls": "exact",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m53",
+    0.558,
+    "bm25"
+   ],
+   [
+    "f:/home/ricetta_carbonara.txt#0",
+    0.295,
+    "emb"
+   ],
+   [
+    "m57",
+    0.379,
+    "emb"
+   ],
+   [
+    "m23",
+    0.438,
+    "emb"
+   ],
+   [
+    "m3",
+    0.371,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "FritzBox",
+  "cls": "exact",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m47",
+    0.636,
+    "bm25"
+   ],
+   [
+    "m3",
+    0.503,
+    "emb"
+   ],
+   [
+    "m35",
+    0.349,
+    "emb"
+   ],
+   [
+    "m62",
+    0.387,
+    "emb"
+   ],
+   [
+    "m53",
+    0.407,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how is my partner called?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m25",
+    0.624,
+    "bm25"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.476,
+    "emb"
+   ],
+   [
+    "m108",
+    0.41,
+    "emb"
+   ],
+   [
+    "m0",
+    0.492,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.399,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is our anniversary?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m25",
+    0.636,
+    "emb"
+   ],
+   [
+    "m20",
+    0.571,
+    "emb"
+   ],
+   [
+    "m84",
+    0.52,
+    "emb"
+   ],
+   [
+    "m12",
+    0.454,
+    "emb"
+   ],
+   [
+    "m61",
+    0.512,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando vado in palestra?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m29",
+    0.542,
+    "emb"
+   ],
+   [
+    "m72",
+    0.527,
+    "emb"
+   ],
+   [
+    "m12",
+    0.493,
+    "emb"
+   ],
+   [
+    "m86",
+    0.464,
+    "emb"
+   ],
+   [
+    "m73",
+    0.496,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I reach the Fedora server?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m3",
+    0.671,
+    "emb"
+   ],
+   [
+    "m2",
+    0.505,
+    "emb"
+   ],
+   [
+    "m47",
+    0.512,
+    "emb"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.483,
+    "emb"
+   ],
+   [
+    "m63",
+    0.399,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "do I have a certificate to renew?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m6",
+    0.651,
+    "bm25"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.504,
+    "emb"
+   ],
+   [
+    "m61",
+    0.509,
+    "emb"
+   ],
+   [
+    "m70",
+    0.468,
+    "emb"
+   ],
+   [
+    "m91",
+    0.419,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what do I listen to when I need to focus?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m33",
+    0.669,
+    "emb"
+   ],
+   [
+    "m42",
+    0.53,
+    "emb"
+   ],
+   [
+    "m72",
+    0.37,
+    "emb"
+   ],
+   [
+    "m118",
+    0.46,
+    "emb"
+   ],
+   [
+    "m15",
+    0.415,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che editor uso?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m26",
+    0.55,
+    "emb"
+   ],
+   [
+    "m2",
+    0.478,
+    "emb"
+   ],
+   [
+    "m17",
+    0.444,
+    "emb"
+   ],
+   [
+    "m8",
+    0.368,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.372,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come faccio a ibernare?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Hibernation",
+    0.661,
+    "emb"
+   ],
+   [
+    "m35",
+    0.327,
+    "emb"
+   ],
+   [
+    "m125",
+    0.293,
+    "emb"
+   ],
+   [
+    "m2",
+    0.37,
+    "emb"
+   ],
+   [
+    "m17",
+    0.388,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I save the session to disk before turning off?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Hibernation",
+    0.698,
+    "emb"
+   ],
+   [
+    "m35",
+    0.41,
+    "emb"
+   ],
+   [
+    "m17",
+    0.412,
+    "emb"
+   ],
+   [
+    "m9",
+    0.366,
+    "emb"
+   ],
+   [
+    "m22",
+    0.324,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come torno indietro di due turni?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Undo and redo a turn",
+    0.765,
+    "emb"
+   ],
+   [
+    "m15",
+    0.506,
+    "emb"
+   ],
+   [
+    "m83",
+    0.427,
+    "emb"
+   ],
+   [
+    "m54",
+    0.486,
+    "emb"
+   ],
+   [
+    "m17",
+    0.461,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I switch the keyboard to Italian?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Keyboard layout",
+    0.831,
+    "emb"
+   ],
+   [
+    "m54",
+    0.713,
+    "emb"
+   ],
+   [
+    "m26",
+    0.451,
+    "emb"
+   ],
+   [
+    "m1",
+    0.451,
+    "emb"
+   ],
+   [
+    "m0",
+    0.436,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come eseguo uno script python?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Running Python",
+    0.769,
+    "bm25"
+   ],
+   [
+    "m8",
+    0.462,
+    "bm25"
+   ],
+   [
+    "f:/demo/stats.py#0",
+    0.298,
+    "bm25"
+   ],
+   [
+    "m2",
+    0.527,
+    "emb"
+   ],
+   [
+    "m119",
+    0.472,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I run a wasm program?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Running WASI programs",
+    0.768,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.422,
+    "bm25"
+   ],
+   [
+    "m31",
+    0.318,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.lua#0",
+    0.295,
+    "bm25"
+   ],
+   [
+    "f:/demo/stats.py#0",
+    0.218,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "quali programmi sono installati?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Programs in /bin",
+    0.734,
+    "bm25"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.625,
+    "emb"
+   ],
+   [
+    "m38",
+    0.399,
+    "emb"
+   ],
+   [
+    "m10",
+    0.407,
+    "emb"
+   ],
+   [
+    "m23",
+    0.478,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I query a sqlite database?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:SQLite, Lua, JavaScript, jq and the editor",
+    0.718,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.389,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.495,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.412,
+    "emb"
+   ],
+   [
+    "m117",
+    0.451,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come cambio la temperatura?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:Settings",
+    0.641,
+    "emb"
+   ],
+   [
+    "m56",
+    0.455,
+    "emb"
+   ],
+   [
+    "m26",
+    0.414,
+    "emb"
+   ],
+   [
+    "m47",
+    0.43,
+    "emb"
+   ],
+   [
+    "m121",
+    0.463,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I see the kernel log?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Kernel log",
+    0.769,
+    "bm25"
+   ],
+   [
+    "m13",
+    0.348,
+    "bm25"
+   ],
+   [
+    "m77",
+    0.342,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.138,
+    "bm25"
+   ],
+   [
+    "m23",
+    0.391,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "perche' mi chiede Run it y/N?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m31",
+    0.586,
+    "bm25"
+   ],
+   [
+    "m131",
+    0.31,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.371,
+    "bm25"
+   ],
+   [
+    "m100",
+    0.233,
+    "bm25"
+   ],
+   [
+    "m85",
+    0.169,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "how do I turn off the memory slot?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Memory slot and consolidation",
+    0.547,
+    "emb"
+   ],
+   [
+    "m35",
+    0.252,
+    "emb"
+   ],
+   [
+    "m47",
+    0.325,
+    "emb"
+   ],
+   [
+    "m5",
+    0.387,
+    "emb"
+   ],
+   [
+    "m15",
+    0.335,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come cerco nei miei file?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Memory index and search",
+    0.711,
+    "emb"
+   ],
+   [
+    "m42",
+    0.627,
+    "emb"
+   ],
+   [
+    "m17",
+    0.505,
+    "emb"
+   ],
+   [
+    "m35",
+    0.365,
+    "emb"
+   ],
+   [
+    "m116",
+    0.444,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how full is the context?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Context size and compaction",
+    0.812,
+    "bm25"
+   ],
+   [
+    "m77",
+    0.423,
+    "bm25"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.568,
+    "emb"
+   ],
+   [
+    "m5",
+    0.575,
+    "emb"
+   ],
+   [
+    "m4",
+    0.514,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come ricomincio una nuova conversazione?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:New conversation",
+    0.841,
+    "emb"
+   ],
+   [
+    "m54",
+    0.52,
+    "emb"
+   ],
+   [
+    "m15",
+    0.501,
+    "emb"
+   ],
+   [
+    "m42",
+    0.559,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.44,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I create a folder?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Writing and deleting files",
+    0.621,
+    "bm25"
+   ],
+   [
+    "m34",
+    0.333,
+    "emb"
+   ],
+   [
+    "m119",
+    0.388,
+    "emb"
+   ],
+   [
+    "m47",
+    0.368,
+    "emb"
+   ],
+   [
+    "m10",
+    0.32,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how many tokens per second does it do?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Speed and benchmarks",
+    0.695,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.546,
+    "emb"
+   ],
+   [
+    "m16",
+    0.498,
+    "emb"
+   ],
+   [
+    "m49",
+    0.464,
+    "emb"
+   ],
+   [
+    "m62",
+    0.439,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what model runs this OS?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m13",
+    0.498,
+    "bm25"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.627,
+    "bm25"
+   ],
+   [
+    "f:/etc/os-release#0",
+    0.47,
+    "bm25"
+   ],
+   [
+    "m28",
+    0.517,
+    "bm25"
+   ],
+   [
+    "m22",
+    0.276,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "come faccio a fargli dimenticare una cosa?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Saved facts",
+    0.714,
+    "bm25"
+   ],
+   [
+    "m42",
+    0.533,
+    "emb"
+   ],
+   [
+    "m122",
+    0.482,
+    "emb"
+   ],
+   [
+    "m126",
+    0.435,
+    "emb"
+   ],
+   [
+    "m17",
+    0.485,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how many tool calls can the agent make for one question?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Tool round limit",
+    0.815,
+    "emb"
+   ],
+   [
+    "m136",
+    0.515,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.519,
+    "emb"
+   ],
+   [
+    "m15",
+    0.469,
+    "emb"
+   ],
+   [
+    "m19",
+    0.441,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove tiene ringzero i suoi dati?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:What ringzero is",
+    0.746,
+    "emb"
+   ],
+   [
+    "f:/etc/os-release#0",
+    0.532,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.524,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.506,
+    "emb"
+   ],
+   [
+    "m47",
+    0.446,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quanto e' grande il disco?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m46",
+    0.611,
+    "emb"
+   ],
+   [
+    "m53",
+    0.493,
+    "emb"
+   ],
+   [
+    "m3",
+    0.416,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r4",
+    0.428,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.407,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I give the agent a long document to read?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Reading a long document",
+    0.796,
+    "bm25"
+   ],
+   [
+    "m42",
+    0.629,
+    "bm25"
+   ],
+   [
+    "m115",
+    0.592,
+    "bm25"
+   ],
+   [
+    "m121",
+    0.616,
+    "bm25"
+   ],
+   [
+    "m123",
+    0.566,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "cosa ha deciso la memoria sul mio ultimo messaggio?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:Memory slot and consolidation",
+    0.664,
+    "emb"
+   ],
+   [
+    "m42",
+    0.579,
+    "emb"
+   ],
+   [
+    "m75",
+    0.431,
+    "emb"
+   ],
+   [
+    "m1",
+    0.432,
+    "emb"
+   ],
+   [
+    "m137",
+    0.511,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which cores are used for inference?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/demo/data.json#0",
+    0.594,
+    "emb"
+   ],
+   [
+    "m28",
+    0.536,
+    "emb"
+   ],
+   [
+    "m23",
+    0.497,
+    "emb"
+   ],
+   [
+    "m38",
+    0.386,
+    "emb"
+   ],
+   [
+    "m13",
+    0.384,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I make a branch of the conversation?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Branches and saved points",
+    0.726,
+    "emb"
+   ],
+   [
+    "m42",
+    0.504,
+    "emb"
+   ],
+   [
+    "m115",
+    0.498,
+    "emb"
+   ],
+   [
+    "m137",
+    0.491,
+    "emb"
+   ],
+   [
+    "m136",
+    0.472,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "/hibernate discard",
+  "cls": "exact",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Hibernation",
+    0.597,
+    "bm25"
+   ],
+   [
+    "m22",
+    0.349,
+    "emb"
+   ],
+   [
+    "m9",
+    0.369,
+    "emb"
+   ],
+   [
+    "m122",
+    0.376,
+    "emb"
+   ],
+   [
+    "m76",
+    0.369,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "!set spec",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Speed and benchmarks",
+    0.573,
+    "bm25"
+   ],
+   [
+    "m54",
+    0.493,
+    "bm25"
+   ],
+   [
+    "f:/etc/os-release#0",
+    0.453,
+    "emb"
+   ],
+   [
+    "m42",
+    0.567,
+    "emb"
+   ],
+   [
+    "m117",
+    0.518,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "/agentd log",
+  "cls": "exact",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:What the memory system decided",
+    0.72,
+    "bm25"
+   ],
+   [
+    "m77",
+    0.516,
+    "bm25"
+   ],
+   [
+    "m14",
+    0.34,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.237,
+    "bm25"
+   ],
+   [
+    "m19",
+    0.479,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "cosa devo comprare al supermercato?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/notes/spesa.txt#0",
+    0.547,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.503,
+    "emb"
+   ],
+   [
+    "m117",
+    0.532,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.467,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.466,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's on my todo list?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m42",
+    0.728,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.591,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.554,
+    "emb"
+   ],
+   [
+    "m53",
+    0.491,
+    "emb"
+   ],
+   [
+    "m15",
+    0.495,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che idee avevo per i progetti?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m42",
+    0.644,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.498,
+    "emb"
+   ],
+   [
+    "m26",
+    0.41,
+    "emb"
+   ],
+   [
+    "m8",
+    0.395,
+    "emb"
+   ],
+   [
+    "m119",
+    0.438,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's the machine's hostname?",
+  "cls": "para",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/etc/hostname#0",
+    0.699,
+    "emb"
+   ],
+   [
+    "m23",
+    0.558,
+    "emb"
+   ],
+   [
+    "f:/etc/os-release#0",
+    0.463,
+    "emb"
+   ],
+   [
+    "m4",
+    0.489,
+    "emb"
+   ],
+   [
+    "m16",
+    0.466,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which version of ringzero is installed?",
+  "cls": "para",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "man:What ringzero is",
+    0.803,
+    "emb"
+   ],
+   [
+    "f:/etc/os-release#0",
+    0.716,
+    "emb"
+   ],
+   [
+    "m46",
+    0.64,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.614,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.496,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I make carbonara?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/ricetta_carbonara.txt#0",
+    0.709,
+    "emb"
+   ],
+   [
+    "m124",
+    0.397,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.392,
+    "emb"
+   ],
+   [
+    "m48",
+    0.374,
+    "emb"
+   ],
+   [
+    "m119",
+    0.419,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "cosa abbiamo deciso alla riunione con Acme?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m12",
+    0.652,
+    "emb"
+   ],
+   [
+    "m97",
+    0.562,
+    "emb"
+   ],
+   [
+    "m61",
+    0.589,
+    "emb"
+   ],
+   [
+    "m87",
+    0.389,
+    "emb"
+   ],
+   [
+    "m86",
+    0.398,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando parto per il Giappone?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.608,
+    "emb"
+   ],
+   [
+    "m114",
+    0.637,
+    "emb"
+   ],
+   [
+    "m103",
+    0.533,
+    "emb"
+   ],
+   [
+    "m82",
+    0.463,
+    "emb"
+   ],
+   [
+    "m58",
+    0.462,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which script computes the mean age?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/stats.py#0",
+    0.567,
+    "emb"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.504,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.442,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.431,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.423,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "who lives in Milano?",
+  "cls": "table",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m45",
+    0.627,
+    "emb"
+   ],
+   [
+    "m41",
+    0.587,
+    "emb"
+   ],
+   [
+    "m0",
+    0.591,
+    "emb"
+   ],
+   [
+    "m92",
+    0.541,
+    "emb"
+   ],
+   [
+    "m82",
+    0.53,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "people.csv",
+  "cls": "exact",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/people.csv#r1",
+    0.692,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.687,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.694,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.682,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.678,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "fib(22)",
+  "cls": "exact",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/hello.js#0",
+    0.5,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.lua#0",
+    0.389,
+    "bm25"
+   ],
+   [
+    "m65",
+    0.32,
+    "bm25"
+   ],
+   [
+    "m62",
+    0.448,
+    "emb"
+   ],
+   [
+    "m63",
+    0.413,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which program counts the words of the quick brown fox?",
+  "cls": "table",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/hello.lua#0",
+    0.469,
+    "emb"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.456,
+    "emb"
+   ],
+   [
+    "m5",
+    0.545,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.533,
+    "emb"
+   ],
+   [
+    "m34",
+    0.47,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quali modelli sono elencati nel file json?",
+  "cls": "para",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/data.json#0",
+    0.651,
+    "emb"
+   ],
+   [
+    "m13",
+    0.456,
+    "emb"
+   ],
+   [
+    "m49",
+    0.472,
+    "emb"
+   ],
+   [
+    "m122",
+    0.478,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.452,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "anna.rossi@example.org",
+  "cls": "hub",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/people.csv#r0",
+    0.624,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.497,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.47,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.46,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.451,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "dove ho annotato il dentista?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m60",
+    0.453,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.56,
+    "emb"
+   ],
+   [
+    "m37",
+    0.435,
+    "emb"
+   ],
+   [
+    "m50",
+    0.458,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.491,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what did Acme ask for in the last call?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m137",
+    0.515,
+    "emb"
+   ],
+   [
+    "m12",
+    0.618,
+    "emb"
+   ],
+   [
+    "m97",
+    0.591,
+    "emb"
+   ],
+   [
+    "m115",
+    0.5,
+    "emb"
+   ],
+   [
+    "m54",
+    0.497,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's in /notes?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m42",
+    0.796,
+    "bm25"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.342,
+    "bm25"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.394,
+    "bm25"
+   ],
+   [
+    "m20",
+    0.29,
+    "bm25"
+   ],
+   [
+    "m0",
+    0.332,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "ryokan Kyoto",
+  "cls": "exact",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.363,
+    "bm25"
+   ],
+   [
+    "m114",
+    0.476,
+    "emb"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.431,
+    "emb"
+   ],
+   [
+    "m36",
+    0.36,
+    "emb"
+   ],
+   [
+    "m47",
+    0.414,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che telefono ho?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m56",
+    0.622,
+    "bm25"
+   ],
+   [
+    "m55",
+    0.629,
+    "emb"
+   ],
+   [
+    "m42",
+    0.622,
+    "emb"
+   ],
+   [
+    "m47",
+    0.514,
+    "emb"
+   ],
+   [
+    "m53",
+    0.523,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what phone am I using now?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m56",
+    0.663,
+    "emb"
+   ],
+   [
+    "m55",
+    0.617,
+    "emb"
+   ],
+   [
+    "m53",
+    0.56,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.585,
+    "emb"
+   ],
+   [
+    "m57",
+    0.474,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che macchina ho?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m58",
+    0.448,
+    "emb"
+   ],
+   [
+    "m110",
+    0.562,
+    "emb"
+   ],
+   [
+    "m55",
+    0.479,
+    "emb"
+   ],
+   [
+    "m53",
+    0.505,
+    "emb"
+   ],
+   [
+    "m48",
+    0.443,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what car do I drive?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m58",
+    0.571,
+    "emb"
+   ],
+   [
+    "m53",
+    0.552,
+    "emb"
+   ],
+   [
+    "m43",
+    0.536,
+    "emb"
+   ],
+   [
+    "m114",
+    0.54,
+    "emb"
+   ],
+   [
+    "m55",
+    0.487,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando ho il dentista?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m60",
+    0.556,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.625,
+    "emb"
+   ],
+   [
+    "m37",
+    0.523,
+    "emb"
+   ],
+   [
+    "m132",
+    0.506,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.526,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is my dentist appointment?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m60",
+    0.576,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.586,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.588,
+    "emb"
+   ],
+   [
+    "m37",
+    0.475,
+    "emb"
+   ],
+   [
+    "m12",
+    0.499,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's the deadline for the Acme export?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m12",
+    0.6,
+    "emb"
+   ],
+   [
+    "m97",
+    0.468,
+    "emb"
+   ],
+   [
+    "m78",
+    0.405,
+    "emb"
+   ],
+   [
+    "m6",
+    0.394,
+    "emb"
+   ],
+   [
+    "m90",
+    0.343,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "entro quando devo consegnare l'export ad Acme?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m12",
+    0.579,
+    "emb"
+   ],
+   [
+    "m97",
+    0.509,
+    "emb"
+   ],
+   [
+    "m121",
+    0.527,
+    "emb"
+   ],
+   [
+    "m78",
+    0.401,
+    "emb"
+   ],
+   [
+    "m6",
+    0.412,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "chi e' il mio provider internet?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m63",
+    0.506,
+    "emb"
+   ],
+   [
+    "m30",
+    0.522,
+    "emb"
+   ],
+   [
+    "m18",
+    0.448,
+    "emb"
+   ],
+   [
+    "m47",
+    0.511,
+    "emb"
+   ],
+   [
+    "m62",
+    0.471,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how fast is my home fibre?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m63",
+    0.627,
+    "emb"
+   ],
+   [
+    "m62",
+    0.59,
+    "emb"
+   ],
+   [
+    "m47",
+    0.514,
+    "emb"
+   ],
+   [
+    "m30",
+    0.504,
+    "emb"
+   ],
+   [
+    "m68",
+    0.458,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "chi e' il mio preside?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m64",
+    0.66,
+    "bm25"
+   ],
+   [
+    "m65",
+    0.449,
+    "emb"
+   ],
+   [
+    "m97",
+    0.424,
+    "emb"
+   ],
+   [
+    "m25",
+    0.456,
+    "emb"
+   ],
+   [
+    "m0",
+    0.438,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "who is the head of my school now?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m65",
+    0.595,
+    "emb"
+   ],
+   [
+    "m86",
+    0.482,
+    "emb"
+   ],
+   [
+    "m87",
+    0.441,
+    "emb"
+   ],
+   [
+    "m104",
+    0.481,
+    "emb"
+   ],
+   [
+    "m44",
+    0.41,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "do I eat fish?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m67",
+    0.494,
+    "emb"
+   ],
+   [
+    "m66",
+    0.431,
+    "emb"
+   ],
+   [
+    "m2",
+    0.504,
+    "emb"
+   ],
+   [
+    "m115",
+    0.531,
+    "emb"
+   ],
+   [
+    "m119",
+    0.483,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che dieta seguo?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/notes/todo.txt#0",
+    0.485,
+    "emb"
+   ],
+   [
+    "m132",
+    0.479,
+    "emb"
+   ],
+   [
+    "m66",
+    0.405,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.435,
+    "emb"
+   ],
+   [
+    "m119",
+    0.515,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "qual e' il mio obiettivo di corsa?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m68",
+    0.605,
+    "emb"
+   ],
+   [
+    "m69",
+    0.548,
+    "emb"
+   ],
+   [
+    "m131",
+    0.399,
+    "emb"
+   ],
+   [
+    "m15",
+    0.489,
+    "emb"
+   ],
+   [
+    "m42",
+    0.557,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what race am I training for?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m68",
+    0.513,
+    "emb"
+   ],
+   [
+    "m43",
+    0.502,
+    "emb"
+   ],
+   [
+    "m83",
+    0.456,
+    "emb"
+   ],
+   [
+    "m53",
+    0.501,
+    "emb"
+   ],
+   [
+    "m52",
+    0.473,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quanto pago di affitto?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m71",
+    0.613,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.552,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r3",
+    0.52,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r4",
+    0.522,
+    "emb"
+   ],
+   [
+    "m45",
+    0.476,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how much will my rent be?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m71",
+    0.45,
+    "emb"
+   ],
+   [
+    "m130",
+    0.51,
+    "emb"
+   ],
+   [
+    "m5",
+    0.566,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.485,
+    "emb"
+   ],
+   [
+    "m42",
+    0.58,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is my piano lesson?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m73",
+    0.732,
+    "bm25"
+   ],
+   [
+    "m29",
+    0.483,
+    "emb"
+   ],
+   [
+    "m12",
+    0.48,
+    "emb"
+   ],
+   [
+    "m83",
+    0.48,
+    "emb"
+   ],
+   [
+    "m82",
+    0.455,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "a che ora ho lezione di piano?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m73",
+    0.64,
+    "emb"
+   ],
+   [
+    "m29",
+    0.482,
+    "emb"
+   ],
+   [
+    "m86",
+    0.509,
+    "emb"
+   ],
+   [
+    "m12",
+    0.521,
+    "emb"
+   ],
+   [
+    "m83",
+    0.526,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's my email address?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m75",
+    0.529,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.543,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.541,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.522,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.511,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "qual e' la mia email?",
+  "cls": "temporal",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m75",
+    0.67,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.604,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.594,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.58,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.574,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "have I updated the router firmware?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m27",
+    0.727,
+    "emb"
+   ],
+   [
+    "m47",
+    0.588,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.528,
+    "emb"
+   ],
+   [
+    "m6",
+    0.412,
+    "emb"
+   ],
+   [
+    "m30",
+    0.445,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "devo ancora aggiornare il firmware del router?",
+  "cls": "temporal",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m27",
+    0.771,
+    "emb"
+   ],
+   [
+    "m47",
+    0.583,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.561,
+    "emb"
+   ],
+   [
+    "m6",
+    0.453,
+    "emb"
+   ],
+   [
+    "m32",
+    0.388,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "did last night's backup work?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m22",
+    0.624,
+    "emb"
+   ],
+   [
+    "m76",
+    0.65,
+    "emb"
+   ],
+   [
+    "m77",
+    0.624,
+    "emb"
+   ],
+   [
+    "m17",
+    0.511,
+    "emb"
+   ],
+   [
+    "m16",
+    0.512,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "il backup del 20 novembre e' andato a buon fine?",
+  "cls": "contradiction",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m77",
+    0.68,
+    "emb"
+   ],
+   [
+    "m22",
+    0.599,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r3",
+    0.555,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.535,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r4",
+    0.544,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando arriva il pacco?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m79",
+    0.538,
+    "emb"
+   ],
+   [
+    "m61",
+    0.532,
+    "emb"
+   ],
+   [
+    "m32",
+    0.442,
+    "emb"
+   ],
+   [
+    "m37",
+    0.415,
+    "emb"
+   ],
+   [
+    "m82",
+    0.459,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is my Amazon package arriving?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m78",
+    0.726,
+    "emb"
+   ],
+   [
+    "m79",
+    0.39,
+    "emb"
+   ],
+   [
+    "m90",
+    0.415,
+    "emb"
+   ],
+   [
+    "m61",
+    0.505,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r4",
+    0.483,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when am I seeing my sister?",
+  "cls": "contradiction",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m81",
+    0.499,
+    "emb"
+   ],
+   [
+    "m110",
+    0.566,
+    "emb"
+   ],
+   [
+    "m92",
+    0.476,
+    "emb"
+   ],
+   [
+    "m40",
+    0.491,
+    "emb"
+   ],
+   [
+    "m107",
+    0.406,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando vedo mia sorella questo weekend?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m81",
+    0.625,
+    "emb"
+   ],
+   [
+    "m107",
+    0.504,
+    "emb"
+   ],
+   [
+    "m92",
+    0.526,
+    "emb"
+   ],
+   [
+    "m110",
+    0.588,
+    "emb"
+   ],
+   [
+    "m40",
+    0.513,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what time is my train on Friday?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m83",
+    0.681,
+    "emb"
+   ],
+   [
+    "m89",
+    0.517,
+    "emb"
+   ],
+   [
+    "m88",
+    0.525,
+    "emb"
+   ],
+   [
+    "m72",
+    0.491,
+    "emb"
+   ],
+   [
+    "m78",
+    0.479,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "a che ora parte il treno per Milano?",
+  "cls": "contradiction",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m82",
+    0.815,
+    "emb"
+   ],
+   [
+    "m89",
+    0.591,
+    "emb"
+   ],
+   [
+    "m83",
+    0.621,
+    "emb"
+   ],
+   [
+    "m88",
+    0.556,
+    "emb"
+   ],
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.383,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is my mother's birthday?",
+  "cls": "contradiction",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m84",
+    0.72,
+    "emb"
+   ],
+   [
+    "m85",
+    0.633,
+    "emb"
+   ],
+   [
+    "m20",
+    0.679,
+    "emb"
+   ],
+   [
+    "m98",
+    0.524,
+    "emb"
+   ],
+   [
+    "m112",
+    0.549,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando compie gli anni mia mamma?",
+  "cls": "contradiction",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m85",
+    0.556,
+    "emb"
+   ],
+   [
+    "m84",
+    0.629,
+    "emb"
+   ],
+   [
+    "m112",
+    0.553,
+    "emb"
+   ],
+   [
+    "m98",
+    0.459,
+    "emb"
+   ],
+   [
+    "m20",
+    0.51,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove si tiene la riunione con i genitori?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m87",
+    0.627,
+    "emb"
+   ],
+   [
+    "m12",
+    0.475,
+    "emb"
+   ],
+   [
+    "m81",
+    0.393,
+    "emb"
+   ],
+   [
+    "m29",
+    0.347,
+    "emb"
+   ],
+   [
+    "m112",
+    0.462,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which room is the parents' meeting in?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m87",
+    0.586,
+    "emb"
+   ],
+   [
+    "m130",
+    0.449,
+    "emb"
+   ],
+   [
+    "m12",
+    0.414,
+    "emb"
+   ],
+   [
+    "m73",
+    0.391,
+    "emb"
+   ],
+   [
+    "m64",
+    0.369,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "a che ora arriva Marta?",
+  "cls": "contradiction",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m89",
+    0.709,
+    "emb"
+   ],
+   [
+    "m104",
+    0.597,
+    "emb"
+   ],
+   [
+    "m82",
+    0.487,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.465,
+    "emb"
+   ],
+   [
+    "m112",
+    0.52,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when does Marta get in?",
+  "cls": "contradiction",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m89",
+    0.694,
+    "emb"
+   ],
+   [
+    "m104",
+    0.616,
+    "emb"
+   ],
+   [
+    "m112",
+    0.513,
+    "emb"
+   ],
+   [
+    "m84",
+    0.486,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.384,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is the library book due?",
+  "cls": "contradiction",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m91",
+    0.566,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r4",
+    0.526,
+    "emb"
+   ],
+   [
+    "m32",
+    0.382,
+    "emb"
+   ],
+   [
+    "m105",
+    0.339,
+    "emb"
+   ],
+   [
+    "m79",
+    0.339,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove porto il gatto dal veterinario?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m51",
+    0.591,
+    "emb"
+   ],
+   [
+    "m11",
+    0.47,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.492,
+    "emb"
+   ],
+   [
+    "m60",
+    0.374,
+    "emb"
+   ],
+   [
+    "m37",
+    0.386,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove si trova il veterinario del gatto allergico al pollo?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m51",
+    0.644,
+    "emb"
+   ],
+   [
+    "m11",
+    0.601,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.497,
+    "emb"
+   ],
+   [
+    "m37",
+    0.417,
+    "emb"
+   ],
+   [
+    "m60",
+    0.381,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "cosa c'e' nella lista della spesa che mi ha mostrato l'agente?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/home/spese_novembre.csv#r5",
+    0.589,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.577,
+    "emb"
+   ],
+   [
+    "m118",
+    0.615,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r1",
+    0.563,
+    "emb"
+   ],
+   [
+    "m15",
+    0.554,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando riceve la dottoressa Bianchi?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m50",
+    0.686,
+    "emb"
+   ],
+   [
+    "m37",
+    0.516,
+    "emb"
+   ],
+   [
+    "m97",
+    0.488,
+    "emb"
+   ],
+   [
+    "m105",
+    0.425,
+    "emb"
+   ],
+   [
+    "m59",
+    0.426,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "in che citta' vive la padrona di Rocco?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m40",
+    0.57,
+    "emb"
+   ],
+   [
+    "m45",
+    0.634,
+    "emb"
+   ],
+   [
+    "m99",
+    0.538,
+    "emb"
+   ],
+   [
+    "m92",
+    0.485,
+    "emb"
+   ],
+   [
+    "m112",
+    0.591,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "where does my best friend live now?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m93",
+    0.516,
+    "emb"
+   ],
+   [
+    "m130",
+    0.542,
+    "emb"
+   ],
+   [
+    "m0",
+    0.55,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.458,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.447,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is my best friend's birthday?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m20",
+    0.636,
+    "emb"
+   ],
+   [
+    "m93",
+    0.554,
+    "emb"
+   ],
+   [
+    "m25",
+    0.596,
+    "emb"
+   ],
+   [
+    "m84",
+    0.583,
+    "emb"
+   ],
+   [
+    "m96",
+    0.543,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is my girlfriend's birthday?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m25",
+    0.662,
+    "emb"
+   ],
+   [
+    "m20",
+    0.652,
+    "emb"
+   ],
+   [
+    "m84",
+    0.613,
+    "emb"
+   ],
+   [
+    "m95",
+    0.533,
+    "emb"
+   ],
+   [
+    "m107",
+    0.494,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's the email of my contact at Acme?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m97",
+    0.719,
+    "emb"
+   ],
+   [
+    "m12",
+    0.657,
+    "emb"
+   ],
+   [
+    "f:/home/meeting_acme.md#0",
+    0.579,
+    "emb"
+   ],
+   [
+    "m61",
+    0.637,
+    "emb"
+   ],
+   [
+    "m75",
+    0.478,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che ricetta posso fare con il guanciale della lista della spesa?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "f:/notes/spesa.txt#0",
+    0.634,
+    "emb"
+   ],
+   [
+    "m117",
+    0.68,
+    "emb"
+   ],
+   [
+    "f:/home/ricetta_carbonara.txt#0",
+    0.48,
+    "emb"
+   ],
+   [
+    "m124",
+    0.401,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.476,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che toner usa la stampante dell'ufficio?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": true,
+  "t3": false,
+  "top": [
+   [
+    "f:/home/stampante.txt#0",
+    0.688,
+    "emb"
+   ],
+   [
+    "m121",
+    0.606,
+    "emb"
+   ],
+   [
+    "m48",
+    0.382,
+    "emb"
+   ],
+   [
+    "m74",
+    0.397,
+    "emb"
+   ],
+   [
+    "m79",
+    0.314,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what gift did I plan for my mum's birthday?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m98",
+    0.533,
+    "emb"
+   ],
+   [
+    "m84",
+    0.562,
+    "emb"
+   ],
+   [
+    "m85",
+    0.422,
+    "emb"
+   ],
+   [
+    "m112",
+    0.421,
+    "emb"
+   ],
+   [
+    "m20",
+    0.441,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando fa il vaccino il cane di mia sorella?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m99",
+    0.609,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.483,
+    "emb"
+   ],
+   [
+    "m40",
+    0.472,
+    "emb"
+   ],
+   [
+    "m113",
+    0.414,
+    "emb"
+   ],
+   [
+    "m107",
+    0.367,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che cosa mi ha prescritto il medico di base?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m37",
+    0.54,
+    "emb"
+   ],
+   [
+    "m50",
+    0.547,
+    "emb"
+   ],
+   [
+    "m128",
+    0.587,
+    "emb"
+   ],
+   [
+    "m100",
+    0.523,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.536,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which shell do I get when I ssh into buildbox?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m2",
+    0.591,
+    "emb"
+   ],
+   [
+    "m3",
+    0.54,
+    "emb"
+   ],
+   [
+    "m39",
+    0.488,
+    "emb"
+   ],
+   [
+    "m26",
+    0.371,
+    "emb"
+   ],
+   [
+    "m17",
+    0.399,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what does my partner do for a living?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m25",
+    0.595,
+    "emb"
+   ],
+   [
+    "m101",
+    0.373,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.382,
+    "emb"
+   ],
+   [
+    "m111",
+    0.408,
+    "emb"
+   ],
+   [
+    "m130",
+    0.447,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiamano i figli di mia sorella?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m40",
+    0.616,
+    "emb"
+   ],
+   [
+    "m102",
+    0.55,
+    "emb"
+   ],
+   [
+    "m110",
+    0.575,
+    "emb"
+   ],
+   [
+    "m92",
+    0.499,
+    "emb"
+   ],
+   [
+    "m80",
+    0.496,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "with whom am I going to Kyoto?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.515,
+    "emb"
+   ],
+   [
+    "m114",
+    0.628,
+    "emb"
+   ],
+   [
+    "m36",
+    0.455,
+    "emb"
+   ],
+   [
+    "m82",
+    0.445,
+    "emb"
+   ],
+   [
+    "m83",
+    0.456,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when does the car I bought in October need its inspection?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": true,
+  "t3": false,
+  "top": [
+   [
+    "m32",
+    0.609,
+    "emb"
+   ],
+   [
+    "m57",
+    0.464,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.441,
+    "emb"
+   ],
+   [
+    "m59",
+    0.352,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r1",
+    0.454,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "did the build fail in my favourite programming language?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m24",
+    0.531,
+    "emb"
+   ],
+   [
+    "m52",
+    0.515,
+    "emb"
+   ],
+   [
+    "m120",
+    0.503,
+    "emb"
+   ],
+   [
+    "m2",
+    0.444,
+    "emb"
+   ],
+   [
+    "m77",
+    0.485,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "is the router in the hallway up to date?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m47",
+    0.69,
+    "emb"
+   ],
+   [
+    "m27",
+    0.644,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.57,
+    "emb"
+   ],
+   [
+    "m30",
+    0.523,
+    "emb"
+   ],
+   [
+    "m6",
+    0.44,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "in che lingua vuole le risposte Ada?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m0",
+    0.675,
+    "emb"
+   ],
+   [
+    "m1",
+    0.556,
+    "emb"
+   ],
+   [
+    "m74",
+    0.523,
+    "emb"
+   ],
+   [
+    "m52",
+    0.498,
+    "emb"
+   ],
+   [
+    "m54",
+    0.533,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how old is the person in people.csv with my brother's name?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": true,
+  "t3": false,
+  "top": [
+   [
+    "f:/demo/people.csv#r1",
+    0.558,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.564,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.563,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.544,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.548,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "a che ora arriva la mia collega di matematica?",
+  "cls": "multihop",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m104",
+    0.619,
+    "emb"
+   ],
+   [
+    "m88",
+    0.47,
+    "emb"
+   ],
+   [
+    "m89",
+    0.419,
+    "emb"
+   ],
+   [
+    "m12",
+    0.524,
+    "emb"
+   ],
+   [
+    "m72",
+    0.492,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is the staff meeting set by my new head teacher?",
+  "cls": "multihop",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m87",
+    0.477,
+    "emb"
+   ],
+   [
+    "m65",
+    0.469,
+    "emb"
+   ],
+   [
+    "m105",
+    0.419,
+    "emb"
+   ],
+   [
+    "m64",
+    0.475,
+    "emb"
+   ],
+   [
+    "m12",
+    0.482,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiama mio nonno?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m41",
+    0.553,
+    "emb"
+   ],
+   [
+    "m109",
+    0.509,
+    "emb"
+   ],
+   [
+    "m0",
+    0.545,
+    "emb"
+   ],
+   [
+    "m40",
+    0.527,
+    "emb"
+   ],
+   [
+    "m111",
+    0.463,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's my blood type?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m43",
+    0.509,
+    "emb"
+   ],
+   [
+    "m128",
+    0.481,
+    "emb"
+   ],
+   [
+    "m53",
+    0.485,
+    "emb"
+   ],
+   [
+    "m116",
+    0.49,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.417,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando scade il mio passaporto?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.405,
+    "emb"
+   ],
+   [
+    "m91",
+    0.462,
+    "emb"
+   ],
+   [
+    "m32",
+    0.459,
+    "emb"
+   ],
+   [
+    "m90",
+    0.423,
+    "emb"
+   ],
+   [
+    "m20",
+    0.444,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's my dog called?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m40",
+    0.622,
+    "emb"
+   ],
+   [
+    "m11",
+    0.555,
+    "emb"
+   ],
+   [
+    "m108",
+    0.57,
+    "emb"
+   ],
+   [
+    "m51",
+    0.409,
+    "emb"
+   ],
+   [
+    "m0",
+    0.465,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how tall am I?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m53",
+    0.547,
+    "emb"
+   ],
+   [
+    "m5",
+    0.571,
+    "emb"
+   ],
+   [
+    "m49",
+    0.494,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.554,
+    "emb"
+   ],
+   [
+    "m134",
+    0.453,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove ho parcheggiato la macchina?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m58",
+    0.44,
+    "emb"
+   ],
+   [
+    "m32",
+    0.372,
+    "emb"
+   ],
+   [
+    "m129",
+    0.347,
+    "emb"
+   ],
+   [
+    "m135",
+    0.414,
+    "emb"
+   ],
+   [
+    "m121",
+    0.466,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's the PIN of my bank card?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m20",
+    0.369,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.35,
+    "bm25"
+   ],
+   [
+    "m0",
+    0.356,
+    "bm25"
+   ],
+   [
+    "m25",
+    0.354,
+    "bm25"
+   ],
+   [
+    "m55",
+    0.496,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quanti figli ho?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m28",
+    0.564,
+    "emb"
+   ],
+   [
+    "m102",
+    0.491,
+    "emb"
+   ],
+   [
+    "m53",
+    0.537,
+    "emb"
+   ],
+   [
+    "m23",
+    0.553,
+    "emb"
+   ],
+   [
+    "m3",
+    0.496,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what did I have for lunch yesterday?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m42",
+    0.596,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.424,
+    "emb"
+   ],
+   [
+    "m117",
+    0.538,
+    "emb"
+   ],
+   [
+    "m119",
+    0.504,
+    "emb"
+   ],
+   [
+    "m53",
+    0.501,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiama il mio dentista?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m60",
+    0.513,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.591,
+    "emb"
+   ],
+   [
+    "m37",
+    0.49,
+    "emb"
+   ],
+   [
+    "m50",
+    0.498,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.517,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's my flight number to Tokyo?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.399,
+    "emb"
+   ],
+   [
+    "m114",
+    0.535,
+    "emb"
+   ],
+   [
+    "m129",
+    0.418,
+    "emb"
+   ],
+   [
+    "m83",
+    0.452,
+    "emb"
+   ],
+   [
+    "m82",
+    0.411,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I connect a bluetooth mouse?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m18",
+    0.291,
+    "emb"
+   ],
+   [
+    "m53",
+    0.335,
+    "emb"
+   ],
+   [
+    "m110",
+    0.332,
+    "emb"
+   ],
+   [
+    "m51",
+    0.223,
+    "emb"
+   ],
+   [
+    "m47",
+    0.294,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come mando una email dal terminale?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m75",
+    0.518,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.444,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.419,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.414,
+    "emb"
+   ],
+   [
+    "m2",
+    0.448,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I connect to the wifi?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m18",
+    0.462,
+    "emb"
+   ],
+   [
+    "m35",
+    0.44,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.429,
+    "emb"
+   ],
+   [
+    "m47",
+    0.447,
+    "emb"
+   ],
+   [
+    "m55",
+    0.363,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come alzo il volume dell'audio?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m33",
+    0.441,
+    "emb"
+   ],
+   [
+    "m48",
+    0.365,
+    "emb"
+   ],
+   [
+    "m54",
+    0.435,
+    "emb"
+   ],
+   [
+    "m42",
+    0.489,
+    "emb"
+   ],
+   [
+    "m15",
+    0.411,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's the weather tomorrow?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:Temperature and thinking",
+    0.672,
+    "emb"
+   ],
+   [
+    "m42",
+    0.635,
+    "emb"
+   ],
+   [
+    "m78",
+    0.466,
+    "emb"
+   ],
+   [
+    "m53",
+    0.524,
+    "emb"
+   ],
+   [
+    "m43",
+    0.507,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "chi ha vinto la partita ieri sera?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m45",
+    0.523,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.527,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r3",
+    0.491,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r5",
+    0.476,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r4",
+    0.492,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's the license plate of my car?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m58",
+    0.477,
+    "emb"
+   ],
+   [
+    "m55",
+    0.492,
+    "emb"
+   ],
+   [
+    "m53",
+    0.508,
+    "emb"
+   ],
+   [
+    "m43",
+    0.491,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r1",
+    0.479,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when is my brother's birthday?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m20",
+    0.653,
+    "emb"
+   ],
+   [
+    "m106",
+    0.617,
+    "emb"
+   ],
+   [
+    "m41",
+    0.505,
+    "emb"
+   ],
+   [
+    "m84",
+    0.596,
+    "emb"
+   ],
+   [
+    "m96",
+    0.555,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "qual e' la password del NAS?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m17",
+    0.541,
+    "bm25"
+   ],
+   [
+    "m6",
+    0.558,
+    "bm25"
+   ],
+   [
+    "m35",
+    0.406,
+    "bm25"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.442,
+    "bm25"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.41,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "what's in /notes/diario.txt?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m42",
+    0.718,
+    "bm25"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.347,
+    "bm25"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.405,
+    "bm25"
+   ],
+   [
+    "m115",
+    0.44,
+    "bm25"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.344,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "chi e' Federico?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m65",
+    0.406,
+    "emb"
+   ],
+   [
+    "m111",
+    0.415,
+    "emb"
+   ],
+   [
+    "m0",
+    0.465,
+    "emb"
+   ],
+   [
+    "m57",
+    0.438,
+    "emb"
+   ],
+   [
+    "m93",
+    0.444,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how many km did I run last week?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m68",
+    0.631,
+    "emb"
+   ],
+   [
+    "m49",
+    0.532,
+    "emb"
+   ],
+   [
+    "m5",
+    0.6,
+    "emb"
+   ],
+   [
+    "m16",
+    0.542,
+    "emb"
+   ],
+   [
+    "m42",
+    0.597,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what time does the pharmacy close?",
+  "cls": "noanswer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m37",
+    0.453,
+    "emb"
+   ],
+   [
+    "m132",
+    0.476,
+    "emb"
+   ],
+   [
+    "m29",
+    0.345,
+    "emb"
+   ],
+   [
+    "m59",
+    0.36,
+    "emb"
+   ],
+   [
+    "m60",
+    0.322,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quanto e' costato il JR Pass?",
+  "cls": "noanswer",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.418,
+    "bm25"
+   ],
+   [
+    "m71",
+    0.375,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r3",
+    0.455,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.452,
+    "emb"
+   ],
+   [
+    "m70",
+    0.418,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che telefono ha mio fratello?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m106",
+    0.793,
+    "emb"
+   ],
+   [
+    "m41",
+    0.504,
+    "emb"
+   ],
+   [
+    "m56",
+    0.626,
+    "emb"
+   ],
+   [
+    "m111",
+    0.467,
+    "emb"
+   ],
+   [
+    "m55",
+    0.59,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quando e' il compleanno di mia sorella?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m107",
+    0.686,
+    "emb"
+   ],
+   [
+    "m20",
+    0.631,
+    "emb"
+   ],
+   [
+    "m81",
+    0.516,
+    "emb"
+   ],
+   [
+    "m85",
+    0.596,
+    "emb"
+   ],
+   [
+    "m80",
+    0.526,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when's my birthday again?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m20",
+    0.654,
+    "emb"
+   ],
+   [
+    "m96",
+    0.577,
+    "emb"
+   ],
+   [
+    "m84",
+    0.588,
+    "emb"
+   ],
+   [
+    "m25",
+    0.576,
+    "emb"
+   ],
+   [
+    "m85",
+    0.426,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which city do I live in?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m45",
+    0.592,
+    "emb"
+   ],
+   [
+    "m112",
+    0.531,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.478,
+    "emb"
+   ],
+   [
+    "m0",
+    0.502,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.473,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come si chiama il gatto della mia ragazza?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m108",
+    0.694,
+    "emb"
+   ],
+   [
+    "m40",
+    0.701,
+    "emb"
+   ],
+   [
+    "m11",
+    0.62,
+    "emb"
+   ],
+   [
+    "m113",
+    0.583,
+    "emb"
+   ],
+   [
+    "m25",
+    0.496,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's my cat called?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m51",
+    0.487,
+    "emb"
+   ],
+   [
+    "m40",
+    0.55,
+    "emb"
+   ],
+   [
+    "m108",
+    0.534,
+    "emb"
+   ],
+   [
+    "m11",
+    0.468,
+    "emb"
+   ],
+   [
+    "m0",
+    0.447,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "chi e' il medico di mio padre?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m109",
+    0.713,
+    "bm25"
+   ],
+   [
+    "m50",
+    0.538,
+    "bm25"
+   ],
+   [
+    "m37",
+    0.428,
+    "bm25"
+   ],
+   [
+    "m111",
+    0.43,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.395,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "who's my GP?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m25",
+    0.452,
+    "bm25"
+   ],
+   [
+    "m20",
+    0.376,
+    "bm25"
+   ],
+   [
+    "m0",
+    0.394,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.341,
+    "bm25"
+   ],
+   [
+    "m37",
+    0.424,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what laptop does my sister use?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m110",
+    0.768,
+    "emb"
+   ],
+   [
+    "m53",
+    0.64,
+    "emb"
+   ],
+   [
+    "f:/home/stampante.txt#0",
+    0.436,
+    "emb"
+   ],
+   [
+    "m40",
+    0.43,
+    "emb"
+   ],
+   [
+    "m92",
+    0.379,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che computer portatile uso io?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m53",
+    0.449,
+    "emb"
+   ],
+   [
+    "m9",
+    0.378,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.385,
+    "emb"
+   ],
+   [
+    "m18",
+    0.324,
+    "emb"
+   ],
+   [
+    "m56",
+    0.378,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what does my brother do?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m111",
+    0.517,
+    "emb"
+   ],
+   [
+    "m41",
+    0.535,
+    "emb"
+   ],
+   [
+    "m106",
+    0.562,
+    "emb"
+   ],
+   [
+    "f:/home/stampante.txt#0",
+    0.386,
+    "emb"
+   ],
+   [
+    "m110",
+    0.49,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's my job?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m121",
+    0.496,
+    "emb"
+   ],
+   [
+    "m14",
+    0.408,
+    "emb"
+   ],
+   [
+    "m22",
+    0.394,
+    "emb"
+   ],
+   [
+    "m19",
+    0.46,
+    "emb"
+   ],
+   [
+    "m9",
+    0.405,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove vive mia mamma?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m112",
+    0.7,
+    "emb"
+   ],
+   [
+    "m0",
+    0.614,
+    "emb"
+   ],
+   [
+    "m84",
+    0.513,
+    "emb"
+   ],
+   [
+    "m92",
+    0.539,
+    "emb"
+   ],
+   [
+    "m45",
+    0.522,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what can't my cat eat?",
+  "cls": "owner",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m40",
+    0.39,
+    "emb"
+   ],
+   [
+    "m124",
+    0.391,
+    "emb"
+   ],
+   [
+    "m51",
+    0.396,
+    "emb"
+   ],
+   [
+    "m11",
+    0.402,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.38,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "cosa non puo' mangiare il cane di mia sorella?",
+  "cls": "owner",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m40",
+    0.624,
+    "bm25"
+   ],
+   [
+    "m124",
+    0.436,
+    "bm25"
+   ],
+   [
+    "m80",
+    0.382,
+    "bm25"
+   ],
+   [
+    "m81",
+    0.377,
+    "bm25"
+   ],
+   [
+    "m92",
+    0.348,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "quanti giorni sto a Tokyo?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.588,
+    "emb"
+   ],
+   [
+    "m114",
+    0.549,
+    "emb"
+   ],
+   [
+    "m36",
+    0.458,
+    "emb"
+   ],
+   [
+    "m0",
+    0.483,
+    "emb"
+   ],
+   [
+    "m45",
+    0.463,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quanti tuorli ci vogliono per la carbonara?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/ricetta_carbonara.txt#0",
+    0.761,
+    "emb"
+   ],
+   [
+    "m48",
+    0.489,
+    "emb"
+   ],
+   [
+    "m124",
+    0.408,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.415,
+    "emb"
+   ],
+   [
+    "m102",
+    0.409,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how old is Giulia Verdi?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m25",
+    0.594,
+    "emb"
+   ],
+   [
+    "m101",
+    0.502,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.522,
+    "emb"
+   ],
+   [
+    "m108",
+    0.413,
+    "emb"
+   ],
+   [
+    "m107",
+    0.435,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "devo comprare le uova?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/notes/spesa.txt#0",
+    0.561,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.535,
+    "emb"
+   ],
+   [
+    "m48",
+    0.47,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.51,
+    "emb"
+   ],
+   [
+    "m11",
+    0.44,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "is the photo backup still on my todo?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m42",
+    0.734,
+    "emb"
+   ],
+   [
+    "f:/home/todo.md#0",
+    0.61,
+    "emb"
+   ],
+   [
+    "m17",
+    0.597,
+    "emb"
+   ],
+   [
+    "m22",
+    0.506,
+    "emb"
+   ],
+   [
+    "m53",
+    0.514,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "ci va la panna nella carbonara?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/ricetta_carbonara.txt#0",
+    0.66,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.43,
+    "emb"
+   ],
+   [
+    "m124",
+    0.386,
+    "emb"
+   ],
+   [
+    "m119",
+    0.468,
+    "emb"
+   ],
+   [
+    "m48",
+    0.41,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what does the lua demo write to lua-out.txt?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/hello.lua#0",
+    0.587,
+    "bm25"
+   ],
+   [
+    "m120",
+    0.672,
+    "bm25"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.515,
+    "bm25"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.514,
+    "bm25"
+   ],
+   [
+    "m49",
+    0.473,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "what's the printer's IP address?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/stampante.txt#0",
+    0.537,
+    "bm25"
+   ],
+   [
+    "m121",
+    0.551,
+    "bm25"
+   ],
+   [
+    "m20",
+    0.239,
+    "bm25"
+   ],
+   [
+    "m0",
+    0.274,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.241,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "avevo un'idea per un gioco?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/notes/idee.md#0",
+    0.56,
+    "emb"
+   ],
+   [
+    "m42",
+    0.601,
+    "emb"
+   ],
+   [
+    "m122",
+    0.506,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.523,
+    "emb"
+   ],
+   [
+    "m43",
+    0.461,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what format does Acme want for the export?",
+  "cls": "pointer",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/meeting_acme.md#0",
+    0.708,
+    "emb"
+   ],
+   [
+    "m12",
+    0.518,
+    "emb"
+   ],
+   [
+    "m97",
+    0.48,
+    "emb"
+   ],
+   [
+    "m123",
+    0.471,
+    "emb"
+   ],
+   [
+    "m121",
+    0.464,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "is sqlite3 in the list of apps?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "man:SQLite, Lua, JavaScript, jq and the editor",
+    0.638,
+    "bm25"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.601,
+    "bm25"
+   ],
+   [
+    "m38",
+    0.371,
+    "bm25"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.379,
+    "bm25"
+   ],
+   [
+    "f:/demo/stats.py#0",
+    0.208,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "cosa devo fare per il report M4?",
+  "cls": "pointer",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m19",
+    0.634,
+    "bm25"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.41,
+    "bm25"
+   ],
+   [
+    "m49",
+    0.415,
+    "bm25"
+   ],
+   [
+    "f:/demo/stats.py#0",
+    0.251,
+    "bm25"
+   ],
+   [
+    "m32",
+    0.28,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "come spengo il computer?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Power off and reboot",
+    0.687,
+    "emb"
+   ],
+   [
+    "m53",
+    0.41,
+    "emb"
+   ],
+   [
+    "m15",
+    0.368,
+    "emb"
+   ],
+   [
+    "m31",
+    0.318,
+    "emb"
+   ],
+   [
+    "m7",
+    0.267,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I pick up where I left off after a reboot?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Hibernation",
+    0.575,
+    "emb"
+   ],
+   [
+    "m17",
+    0.433,
+    "emb"
+   ],
+   [
+    "m22",
+    0.362,
+    "emb"
+   ],
+   [
+    "m35",
+    0.326,
+    "emb"
+   ],
+   [
+    "m77",
+    0.407,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come vedo quanta RAM ho?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:CPU, cores, memory and uptime",
+    0.581,
+    "bm25"
+   ],
+   [
+    "m28",
+    0.572,
+    "bm25"
+   ],
+   [
+    "m3",
+    0.461,
+    "bm25"
+   ],
+   [
+    "m23",
+    0.49,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.488,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quali driver sono caricati?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:System information in /proc",
+    0.708,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.547,
+    "emb"
+   ],
+   [
+    "m13",
+    0.432,
+    "emb"
+   ],
+   [
+    "m23",
+    0.476,
+    "emb"
+   ],
+   [
+    "m42",
+    0.503,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I set the temperature with !set?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:Settings",
+    0.64,
+    "emb"
+   ],
+   [
+    "m2",
+    0.377,
+    "emb"
+   ],
+   [
+    "m26",
+    0.349,
+    "emb"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.38,
+    "emb"
+   ],
+   [
+    "f:/home/stampante.txt#0",
+    0.312,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come attivo il thinking?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Temperature and thinking",
+    0.636,
+    "emb"
+   ],
+   [
+    "m42",
+    0.503,
+    "emb"
+   ],
+   [
+    "m15",
+    0.474,
+    "emb"
+   ],
+   [
+    "m53",
+    0.444,
+    "emb"
+   ],
+   [
+    "m26",
+    0.366,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I clear the screen?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:New conversation",
+    0.623,
+    "bm25"
+   ],
+   [
+    "m31",
+    0.414,
+    "emb"
+   ],
+   [
+    "m2",
+    0.399,
+    "emb"
+   ],
+   [
+    "m47",
+    0.362,
+    "emb"
+   ],
+   [
+    "m15",
+    0.371,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come annullo l'ultima risposta?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Undo and redo a turn",
+    0.657,
+    "emb"
+   ],
+   [
+    "m1",
+    0.52,
+    "emb"
+   ],
+   [
+    "m15",
+    0.567,
+    "emb"
+   ],
+   [
+    "m42",
+    0.614,
+    "emb"
+   ],
+   [
+    "m137",
+    0.555,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I save a point in the chat to come back to later?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Branches and saved points",
+    0.75,
+    "emb"
+   ],
+   [
+    "m35",
+    0.375,
+    "emb"
+   ],
+   [
+    "m17",
+    0.459,
+    "emb"
+   ],
+   [
+    "m15",
+    0.442,
+    "emb"
+   ],
+   [
+    "m117",
+    0.463,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove sono salvati i miei ricordi?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m35",
+    0.502,
+    "emb"
+   ],
+   [
+    "m17",
+    0.518,
+    "emb"
+   ],
+   [
+    "m42",
+    0.573,
+    "emb"
+   ],
+   [
+    "m119",
+    0.48,
+    "emb"
+   ],
+   [
+    "m117",
+    0.503,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I make it forget my address?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "man:Saved facts",
+    0.57,
+    "emb"
+   ],
+   [
+    "m75",
+    0.452,
+    "emb"
+   ],
+   [
+    "m35",
+    0.397,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.413,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.417,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come disattivo la memoria?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:Power off and reboot",
+    0.567,
+    "emb"
+   ],
+   [
+    "m5",
+    0.47,
+    "emb"
+   ],
+   [
+    "m15",
+    0.374,
+    "emb"
+   ],
+   [
+    "m7",
+    0.273,
+    "emb"
+   ],
+   [
+    "m17",
+    0.356,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how do I edit a file?",
+  "cls": "sibling",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:Writing and deleting files",
+    0.584,
+    "bm25"
+   ],
+   [
+    "m34",
+    0.445,
+    "bm25"
+   ],
+   [
+    "m2",
+    0.457,
+    "emb"
+   ],
+   [
+    "m26",
+    0.388,
+    "emb"
+   ],
+   [
+    "m17",
+    0.394,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "come lancio ls?",
+  "cls": "sibling",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:Listing and reading files",
+    0.577,
+    "emb"
+   ],
+   [
+    "f:/demo/hello.lua#0",
+    0.364,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.402,
+    "emb"
+   ],
+   [
+    "m117",
+    0.463,
+    "emb"
+   ],
+   [
+    "m10",
+    0.36,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how should you talk to me?",
+  "cls": "hub",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m54",
+    0.547,
+    "emb"
+   ],
+   [
+    "m0",
+    0.462,
+    "emb"
+   ],
+   [
+    "m12",
+    0.432,
+    "emb"
+   ],
+   [
+    "m15",
+    0.484,
+    "emb"
+   ],
+   [
+    "m52",
+    0.432,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "cosa ho detto sulle spiegazioni lunghe?",
+  "cls": "hub",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m42",
+    0.624,
+    "emb"
+   ],
+   [
+    "m1",
+    0.551,
+    "emb"
+   ],
+   [
+    "m122",
+    0.532,
+    "emb"
+   ],
+   [
+    "m115",
+    0.551,
+    "emb"
+   ],
+   [
+    "m137",
+    0.554,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "marco@example.com",
+  "cls": "hub",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/people.csv#r1",
+    0.527,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.471,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.444,
+    "bm25"
+   ],
+   [
+    "m97",
+    0.442,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.444,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "hai qualche promemoria per me?",
+  "cls": "hub",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m42",
+    0.674,
+    "emb"
+   ],
+   [
+    "m23",
+    0.544,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.568,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che lingua sto imparando?",
+  "cls": "hub",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m1",
+    0.557,
+    "emb"
+   ],
+   [
+    "m52",
+    0.561,
+    "emb"
+   ],
+   [
+    "m36",
+    0.515,
+    "emb"
+   ],
+   [
+    "m54",
+    0.594,
+    "emb"
+   ],
+   [
+    "m0",
+    0.529,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "do I have a pet?",
+  "cls": "hub",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/data.json#0",
+    0.614,
+    "emb"
+   ],
+   [
+    "m11",
+    0.476,
+    "emb"
+   ],
+   [
+    "m42",
+    0.635,
+    "emb"
+   ],
+   [
+    "m137",
+    0.577,
+    "emb"
+   ],
+   [
+    "m43",
+    0.532,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che hardware ha questa macchina?",
+  "cls": "hub",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m53",
+    0.627,
+    "emb"
+   ],
+   [
+    "m23",
+    0.597,
+    "emb"
+   ],
+   [
+    "m28",
+    0.522,
+    "emb"
+   ],
+   [
+    "m3",
+    0.467,
+    "emb"
+   ],
+   [
+    "m18",
+    0.412,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "is anything installed for serving web pages?",
+  "cls": "hub",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m10",
+    0.525,
+    "emb"
+   ],
+   [
+    "m38",
+    0.448,
+    "emb"
+   ],
+   [
+    "m119",
+    0.466,
+    "emb"
+   ],
+   [
+    "m8",
+    0.396,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.503,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "sara@example.com",
+  "cls": "hub",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/people.csv#r4",
+    0.517,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.489,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.461,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.47,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.447,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "what's my name?",
+  "cls": "hub",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "f:/etc/os-release#0",
+    0.502,
+    "emb"
+   ],
+   [
+    "m42",
+    0.597,
+    "emb"
+   ],
+   [
+    "m23",
+    0.539,
+    "emb"
+   ],
+   [
+    "m121",
+    0.538,
+    "emb"
+   ],
+   [
+    "m5",
+    0.569,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "cosa sai di me?",
+  "cls": "hub",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m42",
+    0.666,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.59,
+    "emb"
+   ],
+   [
+    "m5",
+    0.581,
+    "emb"
+   ],
+   [
+    "m23",
+    0.548,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "is there a herb I can't stand?",
+  "cls": "raw",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m128",
+    0.508,
+    "emb"
+   ],
+   [
+    "m124",
+    0.432,
+    "emb"
+   ],
+   [
+    "m126",
+    0.484,
+    "emb"
+   ],
+   [
+    "m115",
+    0.511,
+    "emb"
+   ],
+   [
+    "m43",
+    0.464,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what time do I go to sleep?",
+  "cls": "raw",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m125",
+    0.543,
+    "emb"
+   ],
+   [
+    "m132",
+    0.487,
+    "emb"
+   ],
+   [
+    "m37",
+    0.402,
+    "emb"
+   ],
+   [
+    "m12",
+    0.442,
+    "emb"
+   ],
+   [
+    "m72",
+    0.417,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "che piante ho sul balcone?",
+  "cls": "raw",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m126",
+    0.671,
+    "emb"
+   ],
+   [
+    "m124",
+    0.377,
+    "emb"
+   ],
+   [
+    "m130",
+    0.432,
+    "emb"
+   ],
+   [
+    "m128",
+    0.437,
+    "emb"
+   ],
+   [
+    "m43",
+    0.458,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what team do I support?",
+  "cls": "raw",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m127",
+    0.473,
+    "emb"
+   ],
+   [
+    "m8",
+    0.457,
+    "emb"
+   ],
+   [
+    "m43",
+    0.495,
+    "emb"
+   ],
+   [
+    "m45",
+    0.458,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.536,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "ho allergie a qualche medicina?",
+  "cls": "raw",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m128",
+    0.682,
+    "emb"
+   ],
+   [
+    "m11",
+    0.425,
+    "emb"
+   ],
+   [
+    "m124",
+    0.375,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.409,
+    "emb"
+   ],
+   [
+    "m100",
+    0.364,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which seat do I want on the flight to Tokyo?",
+  "cls": "raw",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m129",
+    0.478,
+    "emb"
+   ],
+   [
+    "m114",
+    0.57,
+    "emb"
+   ],
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.389,
+    "emb"
+   ],
+   [
+    "m83",
+    0.492,
+    "emb"
+   ],
+   [
+    "m82",
+    0.435,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove sono le chiavi di riserva?",
+  "cls": "raw",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m130",
+    0.445,
+    "emb"
+   ],
+   [
+    "m35",
+    0.402,
+    "emb"
+   ],
+   [
+    "m17",
+    0.479,
+    "emb"
+   ],
+   [
+    "f:/etc/hostname#0",
+    0.41,
+    "emb"
+   ],
+   [
+    "m9",
+    0.372,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when do I usually go running?",
+  "cls": "raw",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m68",
+    0.58,
+    "emb"
+   ],
+   [
+    "m131",
+    0.486,
+    "emb"
+   ],
+   [
+    "m29",
+    0.418,
+    "emb"
+   ],
+   [
+    "m132",
+    0.481,
+    "emb"
+   ],
+   [
+    "m37",
+    0.408,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "posso prendere un caffe' normale stasera?",
+  "cls": "raw",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m48",
+    0.642,
+    "emb"
+   ],
+   [
+    "m132",
+    0.632,
+    "emb"
+   ],
+   [
+    "m21",
+    0.512,
+    "emb"
+   ],
+   [
+    "f:/notes/spesa.txt#0",
+    0.464,
+    "emb"
+   ],
+   [
+    "f:/notes/todo.txt#0",
+    0.501,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what book am I reading?",
+  "cls": "raw",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "man:The manual",
+    0.562,
+    "emb"
+   ],
+   [
+    "m42",
+    0.523,
+    "emb"
+   ],
+   [
+    "m90",
+    0.375,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r4",
+    0.454,
+    "emb"
+   ],
+   [
+    "m133",
+    0.333,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what's my shoe size?",
+  "cls": "raw",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m134",
+    0.516,
+    "emb"
+   ],
+   [
+    "f:/demo/data.json#0",
+    0.6,
+    "emb"
+   ],
+   [
+    "m53",
+    0.535,
+    "emb"
+   ],
+   [
+    "m23",
+    0.535,
+    "emb"
+   ],
+   [
+    "m5",
+    0.562,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "chi ha il caricabatterie della bici?",
+  "cls": "raw",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "m135",
+    0.629,
+    "emb"
+   ],
+   [
+    "m97",
+    0.475,
+    "emb"
+   ],
+   [
+    "m57",
+    0.488,
+    "emb"
+   ],
+   [
+    "m74",
+    0.457,
+    "emb"
+   ],
+   [
+    "m0",
+    0.464,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "how much did I spend on petrol in November?",
+  "cls": "table",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/home/spese_novembre.csv#r1",
+    0.771,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r3",
+    0.709,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.659,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r0",
+    0.639,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r5",
+    0.64,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "quanto ho pagato la bolletta della luce?",
+  "cls": "table",
+  "split": "tune",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m7",
+    0.633,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r3",
+    0.613,
+    "emb"
+   ],
+   [
+    "m70",
+    0.557,
+    "emb"
+   ],
+   [
+    "m71",
+    0.466,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.543,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "when did I eat out this month?",
+  "cls": "table",
+  "split": "held-out",
+  "t1": false,
+  "t3": true,
+  "top": [
+   [
+    "m132",
+    0.514,
+    "emb"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r2",
+    0.542,
+    "emb"
+   ],
+   [
+    "m119",
+    0.553,
+    "emb"
+   ],
+   [
+    "m20",
+    0.475,
+    "emb"
+   ],
+   [
+    "m117",
+    0.575,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "who in people.csv is from Torino?",
+  "cls": "table",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/people.csv#r3",
+    0.611,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.548,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r2",
+    0.572,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.557,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.522,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "quanti anni ha Marco Bianchi?",
+  "cls": "table",
+  "split": "held-out",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m97",
+    0.613,
+    "emb"
+   ],
+   [
+    "m50",
+    0.454,
+    "emb"
+   ],
+   [
+    "m45",
+    0.449,
+    "emb"
+   ],
+   [
+    "m41",
+    0.426,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.428,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which people live in Roma?",
+  "cls": "table",
+  "split": "tune",
+  "t1": false,
+  "t3": false,
+  "top": [
+   [
+    "m45",
+    0.515,
+    "emb"
+   ],
+   [
+    "m112",
+    0.525,
+    "emb"
+   ],
+   [
+    "m92",
+    0.474,
+    "emb"
+   ],
+   [
+    "m41",
+    0.448,
+    "emb"
+   ],
+   [
+    "m0",
+    0.475,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what does fib compute in the JavaScript demo?",
+  "cls": "table",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/hello.js#0",
+    0.671,
+    "emb"
+   ],
+   [
+    "f:/demo/hello.lua#0",
+    0.477,
+    "emb"
+   ],
+   [
+    "m63",
+    0.5,
+    "emb"
+   ],
+   [
+    "m62",
+    0.503,
+    "emb"
+   ],
+   [
+    "m123",
+    0.508,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what does stats.py count by city?",
+  "cls": "table",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/stats.py#0",
+    0.575,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.388,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r1",
+    0.389,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.378,
+    "bm25"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.387,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "come gestisce gli errori il demo lua?",
+  "cls": "table",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/hello.lua#0",
+    0.584,
+    "emb"
+   ],
+   [
+    "m120",
+    0.626,
+    "emb"
+   ],
+   [
+    "f:/notes/idee.md#0",
+    0.542,
+    "emb"
+   ],
+   [
+    "m123",
+    0.513,
+    "emb"
+   ],
+   [
+    "m49",
+    0.454,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "what quantization is the embedding model in data.json?",
+  "cls": "table",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/data.json#0",
+    0.626,
+    "bm25"
+   ],
+   [
+    "m49",
+    0.417,
+    "bm25"
+   ],
+   [
+    "m13",
+    0.344,
+    "bm25"
+   ],
+   [
+    "f:/home/spese_novembre.csv#r1",
+    0.36,
+    "bm25"
+   ],
+   [
+    "f:/demo/hello.js#0",
+    0.368,
+    "bm25"
+   ]
+  ]
+ },
+ {
+  "q": "quanto pesa il modello Qwen3.5-2B?",
+  "cls": "table",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/data.json#0",
+    0.656,
+    "bm25"
+   ],
+   [
+    "f:/home/viaggio_giappone.md#0",
+    0.174,
+    "bm25"
+   ],
+   [
+    "m46",
+    0.295,
+    "bm25"
+   ],
+   [
+    "m105",
+    0.143,
+    "bm25"
+   ],
+   [
+    "m28",
+    0.439,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "which demo computes the average age of Anna, Luca and Sara?",
+  "cls": "table",
+  "split": "tune",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/hello.js#0",
+    0.641,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r0",
+    0.573,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r4",
+    0.547,
+    "emb"
+   ],
+   [
+    "f:/demo/people.csv#r3",
+    0.543,
+    "emb"
+   ],
+   [
+    "m49",
+    0.653,
+    "emb"
+   ]
+  ]
+ },
+ {
+  "q": "dove scrive il report lo script python?",
+  "cls": "table",
+  "split": "held-out",
+  "t1": true,
+  "t3": true,
+  "top": [
+   [
+    "f:/demo/stats.py#0",
+    0.418,
+    "emb"
+   ],
+   [
+    "m121",
+    0.512,
+    "emb"
+   ],
+   [
+    "m119",
+    0.469,
+    "emb"
+   ],
+   [
+    "m19",
+    0.464,
+    "emb"
+   ],
+   [
+    "f:/home/meeting_acme.md#0",
+    0.394,
+    "emb"
+   ]
+  ]
+ }
+]

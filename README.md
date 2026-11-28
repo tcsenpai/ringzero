@@ -42,7 +42,8 @@ ringzero[main]> count the lines of /demo/stats.py with wc
   memory, CPU cores, logs, settings, power. Anything that deletes or powers off asks you first.
 - **Semantic memory, built in.** The embedding model indexes every text file you write and every session, in
   the background while you are idle, into an index saved on the disk. "what do I need to buy?" finds the
-  shopping list you wrote last week. `/search` queries it directly.
+  shopping list you wrote last week; when something changes (a new phone), the newer record wins. `/search`
+  queries it directly.
 - **It remembers you.** Facts you tell it ("my name is Anna") and summaries of past sessions are kept on the
   disk and come back after a reboot. The kernel, not the model, decides what goes into the model's context,
   so the memory stays small and on topic.

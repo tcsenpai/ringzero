@@ -3,7 +3,8 @@
 // index (memidx.rs), one chunk (~1000 bytes, ~250 tokens) per embedding, stored as "[/path] text". agentd's
 // idle scheduler runs the embeddings in slices (next_chunk / advance). Rewriting or removing a file drops its
 // old chunks first. `table` lists the files whose chunks are in the index, with the size and mtime they had
-// then: saved with the index, compared with the disk at the next boot.
+// then: saved with the index, compared with the disk at the next boot. T72 (design A): a .csv or .tsv file is cut by
+// rows instead, one row per chunk with the header line in front ("[/path] header\nrow").
 use crate::log::SBuf;
 use crate::{embed, fs, memidx};
 use alloc::string::String;
@@ -12,14 +13,17 @@ use core::fmt::Write;
 
 /// Target chunk size in bytes (Italian / English text: ~3.5-4.5 bytes per token, so ~220-290 tokens).
 pub const CHUNK: usize = 1000;
-/// Saved with the index: a change in cut() or the "[/path] " text format means a rebuild.
-pub const VERSION: u32 = 1;
+/// Saved with the index: a change in cut() or the "[/path] " text format means a rebuild. 2 (T72): CSV by rows; an
+/// index cut with version 1 still loads and agentd queues its .csv / .tsv files again (TABLE_VERSIONS).
+pub const VERSION: u32 = 2;
+pub const OLDEST: u32 = 1;
 
 struct Job {
     path: String,
     off: u64, // next chunk starts here
     size: u64,
     chunks: u32,
+    head: Option<String>, // a table's header line, once read
 }
 
 struct St {
@@ -77,7 +81,7 @@ pub fn enqueue_path(path: &str) -> bool {
 
 fn push(path: &str, size: u64) {
     let s = st();
-    s.q.push(Job { path: String::from(path), off: 0, size, chunks: 0 });
+    s.q.push(Job { path: String::from(path), off: 0, size, chunks: 0, head: None });
     s.gen += 1;
 }
 
@@ -115,6 +119,34 @@ pub fn cut(b: &[u8]) -> usize {
     k
 }
 
+/// A table file: cut by rows.
+pub fn table_file(p: &str) -> bool {
+    let l = p.len();
+    l > 4 && (p[l - 4..].eq_ignore_ascii_case(".csv") || p[l - 4..].eq_ignore_ascii_case(".tsv"))
+}
+
+/// The first non-blank line of b as (start, end without the line break, bytes consumed with it); None = only
+/// blank lines (consumed = all of b). A line longer than the window is cut like a chunk.
+pub fn next_line(b: &[u8], eof: bool) -> (Option<(usize, usize)>, usize) {
+    let mut i = 0;
+    while i < b.len() {
+        let e = b[i..].iter().position(|&c| c == b'\n').map(|k| i + k);
+        let (end, next) = match e {
+            Some(e) => (e, e + 1),
+            None if eof => (b.len(), b.len()),
+            None if i == 0 => (cut(b).max(1), cut(b).max(1)),
+            None => return (None, i), // the rest of the line is past the window: read again from i
+        };
+        let l = &b[i..end];
+        let l = if l.last() == Some(&b'\r') { &l[..l.len() - 1] } else { l };
+        if l.iter().any(|c| !c.is_ascii_whitespace()) {
+            return (Some((i, i + l.len())), next);
+        }
+        i = next;
+    }
+    (None, i)
+}
+
 /// Text of the head job's next chunk and the offset after it. Finished files move to the table (logged);
 /// None = nothing left (or the index is full: the queue is dropped).
 pub fn next_chunk() -> Option<(SBuf<{ CHUNK + 300 }>, u64)> {
@@ -135,9 +167,27 @@ pub fn next_chunk() -> Option<(SBuf<{ CHUNK + 300 }>, u64)> {
             continue;
         };
         j.size = size;
-        let k = cut(&b);
         let mut t = SBuf::new();
-        let _ = write!(t, "[{}] {}", j.path, core::str::from_utf8(&b[..k]).unwrap_or(""));
+        let k = if table_file(&j.path) {
+            let eof = j.off + b.len() as u64 >= size;
+            let (l, used) = next_line(&b, eof);
+            let Some((a, e)) = l else {
+                j.off = if used == 0 { size } else { j.off + used as u64 };
+                continue;
+            };
+            let line = core::str::from_utf8(&b[a..e]).unwrap_or("");
+            if j.head.is_none() {
+                j.head = Some(String::from(line)); // the header: no chunk of its own
+                j.off += used as u64;
+                continue;
+            }
+            let _ = write!(t, "[{}] {}\n{}", j.path, j.head.as_deref().unwrap_or(""), line);
+            used
+        } else {
+            let k = cut(&b);
+            let _ = write!(t, "[{}] {}", j.path, core::str::from_utf8(&b[..k]).unwrap_or(""));
+            k
+        };
         if memidx::room(t.as_str()).is_err() {
             crate::dlog!("index: full, file queue dropped ({} files)", s.q.len());
             s.q.clear();
@@ -178,5 +228,9 @@ pub fn selftest() -> bool {
     let p = fs::check("/notes/todo.txt") == Ok("notes/todo.txt") && fs::check("/") == Ok("") && fs::check("/a/").is_ok()
         && fs::check("notes").is_err() && fs::check("/a/../b").is_err() && fs::check("/a//b").is_err() && fs::check("/./a").is_err();
     let u = under("/notes/a.txt", "/notes") && !under("/notesx/a", "/notes") && under("/a", "/a");
-    c1 && c2 && p && u
+    let csv = b"\nname,age\r\n\nAnna,30\nLuca";
+    let r = next_line(csv, true) == (Some((1, 9)), 11) && next_line(&csv[11..], true) == (Some((1, 8)), 9)
+        && next_line(b"Luca", true) == (Some((0, 4)), 4) && next_line(b"  \n", true) == (None, 3)
+        && table_file("/demo/people.CSV") && !table_file("/a.txt");
+    c1 && c2 && p && u && r
 }

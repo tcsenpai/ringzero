@@ -54,9 +54,10 @@ drafts only). Results: [docs/T39_RESULT.md](docs/T39_RESULT.md).
 
 Embedder: Qwen3-Embedding-0.6B runs on the same asm engine by swapping the engine context (`g_ctx`) between
 whole forward calls, so the 2B's state is never touched. `/embed [-q] TEXT` prints a vector (dim 1024, about
-6 ms per token, 0.61 s per 100 tokens; cosine >= 0.9986 against the HF fp32 model), `/index add TEXT` stores a
-note in the RAM memory index (Q8_0 rows), `/search QUERY` returns the top 5 by embedding similarity, with BM25
-joining only for identifier-like queries or a strong keyword match, and shows which signal matched. The agent
+6 ms per token, 0.61 s per 100 tokens; cosine >= 0.9986 against the HF fp32 model), `/index add [-d YYYY-MM-DD]
+TEXT` stores a dated note in the RAM memory index (Q8_0 rows; `\n` is a line break, `\\` a backslash), `/search
+QUERY` returns the top 5 of the ranked answer (below, design A) with cos, BM25, the signal that matched, the score
+and the date, BM25 joining only for identifier-like queries or a strong keyword match. The agent
 has a `recall` tool over the same index (through agentd, below). Results: [docs/EMBEDDER_RESULT.md](docs/EMBEDDER_RESULT.md).
 
 File tree (T54 /proc, T55 the rest; the Unix principle: state as files). One mount table in fs.rs (`mount_of`)
@@ -87,7 +88,7 @@ FAT entries.
 | `/etc/hostname` | a FAT file, made as `ringzero` at boot when missing, logged as `host: NAME (/etc/hostname)` | anyone |
 | `/etc/os-release`, `/etc/passwd` | virtual: NAME, ID, ID_LIKE=unix, VERSION, VERSION_ID, PRETTY_NAME (the edition); `root:x:0:0:root:/:/bin/sh` | nobody |
 | `/tmp` | scratch on the disk: emptied at a boot that does not resume a hibernation image, kept when one resumes; not indexed | anyone |
-| `/var/lib/ringzero` | ringzero's own data: `mem/{journal,facts,episodes}.log`, `mem/index.bin`, `hib/image.bin`, `bootsnap.bin`, `cache/docs/` (document states), `layout` (the migration marker), `legacy/` | the kernel; the shell (`!rm` asks); the agent's write_file, mkdir and rm get `permission denied: ringzero's own data (use remember and forget)`, programs EACCES |
+| `/var/lib/ringzero` | ringzero's own data: `mem/{journal,facts,episodes}.log`, `mem/index.bin`, `mem/index.tsv`, `hib/image.bin`, `bootsnap.bin`, `cache/docs/` (document states), `layout` (the migration marker), `legacy/` | the kernel; the shell (`!rm` asks); the agent's write_file, mkdir and rm get `permission denied: ringzero's own data (use remember and forget)`, programs EACCES |
 
 Every other change under /proc, /sys, /dev and the two virtual /etc files fails with `read-only file system`
 (programs: EROFS 69). `!cat` and the agent's cat refuse a device but /dev/null (`is a device: read it with a
@@ -131,7 +132,7 @@ boot; the banner prints its size and free space. Shell: `!ls [PATH]`, `!cat PATH
 new line, parents created), `!mkdir PATH`, `!rm [-r] PATH` (asks y/N), `!df`, `!sync` (poweroff and reboot sync
 too). The agent has `ls`, `cat` (8 KiB tool cap), `write_file`, `mkdir` and `rm` (always asks the human y/N);
 paths must be absolute, without `.` or `..`, at most 255 bytes, files at most 64 KiB. Text files written through
-the shell or the agent are chunked (~1000 bytes, ~200-250 tokens) into the memory index in idle time at the
+the shell or the agent are chunked (~1000 bytes, ~200-250 tokens; a CSV or TSV file one row per chunk) into the memory index in idle time at the
 prompt, in slices that any keystroke or Ctrl-C ends within one embedder forward call; `/index stats` shows the
 queue, and `/search` or `recall` return the chunks as `[/path] text`. Results:
 [docs/M4_RESULT.md](docs/M4_RESULT.md).
@@ -144,7 +145,21 @@ and writes it through typed tools (`remember`, `forget` with y/N, `recall`), and
   is scanned to its last good record and a torn tail is cut.
 - The memory index is saved to `/var/lib/ringzero/mem/index.bin` with a header (embedder hash, dim, Q8_0 layout, chunker
   version, the size and mtime of each indexed file) and loaded at boot in about a millisecond; only files that
-  changed on the disk (also from the host) and new records are embedded again.
+  changed on the disk (also from the host) and new records are embedded again. Version 2 (T72) adds each entry's
+  date; every save also writes `/var/lib/ringzero/mem/index.tsv` (id, date, source, the first 80 bytes). A version 1
+  index (ringzero 0.1.1) loads: file chunks get their file's mtime, facts their record's time, every other entry the boot date, CSV files
+  are cut again, and the next idle save writes version 2.
+- Ranking, design A (T72, [docs/M_MEMA_RESULT.md](docs/M_MEMA_RESULT.md); the rules and weights frozen on the
+  host in T70, no model call): every entry carries a date (its record's time, a file's mtime); the score is the
+  cosine minus half the entry's hub score (mean cosine to its 10 nearest of 54 generic probe questions, embedded
+  with the manual vectors) minus owner penalties (0.03 for a memory of someone the query does not name, 0.06
+  when the query names an owner the memory lacks; relation words and an alias table of names); of the top 8
+  non-manual hits, those within 0.2 of the first with a vector cosine of 0.6 or more to it (not chunks of its own
+  file) are one record: the newest stands for it and the older ones leave the answer (they stay in the index and on disk; logged as
+  `supersede`); the best manual section goes first for any query it beats by 0.06 (and for a how-to message at
+  cos 0.55). Floors read the raw cosine. CSV and TSV files are indexed one row per entry, the header in front
+  (chunker version 2). On the T69 set the kernel finds the right entry first for 77 of 114 held-out answerable
+  queries (67.5%; host 79, 69.3%; before 51, 44.7%).
 - Boot snapshot cache: the prefilled system prompt + tools state (33 MiB) is saved to `/var/lib/ringzero/bootsnap.bin` and
   loaded at the next boot in about 0.2 s instead of a prefill (BIOS boot to the prompt 40.6 s cold, 11.9 s
   cached, before M4.8). Since the batched prefill (M4.8) a miss prefills the 1315-token prefix in 5.8 s instead of
@@ -182,24 +197,25 @@ It is compiled into the kernel (`include_str!`) and indexed one section per memo
 ...`, in idle time at the first boot (29 entries, about 20 s of idle embedding); the entries are saved with the
 index, and at every boot (and on `/index clear`) indexed sections that differ from the kernel's manual are dropped
 and missing ones queued, so editing one section re-embeds only that one. Manual sections are ranked apart from the
-user's memory: they never take one of the slot's recalled lines or one of `recall`'s top 3. A message that asks how
+user's memory: they never take one of the slot's recalled lines or one of `recall`'s top 3; the best one goes in
+front of them when it scores 0.06 above the best other hit (T72, any wording) or for a how-to message. A message that asks how
 to do something (`how do I`, `how can I`, `what command`, `come faccio`, `come posso`, `come` + a first-person
 verb such as `come torno`, ...) gets the best section as one slot line when it scores cos >= 0.55, within the same
 200-token budget, also in the middle of a conversation (then only that line, under its own header); the shell
-prints it as a `[memory] - ringzero manual, TITLE: ...` line. `recall` adds the best section after its top 3 when the
-user's message (or the query) is such a how-to question and the section scores cos >= 0.55. `/man TOPIC` prints the two best sections in full, `/man` the
+prints it as a `[memory] - ringzero manual, TITLE: ...` line. `recall` puts the best section before its top 3 when it
+goes first and scores cos >= 0.55. `/man TOPIC` prints the two best sections in full, `/man` the
 section titles. The system prompt and the boot prefix are unchanged. Results:
 [docs/T22_MANUAL_RESULT.md](docs/T22_MANUAL_RESULT.md).
 
 Manual vectors in the kernel (T38): with `MANUAL_VECTORS=1` (the default) the build links the 30 sections' Q8_0
-rows into the kernel (`include_bytes!`, 31580 bytes), so a fresh disk has the manual in its index at boot with no
+rows into the kernel, followed by the 54 hub probe questions' rows (T72; blob version 2, 93596 bytes), so a fresh disk has the manual in its index at boot with no
 embedder work. Two passes, both in `make kernel`: pass 1 builds an ISO without vectors (`MANUAL_VECTORS=0
 ISO=build/manvec-pass1.iso`), `tools/manvec.py` boots it headless once (QEMU/KVM, no disk, guest RAM
 `GUEST_MEM`) and types `/man dump`: the kernel embeds every section with its own Q8 embedder (the idle indexer's
 path) and prints the blob as hex lines with its FNV-1a; pass 2 is the normal kernel build with
 `RINGZERO_MANVEC=build/manvec.bin`. `build/manvec.bin` is rebuilt only when docs/MANUAL.md, the embedder file, the
-engine sources, embed.rs, memidx.rs or llm.rs change (about 90 s for the 4B, then the file is reused). The blob header
-holds a key: FNV over every section text (Asked-as lines included), the embedder hash, the engine build hash, the
+engine sources, embed.rs, memidx.rs, memrank.rs or llm.rs change (about 90 s for the 4B, then the file is reused). The blob header
+holds a key: FNV over every section text (Asked-as lines included) and probe question, the embedder hash, the engine build hash, the
 chunker version and the index dim. At boot a matching key puts the rows straight into the index (logged: `29 from
 the vectors in the kernel (no embedder work)`); any mismatch, or `MANUAL_VECTORS=0`, falls back to the idle
 indexing above, with the reason in the log. `/man check` embeds the sections again and compares them with the
@@ -484,7 +500,8 @@ Memory index, from the shell:
 
 ```
 /index add The backup job runs nightly at 02:00 with restic to a Backblaze bucket.
-/search how are my files backed up?      # 1. #0  cos 0.536  bm25  0.00  emb  The backup job ... (top 5)
+/index add -d 2026-11-02 ho cambiato telefono, adesso ho un iPhone 15   # dated that day
+/search how are my files backed up?      # 1. #0  cos 0.536  bm25  0.00  emb  score 0.31  DATE  The backup job ... (top 5)
 /embed -q how are my files backed up?    # dim, norm, token count, ms, first values (-v: all 1024)
 /index stats                             # entries, dim, bytes, embed time per 100 tokens
 /index dim 256                           # Matryoshka dim (multiple of 128, empty index only); /index clear
@@ -519,6 +536,7 @@ Versions are 0.1.N (`kernel/Cargo.toml`: the banner, `/proc/version` and `/etc/o
 | `kernel/src/sysfs.rs`, `devfs.rs` | /sys (class/block, bus/pci/devices, devices/system/cpu, power/state) and /dev (null, zero, random, urandom, tty, console, vda) (T55) |
 | `kernel/src/layout.rs` | /var/lib/ringzero paths, the migration of a 0.1 disk, /etc/hostname and the virtual /etc files, /tmp (T55) |
 | `kernel/src/agentd.rs`, `mstore.rs` | agentd: idle scheduler, context compiler, consolidation, fact validation, decision log, merge-legacy; record stores in /var/lib/ringzero/mem (M4.5, T55) |
+| `kernel/src/memidx.rs`, `memrank.rs` | memory index (Q8_0 rows, BM25 gate, dates, hub scores, index.bin v2) and the design A ranking rules (hub, owner, supersession and manual weights) (M4, T72) |
 | `kernel/src/multi.rs` | multi-stream decode (M4.8a): extra stream slots, fork, one pass over rows of several streams, the background stream for consolidation, `/multi` |
 | `kernel/src/gram.rs` | tool-call grammar: byte automaton from the tool schemas, vocab trie, logit mask (M4.7a) |
 | `kernel/src/docstate.rs` | document states: `/read`, the cache in /var/lib/ringzero/cache/docs (keys, load checks, cap, eviction) (M4.8c) |
@@ -540,6 +558,7 @@ Versions are 0.1.N (`kernel/Cargo.toml`: the banner, `/proc/version` and `/etc/o
 | `tools/export_weights.py` | safetensors -> .asmbin Q8_0 exporter, vendored from llm.asm (alesha-pro, MIT; Qwen3.5 v3 export from tcsenpai/llm.asm; `--v3` for Qwen3 / the embedder). Text-only Qwen3.5 checkpoints with tensors under `model.` instead of `model.language_model.` (fine-tunes such as NeoHorse-1-4B) are detected automatically; boot the file with `make iso MODEL=path/to/file.asmbin EDITION="..." GUEST_MEM=8G` |
 | `tools/embed_ref.py` | HF fp32 reference embeddings (transformers via uv) vs the kernel's `/embed -v` output, cosine per string |
 | `tools/retrieval.py` | the embedder spike's retrieval set as shell steps (`/index add`, `/search`) and its scorer |
+| `tools/memeval.py` | the T69 memory recall set (259 queries): host scorer, T70 designs, `ported` (design A as the kernel runs it), `inos` (the set through a booted kernel) |
 | `tools/hf_prefix.py` | renders the agent prefix with the HF chat template, compares token ids with the kernel |
 | `tools/kbdtest.py`, `tools/vnckeys.py` | keyboard tests: PS/2 via QEMU `sendkey`, VNC as a keysym-only client |
 | `tools/keymaps/it-altgr` | AltGr entries appended to QEMU's `it` VNC keymap (`make run-remote`) |

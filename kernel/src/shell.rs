@@ -623,8 +623,20 @@ fn index_cmd(a: &str) {
     let (sub, rest) = a.split_once(' ').map(|(x, y)| (x, y.trim())).unwrap_or((a, ""));
     match sub {
         "add" if !rest.is_empty() => {
+            // T72: `-d YYYY-MM-DD` dates the entry (default: now); `\n` in TEXT is a line break, as in !write
+            let (ts, rest) = match rest.strip_prefix("-d ").map(|r| r.trim_start().split_once(' ').unwrap_or((r, ""))) {
+                Some((d, t)) => match parse_date(d) {
+                    Some(ts) => (ts, t.trim()),
+                    None => return println!("[index] bad date '{}': use -d YYYY-MM-DD", d),
+                },
+                None => (crate::sys::unix_time(), rest),
+            };
+            if rest.is_empty() {
+                return println!("usage: /index add [-d YYYY-MM-DD] TEXT");
+            }
+            let text = unescape(rest);
             smp::park_phase(true);
-            let r = memidx::add(rest);
+            let r = memidx::add(&text, ts);
             smp::park_phase(false);
             match r {
                 Ok(x) => println!("[index] #{} added ({} tok embedded in {}.{:03} ms, {} entries)", x.id, x.info.n_tok,
@@ -645,8 +657,31 @@ fn index_cmd(a: &str) {
             Ok(()) => println!("[index] dim {}", memidx::dim()),
             Err(m) => println!("[index] {}", m),
         },
-        _ => println!("usage: /index add TEXT | stats | clear | dim N"),
+        _ => println!("usage: /index add [-d YYYY-MM-DD] TEXT | stats | clear | dim N"),
     }
+}
+
+/// `\\n` -> a line break, `\\\\` -> one backslash (any other backslash stays).
+fn unescape(t: &str) -> alloc::string::String {
+    let (mut o, mut it) = (alloc::string::String::new(), t.chars().peekable());
+    while let Some(c) = it.next() {
+        match (c, it.peek()) {
+            ('\\', Some('n')) => { it.next(); o.push('\n') }
+            ('\\', Some('\\')) => { it.next(); o.push('\\') }
+            _ => o.push(c),
+        }
+    }
+    o
+}
+
+/// "YYYY-MM-DD" as Unix seconds at 00:00 UTC.
+fn parse_date(d: &str) -> Option<u64> {
+    let mut it = d.split('-').map(|x| x.parse::<u32>().ok());
+    let (y, m, dd) = (it.next()??, it.next()??, it.next()??);
+    if it.next().is_some() || !(1970..=9999).contains(&y) || !(1..=12).contains(&m) || !(1..=31).contains(&dd) {
+        return None;
+    }
+    Some(crate::sys::days(y, m, dd) as u64 * 86_400)
 }
 
 fn search_cmd(q: &str) {
@@ -654,23 +689,27 @@ fn search_cmd(q: &str) {
         println!("usage: /search QUERY");
         return;
     }
-    let mut h = [memidx::Hit { id: 0, cos: 0.0, bm25: 0.0, via: memidx::Via::Emb }; 5];
-    smp::park_phase(true);
-    let r = memidx::search(q, &mut h);
-    smp::park_phase(false);
-    match r {
-        Ok(f) => {
-            for (i, x) in h[..f.n].iter().enumerate() {
-                let t = memidx::text(x.id);
-                let t = t[..agent::floor_char(t, 100)].replace('\n', " ");
-                println!("{}. #{:<4} cos {:.3}  bm25 {:>5.2}  {:<8} {}", i + 1, x.id, x.cos, x.bm25, x.via.name(), t);
-            }
-            println!("[search] {} entries, dim {}, query {} tok embedded in {}.{:03} ms, search {} us, BM25 {}",
-                memidx::len(), memidx::dim(), f.embed.n_tok, f.embed.us / 1000, f.embed.us % 1000, f.search_us,
-                if f.gate.is_empty() { "not used (embedding order)" } else { f.gate });
-        }
-        Err(m) => println!("[search] {}", m),
+    if memidx::len() == 0 {
+        return println!("[search] the memory index is empty");
     }
+    smp::park_phase(true);
+    let r = crate::agentd::ranked(q, false);
+    smp::park_phase(false);
+    let Some(f) = &r.found else { return println!("[search] no embedder") };
+    // T72: what recall and the slot rank (design A): the manual section first when it goes first, then the rest
+    for (i, x) in r.list().iter().take(5).enumerate() {
+        let t = memidx::text(x.id);
+        let t = t[..agent::floor_char(t, 100)].replace('\n', " ");
+        println!("{}. #{:<4} cos {:.3}  bm25 {:>5.2}  {:<8} score {:.3}  {}  {}", i + 1, x.id, x.cos, x.bm25, x.via.name(), x.score,
+            crate::agentd::date(memidx::ts(x.id)), t);
+    }
+    for (o, n) in &r.sup {
+        println!("   #{} superseded by #{} ({} < {})", o, n, crate::agentd::date(memidx::ts(*o)), crate::agentd::date(memidx::ts(*n)));
+    }
+    println!("[search] {} entries, dim {}, query {} tok embedded in {}.{:03} ms, search {} us, BM25 {}{}",
+        memidx::len(), memidx::dim(), f.embed.n_tok, f.embed.us / 1000, f.embed.us % 1000, f.search_us,
+        if f.gate.is_empty() { "not used (embedding order)" } else { f.gate },
+        if r.man_first { ", manual section first" } else { "" });
 }
 
 /// `!ls !cat !write !mkdir !rm !df !sync`

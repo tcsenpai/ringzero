@@ -22,8 +22,8 @@ Source: kernel/src/agentd.rs manual, queue_manual, rebuild, init
 - **THEN** the old entry of that section is dropped and only that section is queued
 
 ### Requirement: Baked manual vectors
-With MANUAL_VECTORS=1 the kernel SHALL carry the sections' Q8_0 vectors and store them in the index without embedder work when their header key matches the manual text, the embedder file, the engine build, the chunker version and the index dim; on any mismatch, or when built with MANUAL_VECTORS=0, the sections SHALL be queued for embedding in idle time instead.
-Source: kernel/src/agentd.rs queue_manual, baked; Makefile target model, target kernel
+With MANUAL_VECTORS=1 the kernel SHALL carry the sections' and the 54 hub probes' Q8_0 vectors and use them without embedder work when their key matches the manual, the probes, the embedder file, the engine build, the chunker version and the index dim; on a mismatch, or with MANUAL_VECTORS=0, the sections SHALL be embedded in idle time and the probes at the first search.
+Source: kernel/src/agentd.rs queue_manual, baked, man_key, ensure_probes; Makefile target model, target kernel
 
 #### Scenario: Key mismatch
 - **WHEN** the index dim was changed with `/index dim 256`
@@ -70,8 +70,8 @@ Source: kernel/src/agentd.rs RECALL_MIN, MAN_HEAD, recall, man_slot; kernel/src/
 - **THEN** no manual line is added to the message
 
 ### Requirement: Recall returns a manual section
-The recall tool SHALL append the best manual section to its top 3 hits when it scores 0.55 or more and the user's message or the query is a how-to question.
-Source: kernel/src/agentd.rs howto, recall
+The recall tool SHALL put the best manual section before its top 3 hits when the section goes first (a how-to question in the user's message or the query, or a score 0.06 over the best other hit) and its raw cosine is 0.55 or more.
+Source: kernel/src/agentd.rs howto, recall, ranked
 
 #### Scenario: How-to query
 - **WHEN** the model calls recall with query `how to hibernate`
