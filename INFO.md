@@ -6,7 +6,7 @@ to it on the same engine for a memory index. The inference engine is the NASM
 assembly from [llm.asm](https://github.com/alesha-pro/llm.asm) by Alexey Fateev (alesha-pro), taken via our fork [tcsenpai/llm.asm](https://github.com/tcsenpai/llm.asm) (branch `qwen35-kernel`, which adds Qwen3.5), linked
 into the kernel as objects.
 
-Status: **M4.7 constrained tool calls + hibernation** (with M5 MicroPython and M5b WASI; edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
+Status: release 0.1.1 beta, **M4.8 multi-stream decode and document states** (with M4.7 constrained tool calls and hibernation, M5 MicroPython and M5b WASI; edition "ringzero Qwen35@2b-Qwen3@0.6b", tag QweQwe). Boots under BIOS and UEFI, runs the APs in the engine's
 worker loop, passes the Qwen3.5-2B golden self-test, then serves a shell on COM1 (and PS/2, layouts
 `it`/`us`). Plain text talks to the system agent: the model calls kernel tools (memory, CPU, cores, log,
 uptime, settings, poweroff/reboot with confirmation) in its native tool format, up to 10 tool rounds per question
@@ -70,7 +70,7 @@ FAT entries.
 | `/proc/cpuinfo` | one block per core: processor, model name, cpu MHz (TSC), cpu cores, role; the CPUID flags (sse.., avx, avx2, fma, f16c, bmi2, avx512f, ...) in processor 0 only, the others say `flags: as processor 0` | nobody (read-only) |
 | `/proc/meminfo` | MemTotal, MemFree, MemAvailable, ModelWeights, SnapshotPool, KernelHeap in kB | nobody |
 | `/proc/uptime` | `25.36 seconds (0 h 0 min 25 s)`: the first field stays a number for programs | nobody |
-| `/proc/version` | `ringzero version 0.1.0 beta (EDITION), Rust kernel, x86_64, not Linux` | nobody |
+| `/proc/version` | `ringzero version 0.1.1 beta (EDITION), Rust kernel, x86_64, not Linux` | nobody |
 | `/proc/devices` | the active drivers: 16550 serial, PS/2 keyboard (layout), Limine framebuffer (size), virtio-blk (PCI slot, MiB), fatfs (FAT type, label, size, free), proc, sysfs, devfs | nobody |
 | `/proc/bus/pci/devices` | PCI bus 0 from the config ports: `bus:dev.fn vendor:device class (code), driver` | nobody |
 | `/proc/kmsg` | the kernel log ring (256 lines), oldest first, a snapshot at read time; the `read_log` tool gives the last n | nobody |
@@ -442,7 +442,7 @@ gray, y/N questions and errors bright red; user input and answers keep the defau
 the framebuffer parses SGR itself (0, 1 bold glyphs, 2 dim, 22, 30-37, 39, 90-97, 38;5;N, 38;2;R;G;B; other escapes
 are skipped), so WASI programs' own colors (`!run jq -C . /demo/data.json`) show on VNC too. `!set color off` gives
 plain text (programs' own escapes still pass). The serial test drivers in tools/ strip SGR codes before matching.
-The boot banner (R0 die, name, version 0.1.0 and the channel "beta", release name QweQwe from the edition tag, edition, models, machine) uses the same
+The boot banner (R0 die, name, version 0.1.1 from kernel/Cargo.toml and the channel "beta", release name QweQwe from the edition tag, edition, models, machine) uses the same
 colors.
 
 More:
@@ -489,6 +489,26 @@ Memory index, from the shell:
 /index stats                             # entries, dim, bytes, embed time per 100 tokens
 /index dim 256                           # Matryoshka dim (multiple of 128, empty index only); /index clear
 ```
+
+### Releases
+
+Versions are 0.1.N (`kernel/Cargo.toml`: the banner, `/proc/version` and `/etc/os-release` read it; the channel
+"beta" is `CHANNEL` in kernel/src/main.rs; the release name is the edition tag in the Makefile). Per release:
+
+1. Bump `kernel/Cargo.toml` (and its entry in `kernel/Cargo.lock`), write `release/NOTES.md` (what changed for the
+   user with measured numbers, upgrade note, known limits), update the version and file names in README.md,
+   docs/BETA.md, release/hf/README.md and site/index.html, regenerate docs/ROADMAP.md (`tools/roadmap.sh`), commit.
+2. On the build box: `tools/release.sh 0.1.N`. It refuses a dirty tree, a version that does not match
+   Cargo.toml or the notes, or a failing `tools/surfaces_check.sh`; runs `make beta` under the shared VM lock into
+   `build/release-0.1.N`; names the files `ringzero-0.1.N-{4b-q4,2b-q8}.iso` and `ringzero-0.1.N-disk.img.xz`;
+   writes `SHA256SUMS` and a Hugging Face upload folder `hf/`; prints the publish commands. It publishes nothing.
+3. Checks on those files, one VM at a time under `flock ~/.ringzero-vm.lock`: `tools/boottest.py` on both ISOs
+   (BIOS and UEFI, `SELFTEST PASS`), `!run rztest check A "B C"` on a copy of the new disk, a fresh disk, an
+   upgrade from the previous release's disk (data written on the old ISO is there after the first boot of the
+   new one), and `tools/tooleval.py` on the 4B q4 (M45 protocol: `SLOT=200`, constrain on, confidence on, a fresh
+   disk, 120 s idle), which must equal the last numbers on main.
+4. Review, then run the printed commands: tag and push, `gh release create` as a pre-release with the notes, the
+   disk and the sums, `hf upload` of `hf/` to the model repo, `tools/publish_site.sh`.
 
 ## Layout
 
