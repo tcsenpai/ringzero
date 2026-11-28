@@ -18,6 +18,10 @@ for f in "${ALL[@]}"; do [ -f "$f" ] || { say "missing $f"; continue; }; done
 grep -nEH '\b100\.[0-9]+\.[0-9]+\.[0-9]+\b|\b192\.168\.|fedorascale|fedoralan|tailscale|/Users/|/home/[a-z]' \
   "${ALL[@]}" 2>/dev/null && say "private-looking data above"
 
+# the repo is public: no host names or addresses in any doc, agent instructions or tool data either
+grep -nEiH '\b100\.[0-9]+\.[0-9]+\.[0-9]+\b|\b192\.168\.|fedoralan|fedorascale|tailscale|/Users/' \
+  AGENTS.md CLAUDE.md docs/*.md docs/research/*.md tools/*.py 2>/dev/null && say "private-looking data above (docs, tools)"
+
 # em dashes (en dashes in number ranges are tolerated)
 grep -nH $'\xe2\x80\x94' "${ALL[@]}" 2>/dev/null && say "em dash above"
 
