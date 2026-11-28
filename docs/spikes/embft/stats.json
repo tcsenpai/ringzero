@@ -1,0 +1,96 @@
+{
+ "seed": 7,
+ "personas": 120,
+ "dropped_as_leak": {
+  "query_exact": 137,
+  "query_6gram": 65,
+  "entry_8gram": 5
+ },
+ "classes": {
+  "para": {
+   "train": 356,
+   "dev": 44,
+   "it": 212,
+   "en": 188,
+   "templates": 4
+  },
+  "exact": {
+   "train": 360,
+   "dev": 40,
+   "it": 197,
+   "en": 203,
+   "templates": 2
+  },
+  "pointer": {
+   "train": 358,
+   "dev": 42,
+   "it": 202,
+   "en": 198,
+   "templates": 1
+  },
+  "sibling": {
+   "train": 216,
+   "dev": 36,
+   "it": 126,
+   "en": 126,
+   "templates": 21
+  },
+  "hub": {
+   "train": 368,
+   "dev": 32,
+   "it": 191,
+   "en": 209,
+   "templates": 1
+  },
+  "owner": {
+   "train": 352,
+   "dev": 48,
+   "it": 212,
+   "en": 188,
+   "templates": 4
+  },
+  "raw": {
+   "train": 102,
+   "dev": 18,
+   "it": 60,
+   "en": 60,
+   "templates": 20
+  },
+  "table": {
+   "train": 358,
+   "dev": 42,
+   "it": 202,
+   "en": 198,
+   "templates": 2
+  },
+  "temporal": {
+   "train": 354,
+   "dev": 46,
+   "it": 203,
+   "en": 197,
+   "templates": 1
+  },
+  "contradiction": {
+   "train": 361,
+   "dev": 39,
+   "it": 203,
+   "en": 197,
+   "templates": 1
+  },
+  "multihop": {
+   "train": 366,
+   "dev": 34,
+   "it": 208,
+   "en": 192,
+   "templates": 2
+  }
+ },
+ "train.jsonl": {
+  "bytes": 1394139,
+  "sha256": "f1ee4c6205ada9f7aa1ea544153e5b3bdc28199554e7fc17637b980743b9bc52"
+ },
+ "dev.jsonl": {
+  "bytes": 170399,
+  "sha256": "75000a63c0c406846025a7b9bcd443ebec2cff41c51f9b2088fdc993cfc6a31c"
+ }
+}

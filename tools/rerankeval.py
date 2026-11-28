@@ -185,14 +185,17 @@ def free_gb():
     return int(re.search(r"MemAvailable:\s+(\d+)", open("/proc/meminfo").read()).group(1)) >> 20
 
 
+EMBEDDER = "Qwen/Qwen3-Embedding-0.6B"  # memeval.py --embedder DIR: a fine-tuned checkpoint (tools/embft/train.py)
+
+
 def embedder():
     """emb(text) -> (L2-normalized last-token vector, tokens), as kernel/src/embed.rs (host: fp32, CPU, 8 threads).
     Dropping emb frees the model."""
     import torch
     from transformers import AutoTokenizer, AutoModel
     torch.set_num_threads(8)
-    et = AutoTokenizer.from_pretrained("Qwen/Qwen3-Embedding-0.6B")
-    em = AutoModel.from_pretrained("Qwen/Qwen3-Embedding-0.6B", dtype=torch.float32).eval()
+    et = AutoTokenizer.from_pretrained(EMBEDDER)
+    em = AutoModel.from_pretrained(EMBEDDER, dtype=torch.float32).eval()
 
     def emb(text):
         ids = et(text, add_special_tokens=False)["input_ids"] + [EOT]

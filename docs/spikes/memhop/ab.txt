@@ -1,0 +1,90 @@
+
+== held-out: top-1 (top-3) per class ==
+| class | n | A | budget | budget@on | join | join@on | prf | prf@on | req_names | req_names@on | req_key | req_key@on | join_def | prf_def | prf_def@on | req_names_def | req_names_def@on | req_key_def | req_key_def@on |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| para | 27 | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 26/27 (27) | 27/27 (27) | 26/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) | 27/27 (27) |
+| exact | 6 | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) | 5/6 (6) |
+| pointer | 9 | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) | 6/9 (7) |
+| sibling | 11 | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 7/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) | 6/11 (7) |
+| hub | 6 | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) | 4/6 (4) |
+| owner | 10 | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) | 4/10 (6) |
+| raw | 7 | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 3/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) | 5/7 (6) |
+| table | 7 | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 5/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) | 4/7 (7) |
+| temporal | 12 | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 5/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) | 9/12 (11) |
+| contradiction | 7 | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 1/7 (7) | 6/7 (7) | 5/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) | 6/7 (7) |
+| multihop | 12 | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 4/12 (6) | 3/12 (5) | 4/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) | 3/12 (5) |
+| noanswer | 12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 | 12/12 |
+| answerable | 114 | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 70/114 (93) | 79/114 (93) | 78/114 (93) | 79/114 (94) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) | 79/114 (93) |
+  multihop Wilson 95%: A (8.9, 53.2), budget (8.9, 53.2), budget@on (8.9, 53.2), join (8.9, 53.2), join@on (8.9, 53.2), prf (8.9, 53.2), prf@on (8.9, 53.2), req_names (8.9, 53.2), req_names@on (8.9, 53.2), req_key (8.9, 53.2), req_key@on (8.9, 53.2), join_def (13.8, 60.9), prf_def (8.9, 53.2), prf_def@on (13.8, 60.9), req_names_def (8.9, 53.2), req_names_def@on (8.9, 53.2), req_key_def (8.9, 53.2), req_key_def@on (8.9, 53.2)
+  answerable Wilson 95%: A (60.3, 77.0), budget (60.3, 77.0), budget@on (60.3, 77.0), join (60.3, 77.0), join@on (60.3, 77.0), prf (60.3, 77.0), prf@on (60.3, 77.0), req_names (60.3, 77.0), req_names@on (52.2, 69.8), req_key (60.3, 77.0), req_key@on (59.4, 76.2), join_def (60.3, 77.0), prf_def (60.3, 77.0), prf_def@on (60.3, 77.0), req_names_def (60.3, 77.0), req_names_def@on (60.3, 77.0), req_key_def (60.3, 77.0), req_key_def@on (60.3, 77.0)
+  A: vs A +0 -0; hop fired on 0/126
+  budget: vs A +0 -0; hop fired on 0/126
+  budget@on: vs A +0 -0; hop fired on 0/126
+  join: vs A +0 -0; hop fired on 0/126
+  join@on: vs A +0 -0; hop fired on 0/126
+  prf: vs A +0 -0; hop fired on 0/126
+  prf@on: vs A +0 -0; hop fired on 0/126
+  req_names: vs A +0 -0; hop fired on 0/126
+  req_names@on: vs A +3 -12; hop fired on 28/126
+  req_key: vs A +0 -0; hop fired on 0/126
+  req_key@on: vs A +0 -1; hop fired on 1/126
+  join_def: vs A +1 -1; hop fired on 5/126
+  prf_def: vs A +0 -0; hop fired on 0/126
+  prf_def@on: vs A +1 -1; hop fired on 4/126
+  req_names_def: vs A +0 -0; hop fired on 0/126
+  req_names_def@on: vs A +0 -0; hop fired on 2/126
+  req_key_def: vs A +0 -0; hop fired on 0/126
+  req_key_def@on: vs A +0 -0; hop fired on 2/126
+
+== all: top-1 (top-3) per class ==
+| class | n | A | budget | budget@on | join | join@on | prf | prf@on | req_names | req_names@on | req_key | req_key@on | join_def | prf_def | prf_def@on | req_names_def | req_names_def@on | req_key_def | req_key_def@on |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| para | 55 | 52/55 (54) | 52/55 (54) | 52/55 (54) | 52/55 (54) | 52/55 (54) | 52/55 (54) | 52/55 (54) | 52/55 (54) | 53/55 (54) | 52/55 (54) | 52/55 (54) | 51/55 (54) | 52/55 (54) | 51/55 (54) | 52/55 (54) | 52/55 (54) | 52/55 (54) | 52/55 (54) |
+| exact | 12 | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) | 10/12 (12) |
+| pointer | 19 | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 10/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) | 11/19 (15) |
+| sibling | 22 | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 10/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) | 9/22 (10) |
+| hub | 13 | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) | 6/13 (9) |
+| owner | 20 | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) | 14/20 (16) |
+| raw | 14 | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 6/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) | 9/14 (13) |
+| table | 15 | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 10/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) | 9/15 (13) |
+| temporal | 24 | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 10/24 (22) | 20/24 (22) | 19/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) | 20/24 (22) |
+| contradiction | 15 | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 2/15 (15) | 11/15 (15) | 10/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) | 11/15 (15) |
+| multihop | 25 | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 12/25 (17) | 9/25 (15) | 10/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) | 9/25 (15) |
+| noanswer | 25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 | 25/25 |
+| answerable | 234 | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 140/234 (194) | 160/234 (194) | 158/234 (194) | 162/234 (196) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) | 160/234 (194) |
+  multihop Wilson 95%: A (20.2, 55.5), budget (20.2, 55.5), budget@on (20.2, 55.5), join (20.2, 55.5), join@on (20.2, 55.5), prf (20.2, 55.5), prf@on (20.2, 55.5), req_names (20.2, 55.5), req_names@on (20.2, 55.5), req_key (20.2, 55.5), req_key@on (20.2, 55.5), join_def (30.0, 66.5), prf_def (20.2, 55.5), prf_def@on (23.4, 59.3), req_names_def (20.2, 55.5), req_names_def@on (20.2, 55.5), req_key_def (20.2, 55.5), req_key_def@on (20.2, 55.5)
+  answerable Wilson 95%: A (62.2, 74.0), budget (62.2, 74.0), budget@on (62.2, 74.0), join (62.2, 74.0), join@on (62.2, 74.0), prf (62.2, 74.0), prf@on (62.2, 74.0), req_names (62.2, 74.0), req_names@on (53.4, 65.9), req_key (62.2, 74.0), req_key@on (61.3, 73.2), join_def (63.0, 74.8), prf_def (62.2, 74.0), prf_def@on (62.2, 74.0), req_names_def (62.2, 74.0), req_names_def@on (62.2, 74.0), req_key_def (62.2, 74.0), req_key_def@on (62.2, 74.0)
+  A: vs A +0 -0; hop fired on 0/259
+  budget: vs A +0 -0; hop fired on 0/259
+  budget@on: vs A +0 -0; hop fired on 0/259
+  join: vs A +0 -0; hop fired on 0/259
+  join@on: vs A +0 -0; hop fired on 0/259
+  prf: vs A +0 -0; hop fired on 0/259
+  prf@on: vs A +0 -0; hop fired on 0/259
+  req_names: vs A +0 -0; hop fired on 0/259
+  req_names@on: vs A +5 -25; hop fired on 55/259
+  req_key: vs A +0 -0; hop fired on 0/259
+  req_key@on: vs A +0 -2; hop fired on 2/259
+  join_def: vs A +3 -1; hop fired on 8/259
+  prf_def: vs A +0 -0; hop fired on 0/259
+  prf_def@on: vs A +1 -1; hop fired on 6/259
+  req_names_def: vs A +0 -0; hop fired on 0/259
+  req_names_def@on: vs A +0 -0; hop fired on 3/259
+  req_key_def: vs A +0 -0; hop fired on 0/259
+  req_key_def@on: vs A +0 -0; hop fired on 2/259
+
+second-step query tokens, median: {'names0': 35, 'key0': 55, 'query': 34}
+
+held-out multihop, per variant (top-1 key):
+  cosa c'e' nella lista della spesa che mi ha mostra A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  where does my best friend live now?                A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:1 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  when is my best friend's birthday?                 A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  when is my girlfriend's birthday?                  A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:1 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  what's the email of my contact at Acme?            A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  quando fa il vaccino il cane di mia sorella?       A:1 budget:1 budget@on:1 join:1 join@on:1 prf:1 prf@on:1 req_names:1 req_names@on:1 req_key:1 req_key@on:1 join_def:1 prf_def:1 prf_def@on:1 req_names_def:1 req_names_def@on:1 req_key_def:1 req_key_def@on:1
+  che cosa mi ha prescritto il medico di base?       A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  what does my partner do for a living?              A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  when does the car I bought in October need its ins A:1 budget:1 budget@on:1 join:1 join@on:1 prf:1 prf@on:1 req_names:1 req_names@on:1 req_key:1 req_key@on:1 join_def:1 prf_def:1 prf_def@on:1 req_names_def:1 req_names_def@on:1 req_key_def:1 req_key_def@on:1
+  in che lingua vuole le risposte Ada?               A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0
+  how old is the person in people.csv with my brothe A:1 budget:1 budget@on:1 join:1 join@on:1 prf:1 prf@on:1 req_names:1 req_names@on:1 req_key:1 req_key@on:1 join_def:1 prf_def:1 prf_def@on:1 req_names_def:1 req_names_def@on:1 req_key_def:1 req_key_def@on:1
+  when is the staff meeting set by my new head teach A:0 budget:0 budget@on:0 join:0 join@on:0 prf:0 prf@on:0 req_names:0 req_names@on:0 req_key:0 req_key@on:0 join_def:0 prf_def:0 prf_def@on:0 req_names_def:0 req_names_def@on:0 req_key_def:0 req_key_def@on:0

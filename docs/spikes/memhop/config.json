@@ -1,0 +1,203 @@
+{
+ "A": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 1
+ },
+ "budget": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 3
+ },
+ "budget@on": {
+  "cfg": {
+   "var": "budget",
+   "hits": 48
+  },
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 3
+ },
+ "join": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 169
+ },
+ "join@on": {
+  "cfg": {
+   "var": "join",
+   "gate": null,
+   "ent": "alias",
+   "src": 1,
+   "B": 8,
+   "bonus": 0.0
+  },
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 169
+ },
+ "prf": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 97
+ },
+ "prf@on": {
+  "cfg": {
+   "var": "prf",
+   "gate": null,
+   "B": 8,
+   "w": 0.1,
+   "t": 0.3
+  },
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 97
+ },
+ "req_names": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ },
+ "req_names@on": {
+  "cfg": {
+   "var": "req",
+   "gate": null,
+   "by": "names",
+   "B": 8,
+   "w": 0.25,
+   "m": 0.0
+  },
+  "tune_top1": 70,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ },
+ "req_key": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ },
+ "req_key@on": {
+  "cfg": {
+   "var": "req",
+   "gate": null,
+   "by": "key",
+   "B": 8,
+   "w": 2.0,
+   "m": 0.0
+  },
+  "tune_top1": 80,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ },
+ "join_def": {
+  "cfg": {
+   "var": "join",
+   "gate": "def",
+   "ent": "words",
+   "src": 2,
+   "B": 8,
+   "bonus": 0.15
+  },
+  "tune_top1": 83,
+  "tune_top3": 102,
+  "tune_n": 120,
+  "tune_multihop": 8,
+  "grid": 225
+ },
+ "prf_def": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 97
+ },
+ "prf_def@on": {
+  "cfg": {
+   "var": "prf",
+   "gate": "def",
+   "B": 8,
+   "w": 0.1,
+   "t": 0.0
+  },
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 97
+ },
+ "req_names_def": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ },
+ "req_names_def@on": {
+  "cfg": {
+   "var": "req",
+   "gate": "def",
+   "by": "names",
+   "B": 8,
+   "w": 0.25,
+   "m": 0.0
+  },
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ },
+ "req_key_def": {
+  "cfg": {},
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ },
+ "req_key_def@on": {
+  "cfg": {
+   "var": "req",
+   "gate": "def",
+   "by": "key",
+   "B": 8,
+   "w": 0.25,
+   "m": 0.0
+  },
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120,
+  "tune_multihop": 6,
+  "grid": 81
+ }
+}

@@ -4,6 +4,7 @@
   memeval.py check            data self-check (gold keys exist, split, counts), no model
   memeval.py run OUT.json     host only (torch, transformers; CPU): embed corpus and queries, store every cosine
   memeval.py report OUT.json  top-1 / top-3 per class, pool and split; no-answer accuracy; the T63 check
+  --embedder DIR              (run, embed) use a fine-tuned checkpoint (tools/embft/train.py) instead of the stock one
 
 Corpus: tools/rerankeval.py's (55 memories, 32 manual sections, 14 file chunks, agentd's formats) plus the
 entries below. Dates are metadata (DATE): agentd stores no time in an index text, so today's ranking cannot
@@ -745,8 +746,8 @@ class View:
         return {None: self.text[d], "only": self.line[d]}.get(use_ctx, self.text[d] + " " + self.line[d])
 
 
-def rank(view, r, qi, cfg):
-    """The answer list for query r under cfg (a dict of rules; missing = off): [(key, score, via, index)]."""
+def adjusted(view, r, qi, cfg):
+    """Per entry: the query cosine minus the hub and owner penalties of cfg (what `search` ranks by)."""
     g = cfg.get
     al = view.al_ctx if g("own_ctx") else view.al_text
     q_own = owner(r["q"], al)
@@ -759,6 +760,13 @@ def rank(view, r, qi, cfg):
                 s[d] -= g("own1", 0)
             if q_own and not e_own & q_own:
                 s[d] -= g("own2", 0)
+    return s
+
+
+def rank(view, r, qi, cfg):
+    """The answer list for query r under cfg (a dict of rules; missing = off): [(key, score, via, index)]."""
+    g = cfg.get
+    s = adjusted(view, r, qi, cfg)
     h = search(r["q"], list(range(view.n)), view.etext, s, "always" if g("bm25") == "always" else True)
     seen, lst = set(), []
     for d, sc, via in h:  # several vectors of one manual section: the best one stands for it
@@ -964,6 +972,9 @@ def cost(vec, cx_path):
 
 if __name__ == "__main__":
     a = sys.argv
+    if "--embedder" in a:  # T74 eval hook: run / embed with a fine-tuned checkpoint instead of the stock embedder
+        rr.EMBEDDER = a.pop(a.index("--embedder") + 1)
+        a.remove("--embedder")
     {"run": lambda: run(a[2]), "report": lambda: report(a[2]), "check": check, "ctx": lambda: ctx(a[2]),
      "embed": lambda: embed_views(a[2], a[3] if len(a) > 3 else None),
      "tune": lambda: tune(a[2], a[3], a[4] if len(a) > 4 else None),
