@@ -4,6 +4,7 @@
   memeval.py check            data self-check (gold keys exist, split, counts), no model
   memeval.py run OUT.json     host only (torch, transformers; CPU): embed corpus and queries, store every cosine
   memeval.py report OUT.json  top-1 / top-3 per class, pool and split; no-answer accuracy; the T63 check
+  --embedder DIR              (run, embed) use a fine-tuned checkpoint (tools/embft/train.py) instead of the stock one
 
 Corpus: tools/rerankeval.py's (55 memories, 32 manual sections, 14 file chunks, agentd's formats) plus the
 entries below. Dates are metadata (DATE): agentd stores no time in an index text, so today's ranking cannot
@@ -971,6 +972,9 @@ def cost(vec, cx_path):
 
 if __name__ == "__main__":
     a = sys.argv
+    if "--embedder" in a:  # T74 eval hook: run / embed with a fine-tuned checkpoint instead of the stock embedder
+        rr.EMBEDDER = a.pop(a.index("--embedder") + 1)
+        a.remove("--embedder")
     {"run": lambda: run(a[2]), "report": lambda: report(a[2]), "check": check, "ctx": lambda: ctx(a[2]),
      "embed": lambda: embed_views(a[2], a[3] if len(a) > 3 else None),
      "tune": lambda: tune(a[2], a[3], a[4] if len(a) > 4 else None),
