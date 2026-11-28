@@ -51,6 +51,18 @@ for f in sys.argv[1:]:
 sys.exit(bad)
 EOF
 
+# Built-in manual: agentd::selftest needs every `## ` section, as "[manual: TITLE] BODY", within fidx::CHUNK + 300 bytes
+python3 - <<'EOF' || fail=1
+s = open("docs/MANUAL.md", encoding="utf-8").read()
+bad = 0
+for sec in s.split("\n## ")[1:]:
+    t, _, b = sec.partition("\n")
+    n = len(f"[manual: {t.strip()}] {b.strip()}".encode())
+    if n > 1300:
+        print(f"surfaces: MANUAL.md section '{t.strip()}' is {n} bytes, max 1300 (boot self test)"); bad = 1
+raise SystemExit(bad)
+EOF
+
 # OpenSpec (openspec/specs): commands and settings agree between the specs, INFO.md and /help
 python3 tools/spec_check.py || fail=1
 if command -v openspec >/dev/null; then
