@@ -163,3 +163,18 @@ last kernel changes after them (the `/help` text, the snapshot pool fix) were ch
 | 20 | Serial console typed into during boot | **pass** after a fix | input before the kernel's UART init failed its loopback self-test and left no serial console (4 of 4 boots of the 4B with the test driver); the init now retries |
 | 21 | Documented QEMU command (serial) | **pass** | the "How to run" command boots the 4B ISO to the prompt with a fresh disk |
 | 22 | User sign-off after their own runs | **open** | |
+
+## Checks for 0.1.1
+
+Run on 2026-11-28 on the Linux build box, QEMU/KVM, 8 vCPUs, one test guest at a time next to an unrelated
+running VM, on the files of `tools/release.sh 0.1.1` (INFO.md, Releases). The final files were rebuilt after the
+commit that records these results (the build takes the commit time as its epoch); they were booted again before publishing.
+
+| # | Check | Result | Evidence |
+|---|---|---|---|
+| 1 | Boot, both ISOs, BIOS and UEFI, fresh disk | **pass** | 2B: `SELFTEST PASS` (BIOS banner at 12.8 s, UEFI 26.4 s); 4B: self-test ids printed (the golden reference is the 2B), prompt reached; banner, `/proc/version` and `/etc/os-release` say `0.1.1 beta` |
+| 2 | Fresh disk | **pass** | `layout: new disk, ringzero's data goes to /var/lib/ringzero`; `/agentd`: `stores /var/lib/ringzero/mem`; `!ls /var/lib/ringzero`: `mem/`, `layout`, `bootsnap.bin` |
+| 3 | rztest (`!run rztest check A "B C"`) | **pass** | `rztest: PASS 20/20` on both editions. The test disk carried an rztest.wasm from before T55 (make wasm-apps kept an old build); `tools/wasm_apps.sh` now rebuilds it when its source changes, so the final disk has the T55 checks |
+| 4 | Upgrade from a 0.1.0 disk | **pass** | 0.1.0 2B ISO on a copy of the 0.1.0 `disk.img`: two `/remember` facts, a note, one turn, `!poweroff`. First 0.1.1 boot: `layout: copied /sys/mem/journal.log ... (170 B, verified)`, `facts.log (82 B, verified)`, commit marker, `layout: migrated 2 files, 0 KiB, 2 old caches dropped`; `/facts` lists both facts, `/agentd` `journal 5 records, 2 facts`, the note is intact, `/search dog Pixel` ranks the fact first (cos 0.747). Second boot: no `layout:` line, boot cache hit, the same facts |
+| 5 | tooleval, M45 protocol (4B q4 8G, `SLOT=200`, constrain on, confidence on, fresh disk, 120 s idle) | **pass**: equal to main | spike 24/30 correct, 22 first call right, 9 args exact; in-OS 26/32 correct, 24 first call right, info 5/8; calls 42 + 36; malformed 0, schema errors 0, grammar lines not valid 1; decode of the call rounds 20.4 / 19.2 tok/s (lower than on main: the box was shared, 84% RAM in use) |
+| 6 | `tools/surfaces_check.sh` | **pass** | |
