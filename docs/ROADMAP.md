@@ -68,7 +68,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
 ✓ 🟢 Memory systems survey: pick a design for agentd [E1]
-│   └── ○ 🟢 Decide the memory design (from T66) [E1]
+│   └── ○ 🟢 Decide the memory design (from T66) [E2] [blocked by T70, T71]
 ✓ 🟢 Agent-specific fine-tunes <= 4B (eval) [E1]
 ✓ 🟢 Reranker over the embedder's recall (spike) [E1]
 ○ 🟢 4B extra streams vs snapshot pool [E1]
@@ -89,7 +89,12 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 ○ 🔵 Native ELF in ring 3 (only if needed) [E1]
 ○ 🔵 Console: VNC-friendly scrolling [E1]
 ✓ 🔵 M7 Q4 weights for Qwen3.5-4B [E1]
-    └── T34: Beta release gate (circular)
+│   └── T34: Beta release gate (circular)
+✓ 🟠 Memory eval set: 250+ queries [E2]
+    ├── ○ 🟠 Host test: design A (kernel rules) + B offline (write-time enrichment) [E2]
+    │   └── T67: Decide the memory design (from T66) (circular)
+    └── ○ 🟢 Host test: design C (kernel-validated wiki written by the 2B) [E2]
+        └── T67: Decide the memory design (from T66) (circular)
 
-ℹ️ 68 task(s) shown
+ℹ️ 71 task(s) shown
 ```
