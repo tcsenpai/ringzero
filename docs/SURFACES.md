@@ -20,6 +20,7 @@ same piece of work, then `tools/surfaces_check.sh` must pass.
 | GitHub release notes | `release/NOTES.md` (per release) | `gh release create` | testers |
 | GitHub About | description, homepage, topics | `gh repo edit` | everyone |
 | Behaviour specs | `openspec/specs/*/spec.md` | GitHub | developers, agents: what the system does, with code sources |
+| Wiki | generated from `openspec/specs/` by `tools/wiki_gen.py` | `tools/publish_wiki.sh` (github.com/tcsenpai/ringzero/wiki) | developers, users: the specs as browsable pages, never edited by hand |
 | Result docs | `docs/*_RESULT.md` | GitHub | records of measurements: not rewritten, new results get new sections |
 
 Rules (also in AGENTS.md):

@@ -507,8 +507,8 @@ Versions are 0.1.N (`kernel/Cargo.toml`: the banner, `/proc/version` and `/etc/o
    upgrade from the previous release's disk (data written on the old ISO is there after the first boot of the
    new one), and `tools/tooleval.py` on the 4B q4 (M45 protocol: `SLOT=200`, constrain on, confidence on, a fresh
    disk, 120 s idle), which must equal the last numbers on main.
-4. Review, then run the printed commands: tag and push, `gh release create` as a pre-release with the notes, the
-   disk and the sums, `hf upload` of `hf/` to the model repo, `tools/publish_site.sh`.
+4. Review, then run the printed commands: tag and push, `gh release create` (marked latest) with the notes, the disk
+   and the sums, `hf upload` of `hf/` to the model repo, `tools/publish_site.sh`, `tools/publish_wiki.sh`.
 
 ## Layout
 

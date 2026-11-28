@@ -24,7 +24,7 @@ cd "$OUT"
 mv ringzero-beta-4b-q4.iso "ringzero-$V-4b-q4.iso"
 mv ringzero-beta-2b-q8.iso "ringzero-$V-2b-q8.iso"
 xz -9 -T1 -k -c disk.img > "ringzero-$V-disk.img.xz"
-sha256sum "ringzero-$V-4b-q4.iso" "ringzero-$V-2b-q8.iso" "ringzero-$V-disk.img.xz" disk.img > SHA256SUMS
+sha256sum "ringzero-$V-4b-q4.iso" "ringzero-$V-2b-q8.iso" "ringzero-$V-disk.img.xz" > SHA256SUMS
 mkdir hf
 for f in ../../release/hf/*; do ln -s "../$f" hf/; done
 for f in "ringzero-$V-4b-q4.iso" "ringzero-$V-2b-q8.iso" SHA256SUMS; do ln -s "../$f" hf/; done
@@ -37,8 +37,9 @@ release: $OUT ready for $V ($(git rev-parse --short HEAD)). Before publishing: I
 Publish (from this checkout, after review):
 
   git tag v$V && git push origin HEAD:main v$V     # this commit becomes main (fast-forward only)
-  gh release create v$V --prerelease --title "ringzero $V $(sed -n '1s/.*"\(.*\)".*/\1/p' release/NOTES.md) (beta)" \\
+  gh release create v$V --latest --title "ringzero $V $(sed -n '1s/.*"\(.*\)".*/\1/p' release/NOTES.md) (beta)" \\
     --notes-file release/NOTES.md $OUT/ringzero-$V-disk.img.xz $OUT/SHA256SUMS
   hf upload Pleistocene/ringzero $OUT/hf . --repo-type model --commit-message "ringzero $V"
   tools/publish_site.sh
+  tools/publish_wiki.sh
 EOF
