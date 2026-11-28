@@ -128,7 +128,7 @@ NEW_MEM = [
     ("hub_qa", "2026-11-26", "[episode 50] The user asked a few questions and the agent answered them."),
 ]
 NEW_FILES = {
-    "/home/stampante.txt": "Stampante ufficio: Brother HL-L2350DW\nIP 192.168.1.50\ntoner TN-2420, comprato a settembre\n",
+    "/home/stampante.txt": "Stampante ufficio: Brother HL-L2350DW\nIP 10.0.0.50\ntoner TN-2420, comprato a settembre\n",
     "/home/spese_novembre.csv": "data,voce,euro\n2026-11-02,spesa Coop,54.20\n2026-11-05,benzina,60.00\n2026-11-09,cena fuori,38.50\n"
                                 "2026-11-14,bolletta luce,72.10\n2026-11-21,libri,24.90\n2026-11-25,spesa Coop,61.35\n",
 }
@@ -216,7 +216,7 @@ NEW_Q = [
     ("what gift did I plan for my mum's birthday?", M, "multihop", "@mom_gift", "@mom_bday_b"),
     ("quando fa il vaccino il cane di mia sorella?", M, "multihop", "@rocco_vax", "m40"),
     ("che cosa mi ha prescritto il medico di base?", M, "multihop", "@prescription", "m50"),
-    ("which shell do I get when I ssh into fedoralan?", M, "multihop", "m2", "m3"),
+    ("which shell do I get when I ssh into buildbox?", M, "multihop", "m2", "m3"),
     ("what does my partner do for a living?", M, "multihop", "@giulia_job", "m25"),
     ("come si chiamano i figli di mia sorella?", M, "multihop", "@chiara_kids", "@sister_city"),
     ("with whom am I going to Kyoto?", M, "multihop", "@japan_with", "f:/home/viaggio_giappone.md"),
