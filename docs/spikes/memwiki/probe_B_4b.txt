@@ -1,0 +1,92 @@
+== 2 2025-04-10 shown ['user', 'preferences', 'diet'] (726 in, 88 out)
+WIKI: ada = email: ada.moretti@libero.it
+WIKI: ada = location: Italy
+WIKI: ada = language: Italian
+WIKI: ada = dietary: vegetarian (no meat, no fish)
+WIKI: ada = communication_style: informal, brief, no emojis
+WIKI: ada = security: no destructive commands without explicit confirmation
+
+OLD: none
+   REJ PAGE not grounded [] WIKI: ada = email: ada.moretti@libero.it
+   REJ PAGE not grounded [] WIKI: ada = location: Italy
+   REJ PAGE not grounded [] WIKI: ada = language: Italian
+   REJ PAGE not grounded [] WIKI: ada = dietary: vegetarian (no meat, no fish)
+   REJ PAGE not grounded [] WIKI: ada = communication_style: informal, brief, no emojis
+   REJ PAGE not grounded [] WIKI: ada = security: no destructive commands without explicit confirmation
+   REJ other not PAGE or OLD  OLD: none
+== 14 2025-12-01 shown ['passwords', 'machine', 'dev_tools'] (899 in, 184 out)
+WIKI: home = TLS certificate renewal deadline is December 15
+WIKI: home = backup runs nightly at 02:00 using restic to Backblaze
+WIKI: home = router is FritzBox 7590 with admin page at fritz.box
+WIKI: home = provider is TIM with 200 Mbps fiber
+WIKI: home = password manager is Bitwarden used with bw CLI (read-only)
+WIKI: home = home Wi-Fi password is stored in Bitwarden under 'casa-wifi'
+
+OLD: home = TLS certificate renewal deadline is unknown
+OLD: home = backup schedule and destination are unknown
+OLD: home = router model and admin URL are unknown
+OLD: home = internet provider and speed are unknown
+OLD: home = password manager and specific Wi-Fi password location are unknown
+   ok  PAGE  ['m6'] WIKI: home = TLS certificate renewal deadline is December 15
+   ok  PAGE  ['m22'] WIKI: home = backup runs nightly at 02:00 using restic to Backblaze
+   ok  PAGE  ['m47'] WIKI: home = router is FritzBox 7590 with admin page at fritz.box
+   ok  PAGE  ['m62'] WIKI: home = provider is TIM with 200 Mbps fiber
+   REJ PAGE not grounded [] WIKI: home = password manager is Bitwarden used with bw CLI (read-only)
+   REJ PAGE not grounded [] WIKI: home = home Wi-Fi password is stored in Bitwarden under 'casa-wifi'
+   REJ other not PAGE or OLD  OLD: home = TLS certificate renewal deadline is unknown
+   REJ other not PAGE or OLD  OLD: home = backup schedule and destination are unknown
+   REJ other not PAGE or OLD  OLD: home = router model and admin URL are unknown
+   REJ other not PAGE or OLD  OLD: home = internet provider and speed are unknown
+   REJ other not PAGE or OLD  OLD: home = password manager and specific Wi-Fi password location are unknown
+== 48 2026-09-20 shown ['school', 'user', 'marta'] (568 in, 19 out)
+WIKI: school = Elena Costa is the new principal
+OLD: school 1
+   REJ PAGE not grounded ['m65'] WIKI: school = Elena Costa is the new principal
+   REJ OLD no new line on that page  OLD: school 1
+== 50 2026-10-02 shown ['files', 'user', 'todo'] (756 in, 92 out)
+WIKI: user = email = ada.moretti@libero.it
+WIKI: user = job = mathematics teacher at a high school
+WIKI: user = location = Bologna
+WIKI: user = birthday = March 3rd
+WIKI: user = favorite_color = green
+WIKI: user = shoe_size = 43
+
+OLD: user = email = ada.moretti@libero.it
+   REJ PAGE not grounded [] WIKI: user = email = ada.moretti@libero.it
+   REJ PAGE not grounded [] WIKI: user = job = mathematics teacher at a high school
+   ok  PAGE  ['f:/home/viaggio_giappone.md'] WIKI: user = location = Bologna
+   REJ PAGE not grounded [] WIKI: user = birthday = March 3rd
+   REJ PAGE not grounded [] WIKI: user = favorite_color = green
+   REJ PAGE not grounded [] WIKI: user = shoe_size = 43
+   REJ other not PAGE or OLD  OLD: user = email = ada.moretti@libero.it
+== 59 2026-11-02 shown ['phone', 'internet', 'passwords'] (500 in, 17 out)
+WIKI: phone = iPhone 15
+OLD: phone 1
+   ok  PAGE  ['m56'] WIKI: phone = iPhone 15
+   ok  OLD  ['m55'] OLD: phone 1
+== 77 2026-11-22 shown ['backup', 'dev_tools', 'files'] (689 in, 21 out)
+WIKI: backup = bucket full
+OLD: backup 2
+OLD: backup 3
+   ok  PAGE  ['m77'] WIKI: backup = bucket full
+   ok  OLD  ['m76'] OLD: backup 2
+   REJ OLD no such line  OLD: backup 3
+== 82 2026-11-26 shown ['travel', 'marta', 'running'] (494 in, 25 out)
+WIKI: marta = arrives at station at 20:30
+OLD: marta 2
+   ok  PAGE  ['m89'] WIKI: marta = arrives at station at 20:30
+   ok  OLD  ['m88'] OLD: marta 2
+== 84 2026-11-27 shown ['machine', 'aios', 'files'] (887 in, 89 out)
+WIKI: machine = AMD Ryzen 9 5900X 12-Core Processor
+WIKI: machine = up 18 days
+WIKI: machine = 2057 MB free memory
+WIKI: machine = 18 GB free on /home
+WIKI: machine = sshd is running
+WIKI: machine = keyboard layout is Italian (it)
+   REJ PAGE not grounded [] WIKI: machine = AMD Ryzen 9 5900X 12-Core Processor
+   REJ PAGE not grounded [] WIKI: machine = up 18 days
+   REJ PAGE not grounded [] WIKI: machine = 2057 MB free memory
+   REJ PAGE not grounded [] WIKI: machine = 18 GB free on /home
+   REJ PAGE not grounded [] WIKI: machine = sshd is running
+   REJ PAGE not grounded [] WIKI: machine = keyboard layout is Italian (it)
+peak_temp=65 peak_ram_pct=42 now t=54 r=42

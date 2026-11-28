@@ -1,0 +1,86 @@
+# episodes
+- 2024-05-01 The user asked for their email to be saved and requested a summary of the conversation.
+- 2025-03-01 Ada, an Italian vegetarian user, requested informal and brief responses without emojis.
+- 2025-04-10 The user asked about the CPU, uptime, free memory, and disk space of the RingZero OS machine.
+- 2025-04-12 The user asked about nginx, sshd, and network connectivity, and I confirmed nginx is not installed while sshd is running and the network is functional.
+- 2025-05-05 The user asked about accessing a Fedora server via SSH and their preferences for development tools.
+- 2025-05-20 User introduced themselves as an editor using Helix with the catppuccin theme, a Rust developer, and mentioned an AIOS development branch named agentd.
+- 2025-06-01 User shared personal details about their work, location, and a meeting schedule.
+- 2025-06-15 The user asked to compile a Rust project and received an error about missing features, then mentioned a kernel panic condition.
+- 2025-07-01 The user shared their living expenses, password manager, Wi-Fi password, and file synchronization setup.
+- 2025-08-01 L'utente ha chiesto di impostare la tastiera italiana e ha chiesto informazioni sul disco di ringzero.
+- 2025-09-01 The user asked for a summary of their conversation history and provided details about their car, birthday, and partner.
+- 2025-10-10 User shared personal details about family members and pets.
+- 2025-11-01 User shared their name is Davide, their favorite color is green, and they listen to lo-fi and Brian Eno ambient music when they need to focus.
+- 2025-12-01 User requested a summary of their conversation with RingZero.
+- 2025-12-12 The user shared their work as an architect in Modena, their laptop model (ThinkPad X1 Carbon gen 11 with 32 GB), and their coffee preferences ( ristretto espresso without sugar, using a 3-cup moka pot with ground coffee).
+- 2026-01-05 User set a 10km goal under 50 minutes, plans to train on Mondays, Wednesdays, and Fridays at 7 AM, and noted a bill due on the 30th.
+- 2026-01-10 The user asked for a memory consolidation report for the agent subsystem.
+- 2026-01-22 The user asked about the number of open items in a specific markdown file, and the system provided the count.
+- 2026-02-01 The user asked for a brief OS response and then requested a summary of the conversation in a specific format.
+- 2026-02-10 The user asked for help with a phone number ending in 4411 and a doctor's appointment.
+- 2026-02-12 You mentioned your piano lessons are on Thursday at 18:00.
+- 2026-02-20 The user asked for a brief OS response about their sister's birthday.
+- 2026-02-27 User requested to write down their penicillin allergy.
+- 2026-03-03 The user mentioned their father's doctor is Dr. Neri.
+- 2026-03-15 The user asked about their sister's location in Parma.
+- 2026-03-30 The user expressed a preference for running in the morning before work.
+- 2026-04-02 The user mentioned their mother's birthday is May 12th.
+- 2026-04-04 The user introduced their cat's name as Mochi.
+- 2026-04-11 RingZero is an OS agent that briefly acknowledges the user's sleep schedule.
+- 2026-05-01 The user asked for a ceramic course as a birthday gift for their mother.
+- 2026-05-03 The user corrected RingZero about their mother's birthday.
+- 2026-05-05 The user mentioned their brother works as an engineer at Ferrari.
+- 2026-05-19 The user asked for a summary of the conversation and provided a specific format for the output.
+- 2026-06-01 The user introduced their sister using a MacBook Air and mentioned their doctor is Dr. Bianchi.
+- 2026-06-06 The user introduced their family details and requested a summary of the conversation.
+- 2026-06-10 User requested to avoid coriander in recipes.
+- 2026-07-01 The user asked about forgetting to water basil on the balcony, and the OS responded with a brief acknowledgment.
+- 2026-07-07 Ringzero asked the user about their brother's iPhone 13, and the user replied that their brother has an iPhone 13.
+- 2026-07-15 The user asked how to save ideas in a file and I confirmed it's done.
+- 2026-07-20 Rocco, the sister's dog, cannot eat cereals.
+- 2026-08-08 The user asked for a summary of the conversation and requested specific output formats.
+- 2026-08-21 User stated they drink decaf after 4 pm.
+- 2026-08-30 Davide moved to Lisbon for work.
+- 2026-09-01 The user asked about the contents of the /notes directory and confirmed that the shopping list is located in /notes/spesa.txt.
+- 2026-09-03 The user identified their team as Bologna and confirmed they have a stadium subscription.
+- 2026-09-12 The user switched to Fastweb and noticed their fiber speed is now 1 Giga.
+- 2026-09-15 Marta, la collega di matematica, ha scritto al sistema RingZero.
+- 2026-09-20 The user informed RingZero about Paolo Ferri's retirement and Elena Costa's appointment as the new principal.
+- 2026-09-25 The user provided details about a Brother HL-L2350DW Wi-Fi printer and asked to save specific information to a file.
+- 2026-10-02 The user asked for a Japan itinerary and received a brief summary. Marco Bianchi was identified as the contact for Acme.
+- 2026-10-05 The user started eating fish and became pescetarian.
+- 2026-10-08 The user moved their piano lesson to Saturday morning at 10.
+- 2026-10-12 User mentioned their neighbor Franco has a spare charger for their e-bike.
+- 2026-10-15 The user sold their Panda and now drives a Toyota Yaris hybrid.
+- 2026-10-20 The user scheduled a dentist appointment for November 4th at 9 AM and then reported updating their router firmware.
+- 2026-10-30 The user mentioned they are traveling to Japan with Davide.
+- 2026-10-31 The user expressed fear of flying and chose to sit in the aisle seat.
+- 2026-11-01 The user informed RingZero about a dentist appointment rescheduled to November 18th at 15:00.
+- 2026-11-02 The user changed their phone to an iPhone 15.
+- 2026-11-03 User asked for a CSV file of demo people and received a list of 5 people with their details.
+- 2026-11-04 The user asked to return a book on December 2nd and received a brief confirmation.
+- 2026-11-05 The user asked for a summary of the conversation and received a brief confirmation.
+- 2026-11-06 The user asked to run a Lua script in a demo environment, and the system executed it, printing results and writing output to a file.
+- 2026-11-08 User asked for a JSON file with jq, and the system executed the command successfully.
+- 2026-11-09 The user requested a brief response in Italian about a meeting location.
+- 2026-11-10 The user is reading "The Name of the Rose" and is halfway through the story.
+- 2026-11-11 Rocco requested a vaccine in January.
+- 2026-11-12 The user introduced their new email address and mentioned discarding an old one.
+- 2026-11-14 The user asked for the Carbonara recipe while cooking, and I provided the ingredients and instructions.
+- 2026-11-15 The user set a goal to run a half marathon in Bologna in March.
+- 2026-11-16 The user informed RingZero that the meeting with parents has moved to the Aula Magna.
+- 2026-11-17 The user asked to add two items to a todo list and requested a memory consolidation summary.
+- 2026-11-18 User asked for dinner plans with their sister.
+- 2026-11-19 Elena Costa requested the school schedule for December 5th.
+- 2026-11-20 The user asked about an Amazon package arriving on Thursday.
+- 2026-11-21 The user asked about a backup run and received confirmation, then discussed a family dinner plan.
+- 2026-11-22 The user asked about a backup log error and the system reported a full bucket.
+- 2026-11-23 The user asked about a news report regarding a package delivery date.
+- 2026-11-24 You asked for a brief OS response about your train to Milano, and I confirmed the departure time.
+- 2026-11-25 The user corrected a train schedule and mentioned a new rent increase.
+- 2026-11-26 Marta arrived at the station at 18.
+- 2026-11-26 Marta lost her train and arrives at 20:30.
+- 2026-11-26 The user asked about the cost of a specific ratio and the capital of Portugal.
+- 2026-11-27 The user greeted me in Italian and asked me to summarize the conversation.
+- 2026-11-28 The user asked about renewing a loan and the return date of a book.

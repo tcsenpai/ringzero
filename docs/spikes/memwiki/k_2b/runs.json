@@ -1,0 +1,4076 @@
+{
+ "model": "Qwen/Qwen3.5-2B",
+ "ask": "K",
+ "prefill": "",
+ "runs": [
+  {
+   "sess": 0,
+   "date": "2024-05-01",
+   "prompt_tok": 192,
+   "session_tok": 54,
+   "ask_tok": 138,
+   "out_tok": 33,
+   "query_embed_tok": 0,
+   "reembed_tok": 25,
+   "s_select": 0.0,
+   "s_gen": 9.78,
+   "shown": [],
+   "out": "EPISODE: The user asked for their email to be saved and requested a summary of the conversation.\nFACT: email = ada.moretti@libero.it",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for their email to be saved and requested a summary of the conversation.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: email = ada.moretti@libero.it",
+     "ok": true,
+     "page": "email",
+     "keys": [
+      "m74"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 1,
+   "date": "2025-03-01",
+   "prompt_tok": 286,
+   "session_tok": 149,
+   "ask_tok": 137,
+   "out_tok": 30,
+   "query_embed_tok": 98,
+   "reembed_tok": 0,
+   "s_select": 0.44,
+   "s_gen": 9.48,
+   "shown": [
+    "email",
+    "episodes"
+   ],
+   "out": "EPISODE: Ada, an Italian vegetarian user, requested informal and brief responses without emojis.\nFACT: user is a vegetarian for two years.",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Ada, an Italian vegetarian user, requested informal and brief responses without emojis.",
+     "ok": true,
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 2,
+   "date": "2025-04-10",
+   "prompt_tok": 534,
+   "session_tok": 397,
+   "ask_tok": 137,
+   "out_tok": 65,
+   "query_embed_tok": 180,
+   "reembed_tok": 0,
+   "s_select": 0.33,
+   "s_gen": 21.37,
+   "shown": [
+    "email",
+    "episodes"
+   ],
+   "out": "EPISODE: The user asked about the CPU, uptime, free memory, and disk space of the RingZero OS machine.\nFACT: user asked about system details\nFACT: user asked about CPU model\nFACT: user asked about uptime\nFACT: user asked about free memory\nFACT: user asked about disk space",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about the CPU, uptime, free memory, and disk space of the RingZero OS machine.",
+     "ok": true,
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 3,
+   "date": "2025-04-12",
+   "prompt_tok": 410,
+   "session_tok": 273,
+   "ask_tok": 137,
+   "out_tok": 49,
+   "query_embed_tok": 110,
+   "reembed_tok": 0,
+   "s_select": 0.23,
+   "s_gen": 16.02,
+   "shown": [
+    "episodes",
+    "email"
+   ],
+   "out": "EPISODE: The user asked about nginx, sshd, and network connectivity, and I confirmed nginx is not installed while sshd is running and the network is functional.\nFACT: user asked about nginx, sshd, and network connectivity",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about nginx, sshd, and network connectivity, and I confirmed nginx is not installed while sshd is running and the network is functional.",
+     "ok": true,
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 4,
+   "date": "2025-05-05",
+   "prompt_tok": 266,
+   "session_tok": 129,
+   "ask_tok": 137,
+   "out_tok": 59,
+   "query_embed_tok": 87,
+   "reembed_tok": 0,
+   "s_select": 0.19,
+   "s_gen": 18.36,
+   "shown": [
+    "episodes",
+    "email"
+   ],
+   "out": "EPISODE: The user asked about accessing a Fedora server via SSH and their preferences for development tools.\nFACT: user uses fish shell on Fedora server\nFACT: user prefers bun over npm\nFACT: user prefers uv for Python projects\nFACT: user prefers docker compose for multi-service apps",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about accessing a Fedora server via SSH and their preferences for development tools.",
+     "ok": true,
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 5,
+   "date": "2025-05-20",
+   "prompt_tok": 263,
+   "session_tok": 126,
+   "ask_tok": 137,
+   "out_tok": 87,
+   "query_embed_tok": 88,
+   "reembed_tok": 131,
+   "s_select": 0.2,
+   "s_gen": 26.42,
+   "shown": [
+    "episodes",
+    "email"
+   ],
+   "out": "EPISODE: User introduced themselves as an editor using Helix with the catppuccin theme, a Rust developer, and mentioned an AIOS development branch named agentd.\nFACT: user_editor=Helix\nFACT: user_theme=catppuccin\nFACT: user_language=Rust\nFACT: user_branch=agentd\nFACT: user_memory=4 GiB\nFACT: user_vcpus=8",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User introduced themselves as an editor using Helix with the catppuccin theme, a Rust developer, and mentioned an AIOS development branch named agentd.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor=Helix",
+     "ok": true,
+     "page": "user_editor",
+     "keys": [
+      "m26"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme=catppuccin",
+     "ok": true,
+     "page": "user_theme",
+     "keys": [
+      "m26"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language=Rust",
+     "ok": true,
+     "page": "user_language",
+     "keys": [
+      "m52"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch=agentd",
+     "ok": true,
+     "page": "user_branch",
+     "keys": [
+      "m14"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory=4 GiB",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m28"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus=8",
+     "ok": true,
+     "page": "user_vcpus",
+     "keys": [
+      "m28"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 6,
+   "date": "2025-06-01",
+   "prompt_tok": 278,
+   "session_tok": 121,
+   "ask_tok": 157,
+   "out_tok": 68,
+   "query_embed_tok": 79,
+   "reembed_tok": 23,
+   "s_select": 0.9,
+   "s_gen": 20.94,
+   "shown": [
+    "email",
+    "episodes",
+    "user_branch"
+   ],
+   "out": "EPISODE: User shared personal details about their work, location, and a meeting schedule.\nFACT: user_branch = ringzero\nFACT: user_editor = ringzero\nFACT: user_language = Italian\nFACT: user_memory = ringzero\nFACT: user_theme = ringzero\nFACT: user_vcpus = 1",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User shared personal details about their work, location, and a meeting schedule.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_vcpus",
+     "ok": true,
+     "page": "user_vcpus",
+     "keys": [
+      "m28"
+     ],
+     "text": "8"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus = 1",
+     "ok": true,
+     "page": "user_vcpus",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 7,
+   "date": "2025-06-15",
+   "prompt_tok": 301,
+   "session_tok": 144,
+   "ask_tok": 157,
+   "out_tok": 73,
+   "query_embed_tok": 80,
+   "reembed_tok": 20,
+   "s_select": 0.3,
+   "s_gen": 22.67,
+   "shown": [
+    "user_branch",
+    "user_language",
+    "episodes"
+   ],
+   "out": "EPISODE: The user asked to compile a Rust project and received an error about missing features, then mentioned a kernel panic condition.\nFACT: user_branch = ringzero\nFACT: user_editor = rust\nFACT: user_language = english\nFACT: user_memory = short\nFACT: user_theme = default\nFACT: user_vcpus = 1",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked to compile a Rust project and received an error about missing features, then mentioned a kernel panic condition.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_editor",
+     "ok": true,
+     "page": "user_editor",
+     "keys": [
+      "m26"
+     ],
+     "text": "Helix"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor = rust",
+     "ok": true,
+     "page": "user_editor",
+     "keys": [
+      "m24"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = english",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = short",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme = default",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus = 1",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 8,
+   "date": "2025-07-01",
+   "prompt_tok": 295,
+   "session_tok": 138,
+   "ask_tok": 157,
+   "out_tok": 49,
+   "query_embed_tok": 95,
+   "reembed_tok": 0,
+   "s_select": 0.32,
+   "s_gen": 15.22,
+   "shown": [
+    "user_memory",
+    "user_branch",
+    "episodes"
+   ],
+   "out": "EPISODE: The user shared their living expenses, password manager, Wi-Fi password, and file synchronization setup.\nFACT: user_language = Italian\nFACT: user_memory = RingZero OS\nFACT: user_vcpus = 2",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user shared their living expenses, password manager, Wi-Fi password, and file synchronization setup.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = RingZero OS",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus = 2",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 9,
+   "date": "2025-08-01",
+   "prompt_tok": 327,
+   "session_tok": 170,
+   "ask_tok": 157,
+   "out_tok": 51,
+   "query_embed_tok": 72,
+   "reembed_tok": 24,
+   "s_select": 0.18,
+   "s_gen": 16.55,
+   "shown": [
+    "user_memory",
+    "user_language",
+    "user_branch"
+   ],
+   "out": "EPISODE: L'utente ha chiesto di impostare la tastiera italiana e ha chiesto informazioni sul disco di ringzero.\nFACT: user_language = it\nFACT: user_memory = 1.2 GB\nFACT: user_theme = default",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: L'utente ha chiesto di impostare la tastiera italiana e ha chiesto informazioni sul disco di ringzero.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = it",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_memory",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m28"
+     ],
+     "text": "4 GiB"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = 1.2 GB",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m46"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme = default",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 10,
+   "date": "2025-08-10",
+   "prompt_tok": 280,
+   "session_tok": 123,
+   "ask_tok": 157,
+   "out_tok": 18,
+   "query_embed_tok": 65,
+   "reembed_tok": 0,
+   "s_select": 0.29,
+   "s_gen": 6.43,
+   "shown": [
+    "user_memory",
+    "user_branch",
+    "episodes"
+   ],
+   "out": "FACT: user_asked_to_run_demo_stats\nFACT: user_wrote_report_json",
+   "log": []
+  },
+  {
+   "sess": 11,
+   "date": "2025-09-01",
+   "prompt_tok": 274,
+   "session_tok": 117,
+   "ask_tok": 157,
+   "out_tok": 74,
+   "query_embed_tok": 77,
+   "reembed_tok": 0,
+   "s_select": 0.2,
+   "s_gen": 22.76,
+   "shown": [
+    "user_language",
+    "user_vcpus",
+    "user_branch"
+   ],
+   "out": "EPISODE: The user asked for a summary of their conversation history and provided details about their car, birthday, and partner.\nFACT: user_language=Italian\nFACT: user_branch=ringzero\nFACT: user_editor=ringzero\nFACT: user_memory=ringzero\nFACT: user_theme=ringzero\nFACT: user_vcpus=1",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a summary of their conversation history and provided details about their car, birthday, and partner.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language=Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus=1",
+     "ok": false,
+     "why": "duplicate of a live line",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 12,
+   "date": "2025-10-10",
+   "prompt_tok": 270,
+   "session_tok": 113,
+   "ask_tok": 157,
+   "out_tok": 63,
+   "query_embed_tok": 75,
+   "reembed_tok": 0,
+   "s_select": 0.18,
+   "s_gen": 19.56,
+   "shown": [
+    "email",
+    "user_theme",
+    "user_language"
+   ],
+   "out": "EPISODE: User shared personal details about family members and pets.\nFACT: user_branch = ringzero\nFACT: user_editor = ringzero\nFACT: user_language = Italian\nFACT: user_memory = ringzero\nFACT: user_theme = ringzero\nFACT: user_vcpus = 1",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User shared personal details about family members and pets.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus = 1",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 13,
+   "date": "2025-11-01",
+   "prompt_tok": 276,
+   "session_tok": 119,
+   "ask_tok": 157,
+   "out_tok": 63,
+   "query_embed_tok": 78,
+   "reembed_tok": 46,
+   "s_select": 0.18,
+   "s_gen": 19.34,
+   "shown": [
+    "user_memory",
+    "user_language",
+    "user_theme"
+   ],
+   "out": "EPISODE: User shared their name is Davide, their favorite color is green, and they listen to lo-fi and Brian Eno ambient music when they need to focus.\nFACT: user_name=Davide\nFACT: user_color=green\nFACT: user_music=lo-fi and Brian Eno ambient",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User shared their name is Davide, their favorite color is green, and they listen to lo-fi and Brian Eno ambient music when they need to focus.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=Davide",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m93"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_color=green",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_music=lo-fi and Brian Eno ambient",
+     "ok": true,
+     "page": "user_music",
+     "keys": [
+      "m33"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 14,
+   "date": "2025-12-01",
+   "prompt_tok": 308,
+   "session_tok": 145,
+   "ask_tok": 163,
+   "out_tok": 40,
+   "query_embed_tok": 101,
+   "reembed_tok": 0,
+   "s_select": 0.44,
+   "s_gen": 13.04,
+   "shown": [
+    "user_branch",
+    "user_memory",
+    "user_language"
+   ],
+   "out": "EPISODE: User requested a summary of their conversation with RingZero.\nFACT: user_name = ringzero\nFACT: user_language = english\nFACT: user_memory = brief conversation summary provided",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User requested a summary of their conversation with RingZero.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = english",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = brief conversation summary provided",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 15,
+   "date": "2025-12-12",
+   "prompt_tok": 293,
+   "session_tok": 130,
+   "ask_tok": 163,
+   "out_tok": 104,
+   "query_embed_tok": 95,
+   "reembed_tok": 65,
+   "s_select": 0.21,
+   "s_gen": 31.2,
+   "shown": [
+    "user_memory",
+    "user_vcpus",
+    "user_theme"
+   ],
+   "out": "EPISODE: The user shared their work as an architect in Modena, their laptop model (ThinkPad X1 Carbon gen 11 with 32 GB), and their coffee preferences ( ristretto espresso without sugar, using a 3-cup moka pot with ground coffee).\nFACT: user_name = Giulia\nFACT: user_language = English\nFACT: user_memory = Architecture, Modena, ThinkPad X1 Carbon gen 11, 32 GB, ristretto espresso, moka pot",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user shared their work as an architect in Modena, their laptop model (ThinkPad X1 Carbon gen 11 with 32 GB), and their coffee preferences ( ristretto espresso without sugar, using a 3-cup moka pot with ground coffee).",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m93"
+     ],
+     "text": "Davide"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Giulia",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m101"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_memory",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m46"
+     ],
+     "text": "1.2 GB"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Architecture, Modena, ThinkPad X1 Carbon gen 11, 32 GB, ristretto espresso, moka pot",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m53"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 16,
+   "date": "2026-01-05",
+   "prompt_tok": 306,
+   "session_tok": 143,
+   "ask_tok": 163,
+   "out_tok": 97,
+   "query_embed_tok": 111,
+   "reembed_tok": 23,
+   "s_select": 0.49,
+   "s_gen": 29.76,
+   "shown": [
+    "user_memory",
+    "user_theme",
+    "user_vcpus"
+   ],
+   "out": "EPISODE: User set a 10km goal under 50 minutes, plans to train on Mondays, Wednesdays, and Fridays at 7 AM, and noted a bill due on the 30th.\nFACT: user_name=RingZero\nFACT: user_language=Italian\nFACT: user_memory=Running goal: 10km under 50 mins\nFACT: user_theme=Minimalist\nFACT: user_vcpus=2",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User set a 10km goal under 50 minutes, plans to train on Mondays, Wednesdays, and Fridays at 7 AM, and noted a bill due on the 30th.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language=Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory=Running goal: 10km under 50 mins",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme=Minimalist",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_vcpus",
+     "ok": true,
+     "page": "user_vcpus",
+     "keys": [],
+     "text": "1"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus=2",
+     "ok": true,
+     "page": "user_vcpus",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 17,
+   "date": "2026-01-10",
+   "prompt_tok": 237,
+   "session_tok": 74,
+   "ask_tok": 163,
+   "out_tok": 41,
+   "query_embed_tok": 55,
+   "reembed_tok": 43,
+   "s_select": 0.28,
+   "s_gen": 12.64,
+   "shown": [
+    "user_branch",
+    "episodes",
+    "user_memory"
+   ],
+   "out": "EPISODE: The user asked for a memory consolidation report for the agent subsystem.\nFACT: user_name = Davide\nFACT: user_language = English\nFACT: user_memory = M4 milestone report",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a memory consolidation report for the agent subsystem.",
+     "ok": true,
+     "keys": [
+      "m19"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m101"
+     ],
+     "text": "Giulia"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Davide",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m95"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_memory",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m53"
+     ],
+     "text": "Architecture, Modena, ThinkPad X1 Carbon gen 11, 32 GB, ristretto espresso, moka pot"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = M4 milestone report",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m19"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 18,
+   "date": "2026-01-22",
+   "prompt_tok": 287,
+   "session_tok": 124,
+   "ask_tok": 163,
+   "out_tok": 52,
+   "query_embed_tok": 63,
+   "reembed_tok": 24,
+   "s_select": 0.39,
+   "s_gen": 16.08,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_theme"
+   ],
+   "out": "EPISODE: The user asked about the number of open items in a specific markdown file, and the system provided the count.\nFACT: user_name = RingZero\nFACT: user_language = English\nFACT: user_memory = 14 open items",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about the number of open items in a specific markdown file, and the system provided the count.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_memory",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m19"
+     ],
+     "text": "M4 milestone report"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = 14 open items",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m34"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 19,
+   "date": "2026-02-01",
+   "prompt_tok": 212,
+   "session_tok": 49,
+   "ask_tok": 163,
+   "out_tok": 58,
+   "query_embed_tok": 40,
+   "reembed_tok": 20,
+   "s_select": 0.26,
+   "s_gen": 17.88,
+   "shown": [
+    "user_branch",
+    "user_language",
+    "user_memory"
+   ],
+   "out": "EPISODE: The user asked for a brief OS response and then requested a summary of the conversation in a specific format.\nFACT: user_name = Giulia\nFACT: user_language = English\nFACT: user_memory = Memory consolidation (internal: the user does not see this reply)",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a brief OS response and then requested a summary of the conversation in a specific format.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m95"
+     ],
+     "text": "Davide"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Giulia",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m96"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Memory consolidation (internal: the user does not see this reply)",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 20,
+   "date": "2026-02-10",
+   "prompt_tok": 244,
+   "session_tok": 81,
+   "ask_tok": 163,
+   "out_tok": 49,
+   "query_embed_tok": 67,
+   "reembed_tok": 0,
+   "s_select": 0.29,
+   "s_gen": 15.33,
+   "shown": [
+    "episodes",
+    "user_branch",
+    "user_vcpus"
+   ],
+   "out": "EPISODE: The user asked for help with a phone number ending in 4411 and a doctor's appointment.\nFACT: user_name = RingZero\nFACT: user_language = Italian\nFACT: user_memory = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for help with a phone number ending in 4411 and a doctor's appointment.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 21,
+   "date": "2026-02-12",
+   "prompt_tok": 214,
+   "session_tok": 51,
+   "ask_tok": 163,
+   "out_tok": 27,
+   "query_embed_tok": 39,
+   "reembed_tok": 20,
+   "s_select": 0.14,
+   "s_gen": 8.71,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_branch"
+   ],
+   "out": "EPISODE: You mentioned your piano lessons are on Thursday at 18:00.\nFACT: user_music = piano",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: You mentioned your piano lessons are on Thursday at 18:00.",
+     "ok": true,
+     "keys": [
+      "m72"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_music",
+     "ok": true,
+     "page": "user_music",
+     "keys": [
+      "m33"
+     ],
+     "text": "lo-fi and Brian Eno ambient"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_music = piano",
+     "ok": true,
+     "page": "user_music",
+     "keys": [
+      "m72"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 22,
+   "date": "2026-02-20",
+   "prompt_tok": 215,
+   "session_tok": 52,
+   "ask_tok": 163,
+   "out_tok": 25,
+   "query_embed_tok": 42,
+   "reembed_tok": 20,
+   "s_select": 0.24,
+   "s_gen": 8.1,
+   "shown": [
+    "user_name",
+    "user_branch",
+    "user_memory"
+   ],
+   "out": "EPISODE: The user asked for a brief OS response about their sister's birthday.\nFACT: user_name = Chiara",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a brief OS response about their sister's birthday.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m96"
+     ],
+     "text": "Giulia"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Chiara",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m107"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 23,
+   "date": "2026-02-27",
+   "prompt_tok": 212,
+   "session_tok": 49,
+   "ask_tok": 163,
+   "out_tok": 26,
+   "query_embed_tok": 36,
+   "reembed_tok": 0,
+   "s_select": 0.24,
+   "s_gen": 8.48,
+   "shown": [
+    "user_memory",
+    "user_branch",
+    "user_theme"
+   ],
+   "out": "EPISODE: User requested to write down their penicillin allergy.\nFACT: user_allergy_penicillin = yes",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User requested to write down their penicillin allergy.",
+     "ok": true,
+     "keys": [
+      "m128"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_allergy_penicillin = yes",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 24,
+   "date": "2026-03-03",
+   "prompt_tok": 212,
+   "session_tok": 49,
+   "ask_tok": 163,
+   "out_tok": 25,
+   "query_embed_tok": 40,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 8.1,
+   "shown": [
+    "email",
+    "user_branch",
+    "episodes"
+   ],
+   "out": "EPISODE: The user mentioned their father's doctor is Dr. Neri.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user mentioned their father's doctor is Dr. Neri.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 25,
+   "date": "2026-03-15",
+   "prompt_tok": 208,
+   "session_tok": 45,
+   "ask_tok": 163,
+   "out_tok": 38,
+   "query_embed_tok": 35,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 11.98,
+   "shown": [
+    "user_name",
+    "email",
+    "episodes"
+   ],
+   "out": "EPISODE: The user asked about their sister's location in Parma.\nFACT: user_name = RingZero\nFACT: user_language = Italian\nFACT: user_memory = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about their sister's location in Parma.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 26,
+   "date": "2026-03-30",
+   "prompt_tok": 211,
+   "session_tok": 48,
+   "ask_tok": 163,
+   "out_tok": 24,
+   "query_embed_tok": 39,
+   "reembed_tok": 0,
+   "s_select": 0.14,
+   "s_gen": 8.15,
+   "shown": [
+    "user_memory",
+    "user_theme",
+    "user_vcpus"
+   ],
+   "out": "EPISODE: The user expressed a preference for running in the morning before work.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user expressed a preference for running in the morning before work.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 27,
+   "date": "2026-04-02",
+   "prompt_tok": 214,
+   "session_tok": 51,
+   "ask_tok": 163,
+   "out_tok": 26,
+   "query_embed_tok": 40,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 16.83,
+   "shown": [
+    "user_branch",
+    "user_language",
+    "user_memory"
+   ],
+   "out": "EPISODE: The user mentioned their mother's birthday is May 12th.\nFACT: user_name = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user mentioned their mother's birthday is May 12th.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 28,
+   "date": "2026-04-04",
+   "prompt_tok": 211,
+   "session_tok": 48,
+   "ask_tok": 163,
+   "out_tok": 23,
+   "query_embed_tok": 38,
+   "reembed_tok": 20,
+   "s_select": 0.43,
+   "s_gen": 18.74,
+   "shown": [
+    "user_theme",
+    "email",
+    "user_name"
+   ],
+   "out": "EPISODE: The user introduced their cat's name as Mochi.\nFACT: user_name = Giulia",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user introduced their cat's name as Mochi.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m107"
+     ],
+     "text": "Chiara"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Giulia",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m108"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 29,
+   "date": "2026-04-11",
+   "prompt_tok": 220,
+   "session_tok": 57,
+   "ask_tok": 163,
+   "out_tok": 26,
+   "query_embed_tok": 46,
+   "reembed_tok": 0,
+   "s_select": 0.84,
+   "s_gen": 18.23,
+   "shown": [
+    "user_memory",
+    "user_branch",
+    "user_theme"
+   ],
+   "out": "EPISODE: RingZero is an OS agent that briefly acknowledges the user's sleep schedule.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: RingZero is an OS agent that briefly acknowledges the user's sleep schedule.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 30,
+   "date": "2026-05-01",
+   "prompt_tok": 217,
+   "session_tok": 54,
+   "ask_tok": 163,
+   "out_tok": 27,
+   "query_embed_tok": 45,
+   "reembed_tok": 0,
+   "s_select": 0.27,
+   "s_gen": 18.65,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked for a ceramic course as a birthday gift for their mother.\nFACT: user_name = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a ceramic course as a birthday gift for their mother.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 31,
+   "date": "2026-05-03",
+   "prompt_tok": 218,
+   "session_tok": 55,
+   "ask_tok": 163,
+   "out_tok": 23,
+   "query_embed_tok": 45,
+   "reembed_tok": 0,
+   "s_select": 0.3,
+   "s_gen": 14.32,
+   "shown": [
+    "user_memory",
+    "user_branch",
+    "episodes"
+   ],
+   "out": "EPISODE: The user corrected RingZero about their mother's birthday.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user corrected RingZero about their mother's birthday.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 32,
+   "date": "2026-05-05",
+   "prompt_tok": 210,
+   "session_tok": 47,
+   "ask_tok": 163,
+   "out_tok": 23,
+   "query_embed_tok": 38,
+   "reembed_tok": 20,
+   "s_select": 0.25,
+   "s_gen": 13.28,
+   "shown": [
+    "email",
+    "user_language",
+    "user_editor"
+   ],
+   "out": "EPISODE: The user mentioned their brother works as an engineer at Ferrari.\nFACT: user_branch = Ferrari",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user mentioned their brother works as an engineer at Ferrari.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_branch",
+     "ok": true,
+     "page": "user_branch",
+     "keys": [
+      "m14"
+     ],
+     "text": "agentd"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch = Ferrari",
+     "ok": true,
+     "page": "user_branch",
+     "keys": [
+      "m111"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 33,
+   "date": "2026-05-19",
+   "prompt_tok": 213,
+   "session_tok": 50,
+   "ask_tok": 163,
+   "out_tok": 220,
+   "query_embed_tok": 38,
+   "reembed_tok": 0,
+   "s_select": 0.48,
+   "s_gen": 63.5,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked for a summary of the conversation and provided a specific format for the output.\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\nFACT: key = value\n",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a summary of the conversation and provided a specific format for the output.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: key = value",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 34,
+   "date": "2026-06-01",
+   "prompt_tok": 234,
+   "session_tok": 71,
+   "ask_tok": 163,
+   "out_tok": 45,
+   "query_embed_tok": 49,
+   "reembed_tok": 20,
+   "s_select": 0.14,
+   "s_gen": 13.56,
+   "shown": [
+    "email",
+    "user_theme",
+    "episodes"
+   ],
+   "out": "EPISODE: The user introduced their sister using a MacBook Air and mentioned their doctor is Dr. Bianchi.\nFACT: user_name = Mia\nFACT: user_language = Italian\nFACT: user_memory = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user introduced their sister using a MacBook Air and mentioned their doctor is Dr. Bianchi.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m108"
+     ],
+     "text": "Giulia"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Mia",
+     "ok": true,
+     "page": "user_name",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 35,
+   "date": "2026-06-06",
+   "prompt_tok": 212,
+   "session_tok": 49,
+   "ask_tok": 163,
+   "out_tok": 51,
+   "query_embed_tok": 38,
+   "reembed_tok": 20,
+   "s_select": 0.23,
+   "s_gen": 15.05,
+   "shown": [
+    "user_name",
+    "email",
+    "user_branch"
+   ],
+   "out": "EPISODE: The user introduced their family details and requested a summary of the conversation.\nFACT: user_name = Chiara\nFACT: user_language = Italian\nFACT: user_memory = Memory consolidation (internal: the user does not see this reply)",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user introduced their family details and requested a summary of the conversation.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [],
+     "text": "Mia"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Chiara",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m102"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Memory consolidation (internal: the user does not see this reply)",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 36,
+   "date": "2026-06-10",
+   "prompt_tok": 216,
+   "session_tok": 53,
+   "ask_tok": 163,
+   "out_tok": 87,
+   "query_embed_tok": 43,
+   "reembed_tok": 0,
+   "s_select": 0.24,
+   "s_gen": 24.91,
+   "shown": [
+    "user_theme",
+    "user_memory",
+    "episodes"
+   ],
+   "out": "EPISODE: User requested to avoid coriander in recipes.\nFACT: user_preferves_no_coriander\n\nFACT: user_branch=ringzero\nFACT: user_editor=ringzero\nFACT: user_language=italian\nFACT: user_memory=ringzero\nFACT: user_music=none\nFACT: user_name=ringzero\nFACT: user_theme=none\nFACT: user_vcpus=none",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User requested to avoid coriander in recipes.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language=italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_music=none",
+     "ok": false,
+     "why": "placeholder",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme=none",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_vcpus=none",
+     "ok": false,
+     "why": "over the line cap",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 37,
+   "date": "2026-07-01",
+   "prompt_tok": 211,
+   "session_tok": 48,
+   "ask_tok": 163,
+   "out_tok": 49,
+   "query_embed_tok": 35,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 14.49,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked about forgetting to water basil on the balcony, and the OS responded with a brief acknowledgment.\nFACT: user_name = RingZero\nFACT: user_language = English\nFACT: user_memory = Operating System Agent",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about forgetting to water basil on the balcony, and the OS responded with a brief acknowledgment.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Operating System Agent",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 38,
+   "date": "2026-07-07",
+   "prompt_tok": 209,
+   "session_tok": 46,
+   "ask_tok": 163,
+   "out_tok": 40,
+   "query_embed_tok": 35,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 11.93,
+   "shown": [
+    "user_memory",
+    "user_vcpus",
+    "episodes"
+   ],
+   "out": "EPISODE: Ringzero asked the user about their brother's iPhone 13, and the user replied that their brother has an iPhone 13.\nFACT: user_name = Ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Ringzero asked the user about their brother's iPhone 13, and the user replied that their brother has an iPhone 13.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 39,
+   "date": "2026-07-15",
+   "prompt_tok": 209,
+   "session_tok": 46,
+   "ask_tok": 163,
+   "out_tok": 29,
+   "query_embed_tok": 37,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 8.94,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_theme"
+   ],
+   "out": "EPISODE: The user asked how to save ideas in a file and I confirmed it's done.\nFACT: user_editor = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked how to save ideas in a file and I confirmed it's done.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 40,
+   "date": "2026-07-20",
+   "prompt_tok": 218,
+   "session_tok": 55,
+   "ask_tok": 163,
+   "out_tok": 41,
+   "query_embed_tok": 44,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 12.19,
+   "shown": [
+    "user_theme",
+    "user_language",
+    "email"
+   ],
+   "out": "EPISODE: Rocco, the sister's dog, cannot eat cereals.\nFACT: user_name=Rocco, user_language=Italian, user_memory=dog_cannot_eat_cereals",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Rocco, the sister's dog, cannot eat cereals.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=Rocco, user_language=Italian, user_memory=dog_cannot_eat_cereals",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 41,
+   "date": "2026-08-08",
+   "prompt_tok": 207,
+   "session_tok": 44,
+   "ask_tok": 163,
+   "out_tok": 26,
+   "query_embed_tok": 33,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 8.03,
+   "shown": [
+    "user_memory",
+    "user_theme",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked for a summary of the conversation and requested specific output formats.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a summary of the conversation and requested specific output formats.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 42,
+   "date": "2026-08-21",
+   "prompt_tok": 210,
+   "session_tok": 47,
+   "ask_tok": 163,
+   "out_tok": 27,
+   "query_embed_tok": 34,
+   "reembed_tok": 0,
+   "s_select": 0.12,
+   "s_gen": 8.42,
+   "shown": [
+    "user_memory",
+    "user_vcpus",
+    "user_theme"
+   ],
+   "out": "EPISODE: User stated they drink decaf after 4 pm.\nFACT: user_preference = decaf_after_4pm",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User stated they drink decaf after 4 pm.",
+     "ok": true,
+     "keys": [
+      "m132"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_preference = decaf_after_4pm",
+     "ok": false,
+     "why": "not grounded",
+     "keys": [
+      "m132"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 43,
+   "date": "2026-08-30",
+   "prompt_tok": 213,
+   "session_tok": 50,
+   "ask_tok": 163,
+   "out_tok": 33,
+   "query_embed_tok": 39,
+   "reembed_tok": 20,
+   "s_select": 0.13,
+   "s_gen": 10.25,
+   "shown": [
+    "email",
+    "episodes",
+    "user_branch"
+   ],
+   "out": "EPISODE: Davide moved to Lisbon for work.\nFACT: user_name = Davide\nFACT: user_language = Italian\nFACT: user_memory = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Davide moved to Lisbon for work.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m102"
+     ],
+     "text": "Chiara"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Davide",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m94"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 44,
+   "date": "2026-09-01",
+   "prompt_tok": 289,
+   "session_tok": 126,
+   "ask_tok": 163,
+   "out_tok": 37,
+   "query_embed_tok": 62,
+   "reembed_tok": 0,
+   "s_select": 0.27,
+   "s_gen": 11.43,
+   "shown": [
+    "user_memory",
+    "user_language",
+    "user_theme"
+   ],
+   "out": "EPISODE: The user asked about the contents of the /notes directory and confirmed that the shopping list is located in /notes/spesa.txt.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about the contents of the /notes directory and confirmed that the shopping list is located in /notes/spesa.txt.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 45,
+   "date": "2026-09-03",
+   "prompt_tok": 219,
+   "session_tok": 56,
+   "ask_tok": 163,
+   "out_tok": 30,
+   "query_embed_tok": 48,
+   "reembed_tok": 0,
+   "s_select": 0.14,
+   "s_gen": 9.15,
+   "shown": [
+    "user_branch",
+    "user_theme",
+    "email"
+   ],
+   "out": "EPISODE: The user identified their team as Bologna and confirmed they have a stadium subscription.\nFACT: team_bologna\nFACT: stadium_subscription",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user identified their team as Bologna and confirmed they have a stadium subscription.",
+     "ok": true,
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 46,
+   "date": "2026-09-12",
+   "prompt_tok": 217,
+   "session_tok": 54,
+   "ask_tok": 163,
+   "out_tok": 29,
+   "query_embed_tok": 45,
+   "reembed_tok": 0,
+   "s_select": 0.14,
+   "s_gen": 8.91,
+   "shown": [
+    "user_vcpus",
+    "user_language",
+    "user_theme"
+   ],
+   "out": "EPISODE: The user switched to Fastweb and noticed their fiber speed is now 1 Giga.\nFACT: user_language=Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user switched to Fastweb and noticed their fiber speed is now 1 Giga.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language=Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 47,
+   "date": "2026-09-15",
+   "prompt_tok": 212,
+   "session_tok": 49,
+   "ask_tok": 163,
+   "out_tok": 42,
+   "query_embed_tok": 37,
+   "reembed_tok": 20,
+   "s_select": 0.14,
+   "s_gen": 12.54,
+   "shown": [
+    "email",
+    "user_memory",
+    "user_language"
+   ],
+   "out": "EPISODE: Marta, la collega di matematica, ha scritto al sistema RingZero.\nFACT: user_name = Marta\nFACT: user_language = Italian\nFACT: user_branch = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Marta, la collega di matematica, ha scritto al sistema RingZero.",
+     "ok": true,
+     "keys": [
+      "m104"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m94"
+     ],
+     "text": "Davide"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Marta",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m104"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 48,
+   "date": "2026-09-20",
+   "prompt_tok": 221,
+   "session_tok": 58,
+   "ask_tok": 163,
+   "out_tok": 57,
+   "query_embed_tok": 50,
+   "reembed_tok": 22,
+   "s_select": 0.25,
+   "s_gen": 16.8,
+   "shown": [
+    "email",
+    "episodes",
+    "user_branch"
+   ],
+   "out": "EPISODE: The user informed RingZero about Paolo Ferri's retirement and Elena Costa's appointment as the new principal.\nFACT: user_name = Paolo Ferri\nFACT: user_branch = ringzero\nFACT: user_language = Italian\nFACT: user_memory = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user informed RingZero about Paolo Ferri's retirement and Elena Costa's appointment as the new principal.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m104"
+     ],
+     "text": "Marta"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Paolo Ferri",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m65"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_branch = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 49,
+   "date": "2026-09-25",
+   "prompt_tok": 329,
+   "session_tok": 166,
+   "ask_tok": 163,
+   "out_tok": 67,
+   "query_embed_tok": 102,
+   "reembed_tok": 55,
+   "s_select": 0.32,
+   "s_gen": 20.01,
+   "shown": [
+    "email",
+    "user_language",
+    "user_branch"
+   ],
+   "out": "EPISODE: The user provided details about a Brother HL-L2350DW Wi-Fi printer and asked to save specific information to a file.\nFACT: printer_ip=10.0.0.50\nFACT: printer_toner=TN-2420\nFACT: printer_purchase_date=September",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user provided details about a Brother HL-L2350DW Wi-Fi printer and asked to save specific information to a file.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: printer_ip=10.0.0.50",
+     "ok": true,
+     "page": "printer_ip",
+     "keys": [
+      "f:/home/stampante.txt"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: printer_toner=TN-2420",
+     "ok": true,
+     "page": "printer_toner",
+     "keys": [
+      "f:/home/stampante.txt"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: printer_purchase_date=September",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 50,
+   "date": "2026-10-02",
+   "prompt_tok": 356,
+   "session_tok": 186,
+   "ask_tok": 170,
+   "out_tok": 68,
+   "query_embed_tok": 118,
+   "reembed_tok": 21,
+   "s_select": 0.47,
+   "s_gen": 20.4,
+   "shown": [
+    "user_memory",
+    "user_music",
+    "user_branch"
+   ],
+   "out": "EPISODE: The user asked for a Japan itinerary and received a brief summary. Marco Bianchi was identified as the contact for Acme.\nFACT: user_name = RingZero\nFACT: user_language = Italian\nFACT: user_memory = Japan itinerary\nFACT: user_editor = Acme\nFACT: user_theme = Minimalist",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a Japan itinerary and received a brief summary. Marco Bianchi was identified as the contact for Acme.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Japan itinerary",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_editor",
+     "ok": true,
+     "page": "user_editor",
+     "keys": [
+      "m24"
+     ],
+     "text": "rust"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor = Acme",
+     "ok": true,
+     "page": "user_editor",
+     "keys": [
+      "m97"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme = Minimalist",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 51,
+   "date": "2026-10-05",
+   "prompt_tok": 223,
+   "session_tok": 53,
+   "ask_tok": 170,
+   "out_tok": 22,
+   "query_embed_tok": 45,
+   "reembed_tok": 0,
+   "s_select": 0.25,
+   "s_gen": 7.19,
+   "shown": [
+    "user_memory",
+    "user_theme",
+    "user_language"
+   ],
+   "out": "EPISODE: The user started eating fish and became pescetarian.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user started eating fish and became pescetarian.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 52,
+   "date": "2026-10-08",
+   "prompt_tok": 220,
+   "session_tok": 50,
+   "ask_tok": 170,
+   "out_tok": 25,
+   "query_embed_tok": 37,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 8.03,
+   "shown": [
+    "user_memory",
+    "user_music",
+    "episodes"
+   ],
+   "out": "EPISODE: The user moved their piano lesson to Saturday morning at 10.\nFACT: user_language = English",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user moved their piano lesson to Saturday morning at 10.",
+     "ok": true,
+     "keys": [
+      "m73"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 53,
+   "date": "2026-10-12",
+   "prompt_tok": 220,
+   "session_tok": 50,
+   "ask_tok": 170,
+   "out_tok": 26,
+   "query_embed_tok": 38,
+   "reembed_tok": 20,
+   "s_select": 0.13,
+   "s_gen": 8.23,
+   "shown": [
+    "user_branch",
+    "email",
+    "episodes"
+   ],
+   "out": "EPISODE: User mentioned their neighbor Franco has a spare charger for their e-bike.\nFACT: user_name = Franco",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User mentioned their neighbor Franco has a spare charger for their e-bike.",
+     "ok": true,
+     "keys": [
+      "m135"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m65"
+     ],
+     "text": "Paolo Ferri"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Franco",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m135"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 54,
+   "date": "2026-10-15",
+   "prompt_tok": 222,
+   "session_tok": 52,
+   "ask_tok": 170,
+   "out_tok": 26,
+   "query_embed_tok": 41,
+   "reembed_tok": 0,
+   "s_select": 0.24,
+   "s_gen": 8.23,
+   "shown": [
+    "user_branch",
+    "printer_ip",
+    "user_language"
+   ],
+   "out": "EPISODE: The user sold their Panda and now drives a Toyota Yaris hybrid.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user sold their Panda and now drives a Toyota Yaris hybrid.",
+     "ok": true,
+     "keys": [
+      "m58"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 55,
+   "date": "2026-10-20",
+   "prompt_tok": 243,
+   "session_tok": 73,
+   "ask_tok": 170,
+   "out_tok": 35,
+   "query_embed_tok": 53,
+   "reembed_tok": 0,
+   "s_select": 0.15,
+   "s_gen": 10.71,
+   "shown": [
+    "printer_ip",
+    "user_branch",
+    "user_language"
+   ],
+   "out": "EPISODE: The user scheduled a dentist appointment for November 4th at 9 AM and then reported updating their router firmware.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user scheduled a dentist appointment for November 4th at 9 AM and then reported updating their router firmware.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 56,
+   "date": "2026-10-30",
+   "prompt_tok": 214,
+   "session_tok": 44,
+   "ask_tok": 170,
+   "out_tok": 22,
+   "query_embed_tok": 35,
+   "reembed_tok": 20,
+   "s_select": 0.13,
+   "s_gen": 7.01,
+   "shown": [
+    "user_branch",
+    "email",
+    "user_vcpus"
+   ],
+   "out": "EPISODE: The user mentioned they are traveling to Japan with Davide.\nFACT: user_name = Davide",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user mentioned they are traveling to Japan with Davide.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m135"
+     ],
+     "text": "Franco"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Davide",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m103"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 57,
+   "date": "2026-10-31",
+   "prompt_tok": 225,
+   "session_tok": 55,
+   "ask_tok": 170,
+   "out_tok": 27,
+   "query_embed_tok": 44,
+   "reembed_tok": 0,
+   "s_select": 0.25,
+   "s_gen": 8.53,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "email"
+   ],
+   "out": "EPISODE: The user expressed fear of flying and chose to sit in the aisle seat.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user expressed fear of flying and chose to sit in the aisle seat.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 58,
+   "date": "2026-11-01",
+   "prompt_tok": 226,
+   "session_tok": 56,
+   "ask_tok": 170,
+   "out_tok": 52,
+   "query_embed_tok": 46,
+   "reembed_tok": 0,
+   "s_select": 0.17,
+   "s_gen": 17.41,
+   "shown": [
+    "episodes",
+    "user_memory",
+    "user_branch"
+   ],
+   "out": "EPISODE: The user informed RingZero about a dentist appointment rescheduled to November 18th at 15:00.\nFACT: appointment_date=18 novembre 2024, appointment_time=15:00",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user informed RingZero about a dentist appointment rescheduled to November 18th at 15:00.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: appointment_date=18 novembre 2024, appointment_time=15:00",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 59,
+   "date": "2026-11-02",
+   "prompt_tok": 219,
+   "session_tok": 49,
+   "ask_tok": 170,
+   "out_tok": 24,
+   "query_embed_tok": 39,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 7.72,
+   "shown": [
+    "user_memory",
+    "printer_ip",
+    "episodes"
+   ],
+   "out": "EPISODE: The user changed their phone to an iPhone 15.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user changed their phone to an iPhone 15.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 60,
+   "date": "2026-11-03",
+   "prompt_tok": 351,
+   "session_tok": 181,
+   "ask_tok": 170,
+   "out_tok": 49,
+   "query_embed_tok": 126,
+   "reembed_tok": 0,
+   "s_select": 0.24,
+   "s_gen": 15.43,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_vcpus"
+   ],
+   "out": "EPISODE: User asked for a CSV file of demo people and received a list of 5 people with their details.\nFACT: user_name = RingZero\nFACT: user_language = English\nFACT: user_memory = Operating System Agent",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User asked for a CSV file of demo people and received a list of 5 people with their details.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Operating System Agent",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 61,
+   "date": "2026-11-04",
+   "prompt_tok": 220,
+   "session_tok": 50,
+   "ask_tok": 170,
+   "out_tok": 30,
+   "query_embed_tok": 41,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 9.41,
+   "shown": [
+    "user_memory",
+    "user_language",
+    "email"
+   ],
+   "out": "EPISODE: The user asked to return a book on December 2nd and received a brief confirmation.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked to return a book on December 2nd and received a brief confirmation.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 62,
+   "date": "2026-11-05",
+   "prompt_tok": 222,
+   "session_tok": 52,
+   "ask_tok": 170,
+   "out_tok": 27,
+   "query_embed_tok": 42,
+   "reembed_tok": 0,
+   "s_select": 0.14,
+   "s_gen": 8.54,
+   "shown": [
+    "user_name",
+    "user_memory",
+    "user_vcpus"
+   ],
+   "out": "EPISODE: The user asked for a summary of the conversation and received a brief confirmation.\nFACT: user_name = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for a summary of the conversation and received a brief confirmation.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 63,
+   "date": "2026-11-06",
+   "prompt_tok": 320,
+   "session_tok": 150,
+   "ask_tok": 170,
+   "out_tok": 57,
+   "query_embed_tok": 83,
+   "reembed_tok": 0,
+   "s_select": 0.19,
+   "s_gen": 17.42,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked to run a Lua script in a demo environment, and the system executed it, printing results and writing output to a file.\nFACT: user_language = English\nFACT: user_memory = 16 GB\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked to run a Lua script in a demo environment, and the system executed it, printing results and writing output to a file.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = 16 GB",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 64,
+   "date": "2026-11-08",
+   "prompt_tok": 423,
+   "session_tok": 253,
+   "ask_tok": 170,
+   "out_tok": 55,
+   "query_embed_tok": 172,
+   "reembed_tok": 42,
+   "s_select": 0.3,
+   "s_gen": 17.47,
+   "shown": [
+    "user_memory",
+    "printer_ip",
+    "episodes"
+   ],
+   "out": "EPISODE: User asked for a JSON file with jq, and the system executed the command successfully.\nFACT: user_name = RingZero\nFACT: user_language = English\nFACT: user_memory = 128MB\nFACT: user_editor = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User asked for a JSON file with jq, and the system executed the command successfully.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m103"
+     ],
+     "text": "Davide"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "f:/demo/data.json"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = 128MB",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_editor",
+     "ok": true,
+     "page": "user_editor",
+     "keys": [
+      "m97"
+     ],
+     "text": "Acme"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor = ringzero",
+     "ok": true,
+     "page": "user_editor",
+     "keys": [
+      "f:/demo/data.json"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 65,
+   "date": "2026-11-09",
+   "prompt_tok": 222,
+   "session_tok": 52,
+   "ask_tok": 170,
+   "out_tok": 24,
+   "query_embed_tok": 45,
+   "reembed_tok": 0,
+   "s_select": 0.35,
+   "s_gen": 7.75,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_music"
+   ],
+   "out": "EPISODE: The user requested a brief response in Italian about a meeting location.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user requested a brief response in Italian about a meeting location.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 66,
+   "date": "2026-11-10",
+   "prompt_tok": 248,
+   "session_tok": 78,
+   "ask_tok": 170,
+   "out_tok": 30,
+   "query_embed_tok": 56,
+   "reembed_tok": 21,
+   "s_select": 0.15,
+   "s_gen": 9.56,
+   "shown": [
+    "user_name",
+    "user_editor",
+    "user_language"
+   ],
+   "out": "EPISODE: The user is reading \"The Name of the Rose\" and is halfway through the story.\nFACT: user_name = Acme",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user is reading \"The Name of the Rose\" and is halfway through the story.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "f:/demo/data.json"
+     ],
+     "text": "RingZero"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Acme",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m61"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 67,
+   "date": "2026-11-11",
+   "prompt_tok": 217,
+   "session_tok": 47,
+   "ask_tok": 170,
+   "out_tok": 30,
+   "query_embed_tok": 37,
+   "reembed_tok": 0,
+   "s_select": 0.24,
+   "s_gen": 9.24,
+   "shown": [
+    "user_name",
+    "user_vcpus",
+    "user_editor"
+   ],
+   "out": "EPISODE: Rocco requested a vaccine in January.\nFACT: user_name=Rocco, user_language=Italian, user_memory=ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Rocco requested a vaccine in January.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=Rocco, user_language=Italian, user_memory=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 68,
+   "date": "2026-11-12",
+   "prompt_tok": 229,
+   "session_tok": 59,
+   "ask_tok": 170,
+   "out_tok": 30,
+   "query_embed_tok": 48,
+   "reembed_tok": 24,
+   "s_select": 0.15,
+   "s_gen": 9.22,
+   "shown": [
+    "email",
+    "episodes",
+    "printer_ip"
+   ],
+   "out": "EPISODE: The user introduced their new email address and mentioned discarding an old one.\nFACT: email=ada.m@proton.me",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user introduced their new email address and mentioned discarding an old one.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) email",
+     "ok": true,
+     "page": "email",
+     "keys": [
+      "m74"
+     ],
+     "text": "ada.moretti@libero.it"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: email=ada.m@proton.me",
+     "ok": true,
+     "page": "email",
+     "keys": [
+      "m75"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 69,
+   "date": "2026-11-14",
+   "prompt_tok": 356,
+   "session_tok": 186,
+   "ask_tok": 170,
+   "out_tok": 47,
+   "query_embed_tok": 132,
+   "reembed_tok": 22,
+   "s_select": 0.35,
+   "s_gen": 14.87,
+   "shown": [
+    "user_memory",
+    "user_theme",
+    "episodes"
+   ],
+   "out": "EPISODE: The user asked for the Carbonara recipe while cooking, and I provided the ingredients and instructions.\nFACT: user_language = Italian\nFACT: user_name = RingZero\nFACT: user_memory = Carbonara recipe",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked for the Carbonara recipe while cooking, and I provided the ingredients and instructions.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_memory",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m34"
+     ],
+     "text": "14 open items"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Carbonara recipe",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "f:/home/ricetta_carbonara.txt",
+      "m115"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 70,
+   "date": "2026-11-15",
+   "prompt_tok": 223,
+   "session_tok": 53,
+   "ask_tok": 170,
+   "out_tok": 27,
+   "query_embed_tok": 46,
+   "reembed_tok": 0,
+   "s_select": 0.25,
+   "s_gen": 8.48,
+   "shown": [
+    "user_memory",
+    "user_language",
+    "user_name"
+   ],
+   "out": "EPISODE: The user set a goal to run a half marathon in Bologna in March.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user set a goal to run a half marathon in Bologna in March.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 71,
+   "date": "2026-11-16",
+   "prompt_tok": 222,
+   "session_tok": 52,
+   "ask_tok": 170,
+   "out_tok": 29,
+   "query_embed_tok": 46,
+   "reembed_tok": 0,
+   "s_select": 0.14,
+   "s_gen": 9.13,
+   "shown": [
+    "episodes",
+    "user_language",
+    "user_memory"
+   ],
+   "out": "EPISODE: The user informed RingZero that the meeting with parents has moved to the Aula Magna.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user informed RingZero that the meeting with parents has moved to the Aula Magna.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 72,
+   "date": "2026-11-17",
+   "prompt_tok": 263,
+   "session_tok": 93,
+   "ask_tok": 170,
+   "out_tok": 30,
+   "query_embed_tok": 61,
+   "reembed_tok": 0,
+   "s_select": 0.16,
+   "s_gen": 9.48,
+   "shown": [
+    "user_name",
+    "episodes",
+    "user_memory"
+   ],
+   "out": "EPISODE: The user asked to add two items to a todo list and requested a memory consolidation summary.\nFACT: user_editor = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked to add two items to a todo list and requested a memory consolidation summary.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_editor = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 73,
+   "date": "2026-11-18",
+   "prompt_tok": 217,
+   "session_tok": 47,
+   "ask_tok": 170,
+   "out_tok": 21,
+   "query_embed_tok": 35,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 6.84,
+   "shown": [
+    "user_memory",
+    "email",
+    "user_language"
+   ],
+   "out": "EPISODE: User asked for dinner plans with their sister.\nFACT: user_name = ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: User asked for dinner plans with their sister.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 74,
+   "date": "2026-11-19",
+   "prompt_tok": 223,
+   "session_tok": 53,
+   "ask_tok": 170,
+   "out_tok": 24,
+   "query_embed_tok": 42,
+   "reembed_tok": 21,
+   "s_select": 0.14,
+   "s_gen": 7.64,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "email"
+   ],
+   "out": "EPISODE: Elena Costa requested the school schedule for December 5th.\nFACT: user_name = Elena Costa",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Elena Costa requested the school schedule for December 5th.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m61"
+     ],
+     "text": "Acme"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = Elena Costa",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m105"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 75,
+   "date": "2026-11-20",
+   "prompt_tok": 217,
+   "session_tok": 47,
+   "ask_tok": 170,
+   "out_tok": 22,
+   "query_embed_tok": 37,
+   "reembed_tok": 0,
+   "s_select": 0.24,
+   "s_gen": 7.1,
+   "shown": [
+    "email",
+    "printer_ip",
+    "user_memory"
+   ],
+   "out": "EPISODE: The user asked about an Amazon package arriving on Thursday.\nFACT: user_language = English",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about an Amazon package arriving on Thursday.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 76,
+   "date": "2026-11-21",
+   "prompt_tok": 315,
+   "session_tok": 145,
+   "ask_tok": 170,
+   "out_tok": 62,
+   "query_embed_tok": 86,
+   "reembed_tok": 0,
+   "s_select": 0.19,
+   "s_gen": 18.7,
+   "shown": [
+    "user_memory",
+    "episodes",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked about a backup run and received confirmation, then discussed a family dinner plan.\nFACT: user_name = RingZero\nFACT: user_language = English\nFACT: user_memory = 128MB\nFACT: user_music = None\nFACT: user_theme = Default",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about a backup run and received confirmation, then discussed a family dinner plan.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = 128MB",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_music = None",
+     "ok": false,
+     "why": "placeholder",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme = Default",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 77,
+   "date": "2026-11-22",
+   "prompt_tok": 301,
+   "session_tok": 131,
+   "ask_tok": 170,
+   "out_tok": 28,
+   "query_embed_tok": 78,
+   "reembed_tok": 0,
+   "s_select": 0.18,
+   "s_gen": 9.17,
+   "shown": [
+    "episodes",
+    "user_editor",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked about a backup log error and the system reported a full bucket.\nFACT: user_name = RingZero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about a backup log error and the system reported a full bucket.",
+     "ok": true,
+     "keys": [
+      "m77"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 78,
+   "date": "2026-11-23",
+   "prompt_tok": 223,
+   "session_tok": 53,
+   "ask_tok": 170,
+   "out_tok": 24,
+   "query_embed_tok": 46,
+   "reembed_tok": 0,
+   "s_select": 0.14,
+   "s_gen": 7.61,
+   "shown": [
+    "user_memory",
+    "email",
+    "printer_ip"
+   ],
+   "out": "EPISODE: The user asked about a news report regarding a package delivery date.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about a news report regarding a package delivery date.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 79,
+   "date": "2026-11-24",
+   "prompt_tok": 221,
+   "session_tok": 51,
+   "ask_tok": 170,
+   "out_tok": 32,
+   "query_embed_tok": 39,
+   "reembed_tok": 0,
+   "s_select": 0.13,
+   "s_gen": 9.75,
+   "shown": [
+    "user_memory",
+    "user_branch",
+    "email"
+   ],
+   "out": "EPISODE: You asked for a brief OS response about your train to Milano, and I confirmed the departure time.\nFACT: user_name=ringzero",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: You asked for a brief OS response about your train to Milano, and I confirmed the departure time.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=ringzero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 80,
+   "date": "2026-11-25",
+   "prompt_tok": 255,
+   "session_tok": 85,
+   "ask_tok": 170,
+   "out_tok": 41,
+   "query_embed_tok": 65,
+   "reembed_tok": 0,
+   "s_select": 0.21,
+   "s_gen": 12.44,
+   "shown": [
+    "user_memory",
+    "email",
+    "user_language"
+   ],
+   "out": "EPISODE: The user corrected a train schedule and mentioned a new rent increase.\nFACT: user_language = Italian\nFACT: user_name = RingZero\nFACT: user_memory = Operating System Agent",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user corrected a train schedule and mentioned a new rent increase.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Operating System Agent",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 81,
+   "date": "2026-11-26",
+   "prompt_tok": 217,
+   "session_tok": 47,
+   "ask_tok": 170,
+   "out_tok": 21,
+   "query_embed_tok": 36,
+   "reembed_tok": 20,
+   "s_select": 0.13,
+   "s_gen": 6.81,
+   "shown": [
+    "user_memory",
+    "user_language",
+    "email"
+   ],
+   "out": "EPISODE: Marta arrived at the station at 18.\nFACT: user_name=Marta",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Marta arrived at the station at 18.",
+     "ok": true,
+     "keys": [
+      "m88"
+     ]
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_name",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m105"
+     ],
+     "text": "Elena Costa"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=Marta",
+     "ok": true,
+     "page": "user_name",
+     "keys": [
+      "m88"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 82,
+   "date": "2026-11-26",
+   "prompt_tok": 223,
+   "session_tok": 53,
+   "ask_tok": 170,
+   "out_tok": 25,
+   "query_embed_tok": 42,
+   "reembed_tok": 0,
+   "s_select": 0.24,
+   "s_gen": 7.9,
+   "shown": [
+    "user_name",
+    "user_memory",
+    "user_branch"
+   ],
+   "out": "EPISODE: Marta lost her train and arrives at 20:30.\nFACT: user_name=Marta",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: Marta lost her train and arrives at 20:30.",
+     "ok": true,
+     "keys": [
+      "m89"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name=Marta",
+     "ok": false,
+     "why": "duplicate of a live line",
+     "keys": [
+      "m89"
+     ]
+    }
+   ]
+  },
+  {
+   "sess": 83,
+   "date": "2026-11-26",
+   "prompt_tok": 246,
+   "session_tok": 76,
+   "ask_tok": 170,
+   "out_tok": 55,
+   "query_embed_tok": 49,
+   "reembed_tok": 26,
+   "s_select": 0.14,
+   "s_gen": 16.31,
+   "shown": [
+    "user_memory",
+    "email",
+    "user_language"
+   ],
+   "out": "EPISODE: The user asked about the cost of a specific ratio and the capital of Portugal.\nFACT: user_name = RingZero\nFACT: user_language = English\nFACT: user_memory = 17 per 23\nFACT: user_theme = default",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about the cost of a specific ratio and the capital of Portugal.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = English",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "OLD",
+     "raw": "(same key) user_memory",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "f:/home/ricetta_carbonara.txt",
+      "m115"
+     ],
+     "text": "Carbonara recipe"
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = 17 per 23",
+     "ok": true,
+     "page": "user_memory",
+     "keys": [
+      "m137"
+     ]
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_theme = default",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 84,
+   "date": "2026-11-27",
+   "prompt_tok": 213,
+   "session_tok": 43,
+   "ask_tok": 170,
+   "out_tok": 25,
+   "query_embed_tok": 28,
+   "reembed_tok": 0,
+   "s_select": 0.23,
+   "s_gen": 7.96,
+   "shown": [
+    "user_memory",
+    "user_vcpus",
+    "printer_ip"
+   ],
+   "out": "EPISODE: The user greeted me in Italian and asked me to summarize the conversation.\nFACT: user_language = Italian",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user greeted me in Italian and asked me to summarize the conversation.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  },
+  {
+   "sess": 85,
+   "date": "2026-11-28",
+   "prompt_tok": 225,
+   "session_tok": 55,
+   "ask_tok": 170,
+   "out_tok": 44,
+   "query_embed_tok": 48,
+   "reembed_tok": 0,
+   "s_select": 0.14,
+   "s_gen": 13.15,
+   "shown": [
+    "user_language",
+    "user_branch",
+    "user_editor"
+   ],
+   "out": "EPISODE: The user asked about renewing a loan and the return date of a book.\nFACT: user_name = RingZero\nFACT: user_language = Italian\nFACT: user_memory = Operating system agent",
+   "log": [
+    {
+     "kind": "EPISODE",
+     "raw": "EPISODE: The user asked about renewing a loan and the return date of a book.",
+     "ok": true,
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_name = RingZero",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_language = Italian",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    },
+    {
+     "kind": "PAGE",
+     "raw": "FACT: user_memory = Operating system agent",
+     "ok": false,
+     "why": "not grounded",
+     "keys": []
+    }
+   ]
+  }
+ ]
+}

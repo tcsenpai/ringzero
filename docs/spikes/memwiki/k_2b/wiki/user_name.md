@@ -1,0 +1,18 @@
+# user_name
+- [superseded 2025-12-12] 2025-11-01 Davide
+- [superseded 2026-01-10] 2025-12-12 Giulia
+- [superseded 2026-02-01] 2026-01-10 Davide
+- [superseded 2026-02-20] 2026-02-01 Giulia
+- [superseded 2026-04-04] 2026-02-20 Chiara
+- [superseded 2026-06-01] 2026-04-04 Giulia
+- [superseded 2026-06-06] 2026-06-01 Mia
+- [superseded 2026-08-30] 2026-06-06 Chiara
+- [superseded 2026-09-15] 2026-08-30 Davide
+- [superseded 2026-09-20] 2026-09-15 Marta
+- [superseded 2026-10-12] 2026-09-20 Paolo Ferri
+- [superseded 2026-10-30] 2026-10-12 Franco
+- [superseded 2026-11-08] 2026-10-30 Davide
+- [superseded 2026-11-10] 2026-11-08 RingZero
+- [superseded 2026-11-19] 2026-11-10 Acme
+- [superseded 2026-11-26] 2026-11-19 Elena Costa
+- 2026-11-26 Marta

@@ -1,0 +1,198 @@
+{
+ "page": [
+  {
+   "date": "2024-05-01",
+   "text": "ada_moretti_email = ada.moretti@libero.it",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m74"
+   ],
+   "sess": 0
+  }
+ ],
+ "paolo_ferri": [
+  {
+   "date": "2025-06-01",
+   "text": "Paolo Ferri is the user's principal",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m64"
+   ],
+   "sess": 6
+  }
+ ],
+ "user_location": [
+  {
+   "date": "2025-06-01",
+   "text": "The user lives in Bologna",
+   "live": false,
+   "sup": "2026-01-05",
+   "keys": [
+    "m45"
+   ],
+   "sess": 6
+  },
+  {
+   "date": "2026-01-05",
+   "text": "Bologna",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m51"
+   ],
+   "sess": 16
+  },
+  {
+   "date": "2026-09-12",
+   "text": "Fastweb",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m63"
+   ],
+   "sess": 46
+  },
+  {
+   "date": "2026-11-18",
+   "text": "cene da mia sorella",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m80"
+   ],
+   "sess": 73
+  }
+ ],
+ "acme_meeting": [
+  {
+   "date": "2025-06-01",
+   "text": "The user has a meeting with client Acme every Tuesday at 10:00 CET",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m12"
+   ],
+   "sess": 6
+  },
+  {
+   "date": "2026-10-20",
+   "text": "4 novembre 9",
+   "live": false,
+   "sup": "2026-11-01",
+   "keys": [
+    "m59"
+   ],
+   "sess": 55
+  },
+  {
+   "date": "2026-11-01",
+   "text": "18 novembre 15",
+   "live": false,
+   "sup": "2026-11-16",
+   "keys": [
+    "m60"
+   ],
+   "sess": 58
+  },
+  {
+   "date": "2026-11-16",
+   "text": "la riunione con i genitori e' in aula magna",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m87"
+   ],
+   "sess": 71
+  }
+ ],
+ "user_birthday": [
+  {
+   "date": "2025-09-01",
+   "text": "March 3rd",
+   "live": false,
+   "sup": "2026-11-28",
+   "keys": [
+    "m20"
+   ],
+   "sess": 11
+  },
+  {
+   "date": "2026-11-28",
+   "text": "16 dicembre",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m91"
+   ],
+   "sess": 85
+  }
+ ],
+ "user_partner": [
+  {
+   "date": "2025-09-01",
+   "text": "Giulia",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m25"
+   ],
+   "sess": 11
+  },
+  {
+   "date": "2026-10-15",
+   "text": "Toyota Yaris hybrid",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m58"
+   ],
+   "sess": 54
+  },
+  {
+   "date": "2026-10-15",
+   "text": "Panda",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m58"
+   ],
+   "sess": 54
+  }
+ ],
+ "user_anniversary": [
+  {
+   "date": "2025-09-01",
+   "text": "June 12",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m25"
+   ],
+   "sess": 11
+  }
+ ],
+ "user_diet": [
+  {
+   "date": "2026-10-05",
+   "text": "pescetarian",
+   "live": true,
+   "sup": "",
+   "keys": [],
+   "sess": 51
+  }
+ ],
+ "ada_moretti_email": [
+  {
+   "date": "2026-11-12",
+   "text": "ada.m@proton.me",
+   "live": true,
+   "sup": "",
+   "keys": [
+    "m75"
+   ],
+   "sess": 68
+  }
+ ]
+}
