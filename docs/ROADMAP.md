@@ -67,7 +67,7 @@ Generated from the mycelium plan (`myc list --all`), 2026-11-28.
 │   │       └── T12: M4.5 agentd: deterministic context and memory subsystem (circular)
 │   └── ✓ 🟢 Rename aios to ringzero [E1]
 ○ 🟢 4B extra streams vs snapshot pool [E1]
-○ 🟢 Guard manual section size in surfaces_check [E1]
+✓ 🟢 Guard manual section size in surfaces_check [E1]
 ○ 🟢 Decision-model second opinion on low-margin calls (host prototype) [E1]
 ○ 🟢 T55 follow-ups: 2**100 first call, 2B drivers answer [E1]
 ○ 🟢 Type-ahead prefill: prefill while the user types [E1]
