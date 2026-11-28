@@ -133,3 +133,98 @@ uv run --no-project --with torch --with transformers --with numpy python3 tools/
 # tools (M45 protocol), a fresh copy of the beta data disk, 120 s idle first
 SLOT=200 python3 tools/tooleval.py 127.0.0.1 PORT on eval.json spike,inos,it
 ```
+
+# T64: four agent and tool-calling fine-tunes vs the 4B q4 working model
+
+Question: do fine-tunes made specifically for agents or tool calling, at most 4B, do better than the stock
+Qwen3.5-4B q4 as the system agent? Candidates come from the wider search in
+[docs/research/AGENT_FINETUNES.md](research/AGENT_FINETUNES.md) (about 40 models listed and ranked); the top four
+there that run on the engine as is were tested. All four are Qwen3.5-4B fine-tunes with the stock layer layout,
+vocabulary and tool-call format; each exports to 3,361,755,072 bytes, the size of the stock 4B q4 file, with no
+converter change.
+
+Short answer: **none of them is better on our tool sets, so the stock 4B q4 stays.** AgentMercury ties the baseline,
+Agents-A1 and EU-Tool pass the quality gate but score lower, SkillGym fails the gate.
+
+## Method
+
+Exactly the T59 pipeline above, on the same build box, one VM at a time under the shared VM lock: export with
+`--q4 mlp,mlp_down`, the M7 gate (`tools/q4_kld.py` against each model's own HF bf16 weights, then `tools/hf_agree.py`
+on the gate boot), decode speed from the gate boot (boot `/bench` plus 3 x `/bench`, 64 tokens) and again from the
+tool session (3 x `/bench` after the prompts), and `tools/tooleval.py` with the M45 protocol (`SLOT=200`, constrain on,
+confidence on, temperature 0, a fresh copy of the beta data disk, 120 s idle first), sets `spike,inos,it`. The tool
+run was done for every model, also the one that failed the gate, because it is automatic.
+
+Control: the stock 4B q4 was built from the same commit and run through the same gate boot and tool session in this
+session. Its gate numbers were not run again: the weights and the exporter are the same as in T59 (0.0278 / 92.5%).
+Its tool scores reproduce T59 and T55 exactly (spike 24/30, 22, 9; in-OS 26/32, 24; info 5/8).
+
+## Results
+
+| Model | Base | License | KLD mean | top-1 | Gate | Decode tok/s, gate boot median (range) / tool session median | spike (30): correct, first call right (25), args exact (15) | in-OS (32): correct, first call right (30); info (8) | it (10) answered without a tool | Verdict |
+|---|---|---|---:|---:|---|---|---|---|---|---|
+| Qwen3.5-4B q4 (control) | - | Apache-2.0 | 0.0278 (T59) | 92.5% (T59) | pass | 19.9 (18.5-21.5) / 21.5 | 24, 22, 9 | 26, 24; 5 | 10 | **keep** |
+| [InternScience/Agents-A1-4B](https://huggingface.co/InternScience/Agents-A1-4B) | Qwen3.5-4B | Apache-2.0 | 0.0282 | 92.9% | pass | 19.1 (18.6-19.7) / 21.6 | 23, 20, 9 | 24, 22; 5 | 10 | drop |
+| [birgermoell/Qwen3.5-4B-EU-Tool](https://huggingface.co/birgermoell/Qwen3.5-4B-EU-Tool) | Qwen3.5-4B | Apache-2.0 | 0.0282 | 92.2% | pass | 21.1 (19.4-21.4) / 21.1 | 22, 22, 9 | 25, 25; 4 | **3** (7 tool calls) | drop |
+| [Minbyul/AgentMercury-Qwen3.5-4B](https://huggingface.co/Minbyul/AgentMercury-Qwen3.5-4B) | Qwen3.5-4B | Apache-2.0 | 0.0282 | 92.6% | pass | 20.3 (16.6-21.3) / 20.3 | 24, 22, 9 | **27**, 24; 5 | 10 | drop (tie) |
+| [reasonwang/SkillGym-Qwen3.5-4B](https://huggingface.co/reasonwang/SkillGym-Qwen3.5-4B) | Qwen3.5-4B | Apache-2.0 | 0.0345 | **91.3%** | **fail** | 20.3 (19.3-20.5) / 19.8 | 23, 23, 9 | 24, 25; 5 | 10 | drop |
+
+More gate detail (KLD p99; prose / prose-long KLD; PPL own HF -> quant; hf_agree):
+
+| Model | p99 | prose / prose-long | PPL | hf_agree |
+|---|---:|---|---|---|
+| Agents-A1-4B | 0.262 | 0.029 / 0.032 | 9.081 -> 9.222 | 203/220 = 92.3% |
+| EU-Tool | 0.218 | 0.032 / 0.042 | 8.178 -> 8.310 | 206/217 = 94.9% |
+| AgentMercury | 0.206 | 0.033 / 0.034 | 8.274 -> 8.405 | 203/216 = 94.0% |
+| SkillGym | 0.267 | 0.041 / 0.050 | 8.030 -> 8.198 | 206/220 = 93.6% |
+
+No model had a malformed call, a schema error or an invalid grammar line (the control had its usual one, the
+unfinished wasm-module `write_file` call). The single gate-boot reading of 16.6 tok/s (AgentMercury) and the other
+low readings come from a shared box: the tool-session `/bench` of the same model is 20.2-21.4. All four stay at or
+above about 19 tok/s, as expected for the same architecture and file size.
+
+The gate failure of SkillGym is on top-1 only (KLD 0.0345 is under 0.04) and again on prose, the pattern T59 saw on
+NeoHorse and QwenPaw. The three that pass are probably the ones whose weights moved least from the base [E]: AgentMercury is 200 RL
+steps, and EU-Tool's own HF perplexity is the same as the stock model's (8.178 vs 8.193).
+
+## What the tool runs show
+
+Per prompt differences against the control are in [docs/spikes/t64/tool_diffs.txt](spikes/t64/tool_diffs.txt).
+
+- **AgentMercury**: the same answers as the control on every prompt but one: "leggi /notes/todo.txt" reads the file
+  once instead of adding an `ls`, which is +1 in-OS. One prompt is within the run-to-run noise of a 32-prompt set, so
+  this is a tie, not a win.
+- **Agents-A1**: answers "spegni la macchina", "riavvia", "usa 4 core per l'inferenza" and "what's 17 times 23? use
+  python" in text without calling the tool, and loops `meminfo` ten times on "set the screen brightness to 80" (the
+  round limit stops it). It reads files more directly (one `cat` where the control adds `ls`).
+- **EU-Tool**: calls tools where none is needed: `recall` on "hi, how are you?", "what's the capital of France?",
+  "Chi ha scritto la Divina Commedia?"; `run_code` on date and time arithmetic and on "traduci 'good morning' in
+  italiano". So only 3 of the 10 Italian knowledge questions are answered directly. It gets more first calls right in
+  the OS set (25/30, the best of all, for example `recall` on "cosa sai di me?" and `run_code` on "2**100"), but the
+  over-calling outweighs it. In the gate boot it also stored the e-mail request with `remember` instead of writing
+  the e-mail. Its card already warned about weak abstention (relevance 0.84).
+- **SkillGym**: hits the tool round limit four times in the OS set (`ls`/`cat` loops on "elenca i file in /notes",
+  `run_code` loops on the brightness prompt and on "cerca nei file qualcosa sul latte").
+- Italian by hand (gate boot, four open prompts): all write fluent Italian. Agents-A1 and SkillGym repeat the
+  one-sentence summary word for word; AgentMercury shortens it ("a causa della pioggia e del freddo") as the control
+  does; none of the three that wrote the e-mail (EU-Tool called `remember` instead) invents an old meeting time, which the control does ("invece che alle 14:00"). Small slips:
+  Agents-A1 "una maschera per il rumore", SkillGym "occhiali da sole" for sleeping, as NeoHorse in T59.
+
+## Decision
+
+| Model | Decision | Reason |
+|---|---|---|
+| Agents-A1-4B | **drop** | passes the gate; lower on both tool sets (spike 23 vs 24, in-OS 24 vs 26), skips poweroff, reboot and set_setting calls |
+| Qwen3.5-4B-EU-Tool | **drop** | passes the gate; calls tools on chit-chat and knowledge questions (Italian set 3/10 without a tool), spike 22 vs 24 |
+| AgentMercury-Qwen3.5-4B | **drop** (tie) | passes the gate; spike equal, in-OS 27 vs 26 (one prompt); not enough to switch, the only one worth a second look if the tool sets grow |
+| SkillGym-Qwen3.5-4B | **drop** | fails the M7 gate at Q4 (top-1 91.3%, prose-long KLD 0.050); tool round limit hit 4 times |
+| Qwen3.5-4B q4 | **keep** as the working model | control reproduces T55/T59 exactly |
+
+Nothing in the defaults changed. Downloaded weights, exported files, ISOs and test disks were deleted after the runs;
+raw results (gate JSON, hf_agree logs, gate-boot logs, tooleval JSON and logs, per prompt diffs) are in
+[docs/spikes/t64/](spikes/t64/), one summary line per model in `summary.jsonl`.
+
+## Reproduce
+
+Same commands as the T59 Reproduce section, with the model directories of the four repos above
+(`hf download REPO --include "*.json" --include "*.jinja" --include "*.safetensors"`), one model at a time.

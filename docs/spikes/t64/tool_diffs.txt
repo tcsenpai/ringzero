@@ -1,0 +1,39 @@
+## agents-a1 vs base (prompts where the verdict or the args check differ)
+spike: 'spegni la macchina': base True ['poweroff'] None | agents-a1 False [] None
+spike: 'riavvia': base True ['reboot'] None | agents-a1 False [] None
+spike: 'leggi il file /home/todo.md': base False ['cat', 'ls', 'ls'] True | agents-a1 True ['cat'] True
+inos: "what's 17 times 23? use python": base True ['run_code'] None | agents-a1 False [] None
+inos: 'leggi /notes/todo.txt': base False ['cat', 'ls'] None | agents-a1 True ['cat'] None
+inos: "usa 4 core per l'inferenza": base True ['set_setting'] None | agents-a1 False [] None
+inos: 'set the screen brightness to 80': base True [] None | agents-a1 False ['meminfo', 'meminfo', 'meminfo', 'meminfo', 'meminfo', 'meminfo', 'meminfo', 'meminfo', 'meminfo', 'meminfo'] None
+
+## eu-tool vs base (prompts where the verdict or the args check differ)
+spike: 'leggi il file /home/todo.md': base False ['cat', 'ls', 'ls'] True | eu-tool True ['cat'] True
+spike: "traduci 'good morning' in italiano": base True [] None | eu-tool False ['run_code'] None
+spike: "what's the capital of France?": base True [] None | eu-tool False ['recall'] None
+spike: 'how much free RAM and how many cores?': base True ['meminfo', 'cpuinfo'] None | eu-tool False ['meminfo'] None
+inos: 'cosa sai di me?': base False [] None | eu-tool True ['recall'] None
+inos: 'quanto fa 2**100? usa python': base False ['run_wasm'] None | eu-tool True ['run_code'] None
+inos: 'leggi /notes/todo.txt': base False ['cat', 'ls'] None | eu-tool True ['cat'] None
+inos: "usa 4 core per l'inferenza": base True ['set_setting'] None | eu-tool False ['run_code'] None
+inos: 'set the screen brightness to 80': base True [] None | eu-tool False ['run_code'] None
+inos: 'hi, how are you?': base True [] None | eu-tool False ['recall'] None
+inos: 'che driver abbiamo?': base True ['cat'] None | eu-tool False ['ls', 'cat'] None
+it: 'Chi ha scritto la Divina Commedia?': base True [] None | eu-tool False ['recall'] None
+it: 'Se oggi è martedì, che giorno della settimana sarà fra 10 gi': base True [] None | eu-tool False ['run_code'] None
+it: 'Qual è il pianeta più grande del sistema solare?': base True [] None | eu-tool False ['recall'] None
+it: 'Un treno parte alle 14:40 e arriva alle 17:15. Quanto dura i': base True [] None | eu-tool False ['run_code'] None
+it: 'Ho 5 mele, ne mangio 2 e poi ne compro il doppio di quelle c': base True [] None | eu-tool False ['run_code'] None
+it: "Qual è il fiume più lungo d'Italia?": base True [] None | eu-tool False ['recall'] None
+it: "Quanti secondi ci sono in un'ora?": base True [] None | eu-tool False ['run_code'] None
+
+## agentmercury vs base (prompts where the verdict or the args check differ)
+inos: 'leggi /notes/todo.txt': base False ['cat', 'ls'] None | agentmercury True ['cat'] None
+
+## skillgym vs base (prompts where the verdict or the args check differ)
+spike: 'list files in /home': base True ['ls'] True | skillgym False ['ls', 'ls'] True
+inos: 'quanto fa 2**100? usa python': base False ['run_wasm'] None | skillgym True ['run_code'] None
+inos: 'elenca i file in /notes': base True ['ls'] None | skillgym False ['ls', 'ls', 'ls', 'cat', 'ls', 'ls', 'ls', 'cat'] None
+inos: 'set the screen brightness to 80': base True [] None | skillgym False ['run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code'] None
+inos: 'cerca nei file qualcosa sul latte': base True ['recall'] None | skillgym False ['recall', 'run_wasm', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code', 'run_code'] None
+

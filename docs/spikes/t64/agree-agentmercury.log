@@ -1,0 +1,11 @@
+Loading weights:   0%|          | 0/426 [00:00<?, ?it/s]Loading weights:  12%|█▏        | 51/426 [00:00<00:00, 450.57it/s]Loading weights:  25%|██▌       | 108/426 [00:00<00:00, 472.17it/s]Loading weights:  42%|████▏     | 178/426 [00:00<00:00, 563.98it/s]Loading weights:  55%|█████▌    | 236/426 [00:00<00:00, 561.98it/s]Loading weights:  69%|██████▉   | 293/426 [00:00<00:00, 524.38it/s]Loading weights:  83%|████████▎ | 353/426 [00:00<00:00, 544.61it/s]Loading weights:  96%|█████████▌| 408/426 [00:00<00:00, 513.18it/s]Loading weights: 100%|██████████| 426/426 [00:00<00:00, 544.91it/s]
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+build/t64/gb-agentmercury.txt: prompt 19 tok, gen 5: top-1 agree 3/5, first divergence 1, min HF prob of the engine token 0.331
+build/t64/gb-agentmercury.txt: prompt 19 tok, gen 5: top-1 agree 3/5, first divergence 1, min HF prob of the engine token 0.331
+build/t64/gb-agentmercury.txt: prompt 25 tok, gen 48: top-1 agree 45/48, first divergence 24, min HF prob of the engine token 0.177
+build/t64/gb-agentmercury.txt: prompt 24 tok, gen 48: top-1 agree 46/48, first divergence 0, min HF prob of the engine token 0.275
+build/t64/gb-agentmercury.txt: prompt 26 tok, gen 48: top-1 agree 45/48, first divergence 17, min HF prob of the engine token 0.252
+build/t64/gb-agentmercury.txt: prompt 29 tok, gen 14: top-1 agree 14/14, first divergence None, min HF prob of the engine token 0.668
+build/t64/gb-agentmercury.txt: prompt 20 tok, gen 48: top-1 agree 47/48, first divergence 6, min HF prob of the engine token 0.432
+TOTAL top-1 agreement 203/216 = 94.0%
