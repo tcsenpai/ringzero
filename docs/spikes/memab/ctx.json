@@ -1,0 +1,1583 @@
+{
+ "model": "Qwen/Qwen3.5-2B",
+ "shared_prefix": 1099,
+ "facts": 61,
+ "entries": {
+  "m0": {
+   "pool": "memory",
+   "line": "This is Ada, an Italian man named Ada who lives in Italy.",
+   "shared": 1099,
+   "prompt": 98,
+   "out": 17,
+   "s": 8.1
+  },
+  "m1": {
+   "pool": "memory",
+   "line": "This is Ada, an Italian user named Ada who lives in Italy.",
+   "shared": 1099,
+   "prompt": 94,
+   "out": 17,
+   "s": 7.82
+  },
+  "m2": {
+   "pool": "memory",
+   "line": "Ada, Italian woman, 30, lives in Italy with partner Giulia and cat Pixel.",
+   "shared": 1099,
+   "prompt": 97,
+   "out": 22,
+   "s": 9.6
+  },
+  "m3": {
+   "pool": "memory",
+   "line": "Ada, Italian woman, lives in Italy with cat Pixel.",
+   "shared": 1099,
+   "prompt": 99,
+   "out": 15,
+   "s": 7.15
+  },
+  "m4": {
+   "pool": "memory",
+   "line": "Home directory usage at 91% for user Ada.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 15,
+   "s": 7.24
+  },
+  "m5": {
+   "pool": "memory",
+   "line": "Ada's home NAS has 2057 MiB free RAM.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 18,
+   "s": 8.33
+  },
+  "m6": {
+   "pool": "memory",
+   "line": "Renew TLS certificate for Ada's home NAS before December 15.",
+   "shared": 1099,
+   "prompt": 122,
+   "out": 18,
+   "s": 8.18
+  },
+  "m7": {
+   "pool": "memory",
+   "line": "Reminder to pay the electricity bill by the 30th.",
+   "shared": 1099,
+   "prompt": 125,
+   "out": 16,
+   "s": 7.74
+  },
+  "m8": {
+   "pool": "memory",
+   "line": "User Ada prefers bun over npm for Python projects.",
+   "shared": 1099,
+   "prompt": 117,
+   "out": 13,
+   "s": 6.42
+  },
+  "m9": {
+   "pool": "memory",
+   "line": "The user's Obsidian vault is synced with Syncthing.",
+   "shared": 1099,
+   "prompt": 124,
+   "out": 16,
+   "s": 7.7
+  },
+  "m10": {
+   "pool": "memory",
+   "line": "This record is about the user Ada's home NAS and her current system status.",
+   "shared": 1099,
+   "prompt": 123,
+   "out": 19,
+   "s": 8.6
+  },
+  "m11": {
+   "pool": "memory",
+   "line": "The user's pet Pixel is allergic to chicken.",
+   "shared": 1099,
+   "prompt": 123,
+   "out": 13,
+   "s": 6.58
+  },
+  "m12": {
+   "pool": "memory",
+   "line": "Meeting with client Acme every Tuesday at 10:00 CET.",
+   "shared": 1099,
+   "prompt": 123,
+   "out": 19,
+   "s": 8.72
+  },
+  "m13": {
+   "pool": "memory",
+   "line": "Kernel panic if model module is missing at boot for the user's AIOS.",
+   "shared": 1099,
+   "prompt": 119,
+   "out": 19,
+   "s": 8.71
+  },
+  "m14": {
+   "pool": "memory",
+   "line": "AIOS development branch agentd belongs to the user Ada.",
+   "shared": 1099,
+   "prompt": 119,
+   "out": 15,
+   "s": 7.09
+  },
+  "m15": {
+   "pool": "memory",
+   "line": "The user Ada wants to renew her TLS certificate for the home NAS before December 15.",
+   "shared": 1099,
+   "prompt": 119,
+   "out": 22,
+   "s": 9.46
+  },
+  "m16": {
+   "pool": "memory",
+   "line": "The user Ada's Fedora NAS is running with 18 days uptime.",
+   "shared": 1099,
+   "prompt": 123,
+   "out": 18,
+   "s": 8.21
+  },
+  "m17": {
+   "pool": "memory",
+   "line": "The user's password manager is Bitwarden accessed via the bw CLI.",
+   "shared": 1099,
+   "prompt": 122,
+   "out": 18,
+   "s": 8.37
+  },
+  "m18": {
+   "pool": "memory",
+   "line": "Printer connected to the user's office via Wi-Fi.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 14,
+   "s": 7.01
+  },
+  "m19": {
+   "pool": "memory",
+   "line": "Task: write the M4 milestone report for the agent subsystem.",
+   "shared": 1099,
+   "prompt": 119,
+   "out": 16,
+   "s": 7.62
+  },
+  "m20": {
+   "pool": "memory",
+   "line": "User Ada's birthday is March 3rd.",
+   "shared": 1099,
+   "prompt": 115,
+   "out": 13,
+   "s": 6.48
+  },
+  "m21": {
+   "pool": "memory",
+   "line": "User Ada drinks espresso ristretto without sugar.",
+   "shared": 1099,
+   "prompt": 122,
+   "out": 12,
+   "s": 6.23
+  },
+  "m22": {
+   "pool": "memory",
+   "line": "Backup job runs nightly at 02:00 with restic to a Backblaze bucket.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 24,
+   "s": 10.44
+  },
+  "m23": {
+   "pool": "memory",
+   "line": "User Ada owns an AMD Ryzen 9 5900X processor.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 19,
+   "s": 8.65
+  },
+  "m24": {
+   "pool": "memory",
+   "line": "Rust build failed for the user's AIOS project.",
+   "shared": 1099,
+   "prompt": 125,
+   "out": 15,
+   "s": 7.23
+  },
+  "m25": {
+   "pool": "memory",
+   "line": "Partner named Giulia celebrating her 12th anniversary.",
+   "shared": 1099,
+   "prompt": 120,
+   "out": 14,
+   "s": 7.38
+  },
+  "m26": {
+   "pool": "memory",
+   "line": "The user's preferred editor is Helix with the catppuccin theme.",
+   "shared": 1099,
+   "prompt": 119,
+   "out": 19,
+   "s": 8.35
+  },
+  "m27": {
+   "pool": "memory",
+   "line": "The user's partner Giulia celebrated her birthday on September 8th.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 17,
+   "s": 7.96
+  },
+  "m28": {
+   "pool": "memory",
+   "line": "The user's AIOS guest runs on 4 GiB RAM and 8 vCPUs.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 23,
+   "s": 10.09
+  },
+  "m29": {
+   "pool": "memory",
+   "line": "User's partner Giulia celebrates her birthday on September 8th.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 16,
+   "s": 7.63
+  },
+  "m30": {
+   "pool": "memory",
+   "line": "Ping test completed for the user's home network.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 13,
+   "s": 6.96
+  },
+  "m31": {
+   "pool": "memory",
+   "line": "This record is about a user named Ada who lives in Italy.",
+   "shared": 1099,
+   "prompt": 118,
+   "out": 16,
+   "s": 7.38
+  },
+  "m32": {
+   "pool": "memory",
+   "line": "The user's car needs a service in February.",
+   "shared": 1099,
+   "prompt": 120,
+   "out": 13,
+   "s": 6.69
+  },
+  "m33": {
+   "pool": "memory",
+   "line": "User Ada likes lo-fi and Brian Eno ambient albums for focus.",
+   "shared": 1099,
+   "prompt": 121,
+   "out": 17,
+   "s": 7.99
+  },
+  "m34": {
+   "pool": "memory",
+   "line": "The user's todo list has 14 open items.",
+   "shared": 1099,
+   "prompt": 121,
+   "out": 15,
+   "s": 7.34
+  },
+  "m35": {
+   "pool": "memory",
+   "line": "Wi-Fi password saved in Bitwarden for the user's home.",
+   "shared": 1099,
+   "prompt": 127,
+   "out": 17,
+   "s": 7.99
+  },
+  "m36": {
+   "pool": "memory",
+   "line": "User Ada is learning Japanese at JLPT N4 level.",
+   "shared": 1099,
+   "prompt": 119,
+   "out": 15,
+   "s": 7.3
+  },
+  "m37": {
+   "pool": "memory",
+   "line": "User's doctor appointment is scheduled for this Thursday afternoon.",
+   "shared": 1099,
+   "prompt": 122,
+   "out": 14,
+   "s": 7.06
+  },
+  "m38": {
+   "pool": "memory",
+   "line": "Docker compose preferred for multi-service apps by the user Ada.",
+   "shared": 1099,
+   "prompt": 115,
+   "out": 16,
+   "s": 7.65
+  },
+  "m39": {
+   "pool": "memory",
+   "line": "The user's home NAS is running.",
+   "shared": 1099,
+   "prompt": 118,
+   "out": 11,
+   "s": 5.69
+  },
+  "m40": {
+   "pool": "memory",
+   "line": "Sister's dog named Rocco.",
+   "shared": 1099,
+   "prompt": 123,
+   "out": 11,
+   "s": 5.96
+  },
+  "m41": {
+   "pool": "memory",
+   "line": "Brother named Luca lives in Turin.",
+   "shared": 1099,
+   "prompt": 120,
+   "out": 12,
+   "s": 6.24
+  },
+  "m42": {
+   "pool": "memory",
+   "line": "The user's home notes folder contains todo.txt, spesa.txt, and idee.md.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 20,
+   "s": 9.12
+  },
+  "m43": {
+   "pool": "memory",
+   "line": "Favourite colour is green for the user Ada.",
+   "shared": 1099,
+   "prompt": 113,
+   "out": 13,
+   "s": 6.62
+  },
+  "m44": {
+   "pool": "memory",
+   "line": "Teacher of mathematics at the high school.",
+   "shared": 1099,
+   "prompt": 123,
+   "out": 11,
+   "s": 5.96
+  },
+  "m45": {
+   "pool": "memory",
+   "line": "Home city is Bologna for the user Ada.",
+   "shared": 1099,
+   "prompt": 113,
+   "out": 12,
+   "s": 6.09
+  },
+  "m46": {
+   "pool": "memory",
+   "line": "Disk check completed for the user's home NAS.",
+   "shared": 1099,
+   "prompt": 133,
+   "out": 13,
+   "s": 6.71
+  },
+  "m47": {
+   "pool": "memory",
+   "line": "Router FritzBox 7590 installed in the hallway by the user.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 19,
+   "s": 8.67
+  },
+  "m48": {
+   "pool": "memory",
+   "line": "User's home coffee maker is a 3-cup moka.",
+   "shared": 1099,
+   "prompt": 126,
+   "out": 17,
+   "s": 8.04
+  },
+  "m49": {
+   "pool": "memory",
+   "line": "The user's AIOS project stats report shows an average age of 38.8.",
+   "shared": 1099,
+   "prompt": 137,
+   "out": 22,
+   "s": 9.68
+  },
+  "m50": {
+   "pool": "memory",
+   "line": "Doctor Bianchi is the user's primary medical provider.",
+   "shared": 1099,
+   "prompt": 124,
+   "out": 14,
+   "s": 6.99
+  },
+  "m51": {
+   "pool": "memory",
+   "line": "Cat vet in Bologna per il gatto Pixel.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 13,
+   "s": 6.68
+  },
+  "m52": {
+   "pool": "memory",
+   "line": "The user's favorite programming language is Rust.",
+   "shared": 1099,
+   "prompt": 115,
+   "out": 12,
+   "s": 6.28
+  },
+  "m53": {
+   "pool": "memory",
+   "line": "The user's laptop is a ThinkPad X1 Carbon gen 11 with 32 GB.",
+   "shared": 1099,
+   "prompt": 125,
+   "out": 24,
+   "s": 10.27
+  },
+  "m54": {
+   "pool": "memory",
+   "line": "The user's agent set the keyboard layout to Italian.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 14,
+   "s": 7.03
+  },
+  "m55": {
+   "pool": "memory",
+   "line": "User Ada owns a Motorola g54 phone ending in 4411.",
+   "shared": 1099,
+   "prompt": 136,
+   "out": 20,
+   "s": 9.08
+  },
+  "m56": {
+   "pool": "memory",
+   "line": "The user's phone was changed to an iPhone 15.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 16,
+   "s": 7.72
+  },
+  "m57": {
+   "pool": "memory",
+   "line": "Fiat Panda owned by the user's partner Giulia.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 14,
+   "s": 7.17
+  },
+  "m58": {
+   "pool": "memory",
+   "line": "The user's Toyota Yaris hybrid is now driving after selling the Fiat Panda.",
+   "shared": 1099,
+   "prompt": 139,
+   "out": 19,
+   "s": 8.48
+  },
+  "m59": {
+   "pool": "memory",
+   "line": "User's dentist appointment scheduled for November 4th.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 14,
+   "s": 6.96
+  },
+  "m60": {
+   "pool": "memory",
+   "line": "The dentist moved the appointment to November 18 at 3 PM.",
+   "shared": 1099,
+   "prompt": 138,
+   "out": 18,
+   "s": 8.4
+  },
+  "m61": {
+   "pool": "memory",
+   "line": "Acme client meeting scheduled for Tuesday at 10:00 CET.",
+   "shared": 1099,
+   "prompt": 139,
+   "out": 19,
+   "s": 8.66
+  },
+  "m62": {
+   "pool": "memory",
+   "line": "ISP is TIM with 200 Mbps fiber for Ada.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 16,
+   "s": 7.69
+  },
+  "m63": {
+   "pool": "memory",
+   "line": "User Ada updated internet service to Fastweb with 1 Giga speed.",
+   "shared": 1099,
+   "prompt": 136,
+   "out": 18,
+   "s": 8.3
+  },
+  "m64": {
+   "pool": "memory",
+   "line": "Teacher Paolo Ferri is the user's head teacher.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 14,
+   "s": 7.31
+  },
+  "m65": {
+   "pool": "memory",
+   "line": "The user's head teacher is now Elena Costa after Paolo Ferri retired.",
+   "shared": 1099,
+   "prompt": 142,
+   "out": 18,
+   "s": 8.37
+  },
+  "m66": {
+   "pool": "memory",
+   "line": "User Ada is a vegetarian since two years.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 12,
+   "s": 6.42
+  },
+  "m67": {
+   "pool": "memory",
+   "line": "User Ada is a pescetarian who started eating fish again.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 16,
+   "s": 7.55
+  },
+  "m68": {
+   "pool": "memory",
+   "line": "Running goal: 10 km under 50 minutes for the user Ada.",
+   "shared": 1099,
+   "prompt": 133,
+   "out": 20,
+   "s": 9.04
+  },
+  "m69": {
+   "pool": "memory",
+   "line": "The user's new goal is the half marathon in Bologna in March.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 17,
+   "s": 8.02
+  },
+  "m70": {
+   "pool": "memory",
+   "line": "Rent of 750 euros per month for the user Ada.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 17,
+   "s": 8.02
+  },
+  "m71": {
+   "pool": "memory",
+   "line": "The user's rent increased to 820 euros per month.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 17,
+   "s": 7.98
+  },
+  "m72": {
+   "pool": "memory",
+   "line": "User Ada's piano lessons are on Thursday at 18:00.",
+   "shared": 1099,
+   "prompt": 139,
+   "out": 19,
+   "s": 8.71
+  },
+  "m73": {
+   "pool": "memory",
+   "line": "The user's piano lesson moved to Saturday morning.",
+   "shared": 1099,
+   "prompt": 137,
+   "out": 13,
+   "s": 6.6
+  },
+  "m74": {
+   "pool": "memory",
+   "line": "Ada's email address is ada.moretti@libero.it.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 16,
+   "s": 7.65
+  },
+  "m75": {
+   "pool": "memory",
+   "line": "The user's new email is ada.m@proton.me.",
+   "shared": 1099,
+   "prompt": 141,
+   "out": 16,
+   "s": 7.43
+  },
+  "m76": {
+   "pool": "memory",
+   "line": "The nightly backup finished successfully for the user Ada.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 13,
+   "s": 6.67
+  },
+  "m77": {
+   "pool": "memory",
+   "line": "Backup failed for the user's home NAS due to full storage.",
+   "shared": 1099,
+   "prompt": 145,
+   "out": 16,
+   "s": 7.68
+  },
+  "m78": {
+   "pool": "memory",
+   "line": "The user's Amazon package arrives tomorrow.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 11,
+   "s": 5.97
+  },
+  "m79": {
+   "pool": "memory",
+   "line": "The courier said the package arrives next Monday.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 12,
+   "s": 6.28
+  },
+  "m80": {
+   "pool": "memory",
+   "line": "The user's sister Chiara invited Ada to dinner this Saturday evening.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 16,
+   "s": 7.4
+  },
+  "m81": {
+   "pool": "memory",
+   "line": "The user's sister is having dinner with her on Sunday at noon.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 17,
+   "s": 7.97
+  },
+  "m82": {
+   "pool": "memory",
+   "line": "The user's train to Milano leaves at 7:40 on Friday.",
+   "shared": 1099,
+   "prompt": 140,
+   "out": 19,
+   "s": 8.75
+  },
+  "m83": {
+   "pool": "memory",
+   "line": "Ada corrected the train time to 8:10.",
+   "shared": 1099,
+   "prompt": 146,
+   "out": 15,
+   "s": 7.31
+  },
+  "m84": {
+   "pool": "memory",
+   "line": "Mom's birthday is May 12th.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 13,
+   "s": 6.65
+  },
+  "m85": {
+   "pool": "memory",
+   "line": "The user's mother's birthday is May 21st.",
+   "shared": 1099,
+   "prompt": 137,
+   "out": 16,
+   "s": 7.71
+  },
+  "m86": {
+   "pool": "memory",
+   "line": "Meeting with parents of students in classroom 12.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 14,
+   "s": 6.99
+  },
+  "m87": {
+   "pool": "memory",
+   "line": "The user's family meeting moved to the main hall.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 14,
+   "s": 7.0
+  },
+  "m88": {
+   "pool": "memory",
+   "line": "Marta arrives at the station at 18.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 14,
+   "s": 7.02
+  },
+  "m89": {
+   "pool": "memory",
+   "line": "Marta's train missed by the user's sister Chiara.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 15,
+   "s": 7.3
+  },
+  "m90": {
+   "pool": "memory",
+   "line": "The user's book return deadline is December 2nd.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 15,
+   "s": 7.08
+  },
+  "m91": {
+   "pool": "memory",
+   "line": "The user renewed a loan for a book to be returned on December 16.",
+   "shared": 1099,
+   "prompt": 137,
+   "out": 20,
+   "s": 8.98
+  },
+  "m92": {
+   "pool": "memory",
+   "line": "Sister Chiara lives in Parma.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 10,
+   "s": 5.63
+  },
+  "m93": {
+   "pool": "memory",
+   "line": "Best friend is Davide.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 8,
+   "s": 4.84
+  },
+  "m94": {
+   "pool": "memory",
+   "line": "The user's friend Davide moved to Lisbon for work.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 14,
+   "s": 6.88
+  },
+  "m95": {
+   "pool": "memory",
+   "line": "The user's friend Davide's birthday is February 3rd.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 16,
+   "s": 7.54
+  },
+  "m96": {
+   "pool": "memory",
+   "line": "User's sister Giulia's birthday is September 8th.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 15,
+   "s": 7.14
+  },
+  "m97": {
+   "pool": "memory",
+   "line": "Acme contact Marco Bianchi is the user's relative.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 15,
+   "s": 7.32
+  },
+  "m98": {
+   "pool": "memory",
+   "line": "Ceramic course for the user's mother's birthday.",
+   "shared": 1099,
+   "prompt": 136,
+   "out": 14,
+   "s": 7.04
+  },
+  "m99": {
+   "pool": "memory",
+   "line": "Rocco deve fare il vaccino a gennaio.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 13,
+   "s": 6.65
+  },
+  "m100": {
+   "pool": "memory",
+   "line": "Doctor Bianchi prescribed vitamin D to the user's sister Chiara.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 16,
+   "s": 7.7
+  },
+  "m101": {
+   "pool": "memory",
+   "line": "The user's partner Giulia works as an architect in Modena.",
+   "shared": 1099,
+   "prompt": 127,
+   "out": 15,
+   "s": 7.19
+  },
+  "m102": {
+   "pool": "memory",
+   "line": "The user's sister Chiara has two children, Tommaso and Irene.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 18,
+   "s": 8.32
+  },
+  "m103": {
+   "pool": "memory",
+   "line": "User's friend Davide is visiting Japan.",
+   "shared": 1099,
+   "prompt": 126,
+   "out": 11,
+   "s": 5.81
+  },
+  "m104": {
+   "pool": "memory",
+   "line": "Marta is the user's math colleague.",
+   "shared": 1099,
+   "prompt": 133,
+   "out": 12,
+   "s": 6.35
+  },
+  "m105": {
+   "pool": "memory",
+   "line": "The user's teacher has scheduled a meeting for December 5th.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 17,
+   "s": 8.1
+  },
+  "m106": {
+   "pool": "memory",
+   "line": "The user's brother has an iPhone 13.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 14,
+   "s": 7.16
+  },
+  "m107": {
+   "pool": "memory",
+   "line": "Sister Chiara's birthday is October 9th.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 14,
+   "s": 7.08
+  },
+  "m108": {
+   "pool": "memory",
+   "line": "The user's cat Mochi is allergic to chicken.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 15,
+   "s": 7.3
+  },
+  "m109": {
+   "pool": "memory",
+   "line": "Doctor Neri is the user's father's doctor.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 14,
+   "s": 7.01
+  },
+  "m110": {
+   "pool": "memory",
+   "line": "Sister's MacBook Air used for AIOS development.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 14,
+   "s": 7.05
+  },
+  "m111": {
+   "pool": "memory",
+   "line": "Motorcycle owned by the user's brother.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 12,
+   "s": 6.25
+  },
+  "m112": {
+   "pool": "memory",
+   "line": "Mom lives in Ravenna.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 9,
+   "s": 5.37
+  },
+  "m113": {
+   "pool": "memory",
+   "line": "The user's sister's dog Rocco cannot eat cereals.",
+   "shared": 1099,
+   "prompt": 137,
+   "out": 16,
+   "s": 7.73
+  },
+  "m114": {
+   "pool": "memory",
+   "line": "The user's Japan trip itinerary is in the home folder.",
+   "shared": 1099,
+   "prompt": 145,
+   "out": 15,
+   "s": 7.58
+  },
+  "m115": {
+   "pool": "memory",
+   "line": "The user's agent read a recipe file while cooking dinner.",
+   "shared": 1099,
+   "prompt": 142,
+   "out": 15,
+   "s": 7.43
+  },
+  "m116": {
+   "pool": "memory",
+   "line": "The user's agent requested to show a demo file named people.csv.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 17,
+   "s": 7.99
+  },
+  "m117": {
+   "pool": "memory",
+   "line": "Shopping list located in /notes/spesa.txt for the user Ada.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 17,
+   "s": 8.05
+  },
+  "m118": {
+   "pool": "memory",
+   "line": "Ada added two items to her todo list.",
+   "shared": 1099,
+   "prompt": 134,
+   "out": 12,
+   "s": 6.29
+  },
+  "m119": {
+   "pool": "memory",
+   "line": "The user's home directory contains recipe files.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 12,
+   "s": 6.31
+  },
+  "m120": {
+   "pool": "memory",
+   "line": "The agent ran hello.lua from /demo.",
+   "shared": 1099,
+   "prompt": 136,
+   "out": 12,
+   "s": 6.29
+  },
+  "m121": {
+   "pool": "memory",
+   "line": "The user's printer details were written to a file.",
+   "shared": 1099,
+   "prompt": 137,
+   "out": 14,
+   "s": 7.1
+  },
+  "m122": {
+   "pool": "memory",
+   "line": "The user Ada wrote a note about ideas in a file.",
+   "shared": 1099,
+   "prompt": 128,
+   "out": 15,
+   "s": 6.99
+  },
+  "m123": {
+   "pool": "memory",
+   "line": "The user's agent printed a JSON file named demo/data.json.",
+   "shared": 1099,
+   "prompt": 133,
+   "out": 16,
+   "s": 7.69
+  },
+  "m124": {
+   "pool": "memory",
+   "line": "User Ada dislikes coriander and will not add it to recipes.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 17,
+   "s": 8.04
+  },
+  "m125": {
+   "pool": "memory",
+   "line": "User's sleep schedule: wakes up at 7 AM.",
+   "shared": 1099,
+   "prompt": 139,
+   "out": 15,
+   "s": 7.27
+  },
+  "m126": {
+   "pool": "memory",
+   "line": "The user Ada forgot to water her basil on the balcony.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 15,
+   "s": 7.38
+  },
+  "m127": {
+   "pool": "memory",
+   "line": "The user's team is the Bologna FC.",
+   "shared": 1099,
+   "prompt": 138,
+   "out": 12,
+   "s": 6.3
+  },
+  "m128": {
+   "pool": "memory",
+   "line": "The user Ada is allergic to penicillin.",
+   "shared": 1099,
+   "prompt": 131,
+   "out": 13,
+   "s": 6.65
+  },
+  "m129": {
+   "pool": "memory",
+   "line": "The user's pet Pixel fears flying in airplanes.",
+   "shared": 1099,
+   "prompt": 137,
+   "out": 13,
+   "s": 6.68
+  },
+  "m130": {
+   "pool": "memory",
+   "line": "Spare house keys with the neighbour on the second floor.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 15,
+   "s": 7.38
+  },
+  "m131": {
+   "pool": "memory",
+   "line": "User Ada likes running early morning before work.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 12,
+   "s": 6.26
+  },
+  "m132": {
+   "pool": "memory",
+   "line": "User's personal note about decaf coffee after 4 pm.",
+   "shared": 1099,
+   "prompt": 129,
+   "out": 16,
+   "s": 7.8
+  },
+  "m133": {
+   "pool": "memory",
+   "line": "User Ada reading \"Il nome della rosa\" at the halfway point.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 17,
+   "s": 7.97
+  },
+  "m134": {
+   "pool": "memory",
+   "line": "The user's shoe number is 43.",
+   "shared": 1099,
+   "prompt": 130,
+   "out": 13,
+   "s": 6.59
+  },
+  "m135": {
+   "pool": "memory",
+   "line": "The user's neighbour Franco has a spare charger for the user's e-bike.",
+   "shared": 1099,
+   "prompt": 132,
+   "out": 20,
+   "s": 9.03
+  },
+  "m136": {
+   "pool": "memory",
+   "line": "The user Ada said hello to the agent.",
+   "shared": 1099,
+   "prompt": 133,
+   "out": 12,
+   "s": 6.35
+  },
+  "m137": {
+   "pool": "memory",
+   "line": "The user Ada asked questions about the agent subsystem.",
+   "shared": 1099,
+   "prompt": 135,
+   "out": 13,
+   "s": 6.67
+  },
+  "man:Talking to the system agent": {
+   "pool": "manual",
+   "line": "how do I use the shell\ncome si usa il shell\ncosa posso fare\n\nwhat is the difference between a machine command and a session command\nla differenza tra un comando macchina e un comando sessione\ncosa posso fare\n\nhow do I talk to the agent\ncome parlo con l'agente\ncosa posso fare\n\nwhat does a line starting with `!` mean\ncosa significa una riga che inizia con `!`\ncome funziona\n\nwhat does a line starting with `/` mean\ncosa significa una riga che inizia con `/`\ncome funziona",
+   "shared": 0,
+   "prompt": 184,
+   "out": 118,
+   "s": 42.38
+  },
+  "man:Command list and help": {
+   "pool": "manual",
+   "line": "What is the help command?\nQuali comandi sono disponibili?\nWhat is the undo command?\nWhat is the help command?\nWhat is the list command?\nWhat is the man command?",
+   "shared": 0,
+   "prompt": 153,
+   "out": 45,
+   "s": 17.34
+  },
+  "man:Undo and redo a turn": {
+   "pool": "manual",
+   "line": "how do I go back one turn\ncome torno indietro di un turno\nannulla l'ultima risposta\nundo\ntake back the last answer\nringzero[main~1]>",
+   "shared": 0,
+   "prompt": 177,
+   "out": 40,
+   "s": 16.02
+  },
+  "man:Branches and saved points": {
+   "pool": "manual",
+   "line": "How do I save a conversation?\nHow do I load a saved point?\nHow do I switch to a specific branch?\nHow do I delete a saved point?\nHow do I undo my last action?\nHow do I see the snapshot pool?",
+   "shared": 0,
+   "prompt": 196,
+   "out": 56,
+   "s": 22.03
+  },
+  "man:New conversation": {
+   "pool": "manual",
+   "line": "how do I start over\ncome posso ricominciare da capo\nclear the chat\npulire lo schermo\nhow do I start over\ncome posso ricominciare da capo\nclear the chat\npulire lo schermo",
+   "shared": 0,
+   "prompt": 121,
+   "out": 50,
+   "s": 18.7
+  },
+  "man:Context size and compaction": {
+   "pool": "manual",
+   "line": "How full is the context?\nQuanto contesto resta?\nHow many tokens are in use?\nQuanti token sono in uso?\nHow does compaction work?\nCome funziona il compattamento?\nHow do I reset the context size?\nCome posso resettare il contesto?\nHow do I undo a compaction?\nCome posso annullare un compattamento?\nHow do I change the compaction percentage?\nCome posso cambiare il percentuale di compattamento?\nHow do I see the raw history?\nCome posso vedere la cronologia grezza?",
+   "shared": 0,
+   "prompt": 167,
+   "out": 119,
+   "s": 42.37
+  },
+  "man:Hibernation": {
+   "pool": "manual",
+   "line": "How do I hibernate?\nCome faccio a ibernare?\nHow do I resume after reboot?\nCome faccio a riavviare dopo l'ibernazione?\nHow do I save the session before power off?\nCome devo salvare la sessione prima di spegnere?\nHow do I discard the hibernation image?\nCome devo cancellare l'immagine di ibernazione?",
+   "shared": 0,
+   "prompt": 216,
+   "out": 85,
+   "s": 31.72
+  },
+  "man:Power off and reboot": {
+   "pool": "manual",
+   "line": "How do I shut down the machine?\nHow do I restart the computer?\nHow do I save the conversation before shutting down?\nHow do I power off the device?\nHow do I reboot the system?\nHow do I flush the disk without turning it off?",
+   "shared": 0,
+   "prompt": 145,
+   "out": 59,
+   "s": 22.17
+  },
+  "man:Listing and reading files": {
+   "pool": "manual",
+   "line": "!ls /\n!cat /notes/todo.txt\n!df\n!ls /\n!cat /notes/todo.txt\n!df",
+   "shared": 0,
+   "prompt": 166,
+   "out": 30,
+   "s": 12.77
+  },
+  "man:Reading a long document": {
+   "pool": "manual",
+   "line": "How do I give the agent a long file?\nHow do I read a document into the chat?\nHow do I clear the document cache?\nHow do I list the cached documents?\nHow do I read a file larger than 64 KiB?\nHow do I delete a cached document entry?",
+   "shared": 0,
+   "prompt": 217,
+   "out": 67,
+   "s": 25.41
+  },
+  "man:System information in /proc": {
+   "pool": "manual",
+   "line": "which drivers are there\nquali driver ci sono\nwhat hardware is this\nche hardware ho\ncpu flags\nfree memory\nversione\nversion\ndevices\ndispositivi\nfree memory\nmemoria libera\ncpu flags\nflags del processore\nversione\nversion\ndevices\ndispositivi\nfree memory\nmemoria libera\ncpu flags\nflags del processore\nversione\nversion\ndevices\ndispositivi\nfree memory\nmemoria libera\ncpu flags\nflags del processore\nversione\nversion\ndevices\ndispositivi\nfree memory\nmemoria",
+   "shared": 0,
+   "prompt": 297,
+   "out": 120,
+   "s": 43.69
+  },
+  "man:System information in /sys and /etc": {
+   "pool": "manual",
+   "line": "1. Quanto \u00e8 grande il disco?\n2. Quale \u00e8 il nome della macchina?\n3. Quale core \u00e8 usato per l'inferenza?\n4. Quale \u00e8 il nome del sistema operativo?\n5. Quale core \u00e8 online?\n6. Quale core non \u00e8 online?",
+   "shared": 0,
+   "prompt": 261,
+   "out": 67,
+   "s": 25.67
+  },
+  "man:Devices, /tmp and ringzero's own data": {
+   "pool": "manual",
+   "line": "1. Where is my memory stored?\n2. Where are the temporary scratch files kept?\n3. Where does ringzero keep its own data?\n4. What happens to data written in older ringzero versions?\n5. Where is the boot cache located?\n6. How does the agent manage its own data?",
+   "shared": 0,
+   "prompt": 289,
+   "out": 70,
+   "s": 27.05
+  },
+  "man:Writing and deleting files": {
+   "pool": "manual",
+   "line": "how do I create a file\ncome creo un file\nhow do I delete a file\ncome cancellare un file\nhow do I create a folder\ncome creare una cartella\nhow do I delete a folder\ncome cancellare una cartella",
+   "shared": 0,
+   "prompt": 190,
+   "out": 54,
+   "s": 20.69
+  },
+  "man:Running Python": {
+   "pool": "manual",
+   "line": "how do I run python\ncome eseguo python\nrun a python script\neseguire uno script\nhow do I run python\ncome eseguo python\nrun a python script\neseguire uno script\nhow do I run python\ncome eseguo python\nrun a python script\neseguire uno script\nhow do I run python\ncome eseguo python\nrun a python script\neseguire uno script\nhow do I run python\ncome eseguo python\nrun a python script\neseguire uno script\nhow do I run python\ncome eseguo python",
+   "shared": 0,
+   "prompt": 209,
+   "out": 120,
+   "s": 43.34
+  },
+  "man:Running WASI programs": {
+   "pool": "manual",
+   "line": "!run ls -l /\n!run wc -l < /notes/todo.txt\n!run /bin/NAME.wasm\n!run /bin/NAME.wasm /bin/NAME\n!run /bin/NAME.wasm /bin/NAME /bin/NAME\n!run /bin/NAME.wasm /bin/NAME /bin/NAME /bin/NAME\n!run /bin/NAME.wasm /bin/NAME /bin/NAME /bin/NAME /bin/NAME\n!run /bin/NAME.wasm /bin/NAME /bin/NAME /",
+   "shared": 0,
+   "prompt": 188,
+   "out": 120,
+   "s": 42.89
+  },
+  "man:Programs in /bin": {
+   "pool": "manual",
+   "line": "how do I list the programs in /bin\nquali programmi ci sono\nwhich programs are installed\nhow do I run a specific program\nhow do I list the installed programs\nwhich programs are installed",
+   "shared": 0,
+   "prompt": 188,
+   "out": 44,
+   "s": 17.5
+  },
+  "man:SQLite, Lua, JavaScript, jq and the editor": {
+   "pool": "manual",
+   "line": "How do I open a SQLite database file?\nCome uso un file di database SQLite?\nHow do I run a SQL query in the REPL?\nCome eseguo un'query SQL nel REPL?\nHow do I open a Lua REPL?\nCome uso il REPL di Lua?\nHow do I open a JavaScript REPL?\nCome uso il REPL di JavaScript?\nHow do I open a JSON REPL?\nCome uso il REPL di JSON?\nHow do I open a text editor?\nCome uso un editor di testo?\nHow do I exit the REPL?\nCome esco",
+   "shared": 0,
+   "prompt": 194,
+   "out": 120,
+   "s": 42.7
+  },
+  "man:Keyboard layout": {
+   "pool": "manual",
+   "line": "how do I change the keyboard layout\ncome cambio layout tastiera\nhow do I switch to the US keyboard\ncome cambio tastiera US\nhow do I switch to the Italian keyboard\ncome cambio tastiera italiana\nhow do I check the current layout\ncome controllo il layout attuale",
+   "shared": 0,
+   "prompt": 154,
+   "out": 60,
+   "s": 22.4
+  },
+  "man:Settings": {
+   "pool": "manual",
+   "line": "how do I change a setting\ncome cambio le impostazioni\nsettings list\nconfigurazione\nhow do I change a setting\nhow do I change a setting\nhow do I change a setting",
+   "shared": 0,
+   "prompt": 276,
+   "out": 41,
+   "s": 17.01
+  },
+  "man:Tool round limit": {
+   "pool": "manual",
+   "line": "!set rounds 4\n!set rounds 4\n!set rounds 4\n!set rounds 4\n!set rounds 4\n!set rounds 4",
+   "shared": 0,
+   "prompt": 199,
+   "out": 38,
+   "s": 15.31
+  },
+  "man:Temperature and thinking": {
+   "pool": "manual",
+   "line": "how do I make answers deterministic, temperature, more creative answers, thinking mode, ragionamento\n`/temp 0.7` or `!set temperature 0.7` sets the sampling temperature; 0 is greedy (the same question gives the same answer). `/think on` lets the model think before it answers (slower), `/think off` turns it off.",
+   "shared": 0,
+   "prompt": 137,
+   "out": 81,
+   "s": 29.37
+  },
+  "man:CPU, cores, memory and uptime": {
+   "pool": "manual",
+   "line": "how many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory\nhow many cores\nhow much RAM\nhow much memory",
+   "shared": 0,
+   "prompt": 216,
+   "out": 120,
+   "s": 43.39
+  },
+  "man:Kernel log": {
+   "pool": "manual",
+   "line": "how do I see the log\n!log\nvedere il log\nhow do I see the last 20 lines of the log\n!log 20\nmostra le ultime 20 righe del log\nhow do I see the last 5 lines of the log\n!log 5\nmostra le ultime 5 righe del log\nhow do I see the last 100 lines of the log\n!log 100\nmostra le ultime 100 righe del log\nhow do I see the kernel messages\n!log",
+   "shared": 0,
+   "prompt": 122,
+   "out": 120,
+   "s": 42.02
+  },
+  "man:Saved facts": {
+   "pool": "manual",
+   "line": "how do I make it remember something, come faccio a fargli ricordare, ricordati\nforget a fact, dimenticare\nhow do I delete a fact, come faccio a cancellare un fatto\nhow do I save a fact, come faccio a salvare un fatto\nhow do I list my saved facts, come faccio a vedere i miei ricordi\nhow do I clear all my saved facts, come faccio a cancellare tutti i miei ricordi",
+   "shared": 0,
+   "prompt": 164,
+   "out": 91,
+   "s": 33.37
+  },
+  "man:What the memory system decided": {
+   "pool": "manual",
+   "line": "How do I see what the memory system decided\ncosa ha deciso la memoria\nwhy did it remember\nWhat went into the memory slot and why\nHow do I see the last 10 decisions\nWhat did the memory system decide",
+   "shared": 0,
+   "prompt": 164,
+   "out": 50,
+   "s": 18.99
+  },
+  "man:Memory slot and consolidation": {
+   "pool": "manual",
+   "line": "What is the maximum number of tokens saved in a memory slot?\nHow do I turn off the memory slot for the current conversation?\nWhat happens if I type a new question while the consolidation process is running?\nHow can I force an immediate consolidation of the session history?\nWhat is the difference between the default idle consolidation time and the `!set consolidate N` command?\nHow does the consolidation stream behave when the user types a new query?",
+   "shared": 0,
+   "prompt": 205,
+   "out": 95,
+   "s": 34.72
+  },
+  "man:Memory index and search": {
+   "pool": "manual",
+   "line": "How do I search my notes?\nCercare nei file qualcosa sul latte?\nHow do I find a file by meaning?\nHow do I search my memory?\nHow do I find a file by meaning?\nHow do I search my notes?",
+   "shared": 0,
+   "prompt": 161,
+   "out": 56,
+   "s": 21.01
+  },
+  "man:The manual": {
+   "pool": "manual",
+   "line": "is there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual\nis there a manual",
+   "shared": 0,
+   "prompt": 125,
+   "out": 120,
+   "s": 42.04
+  },
+  "man:Confidence of tool calls": {
+   "pool": "manual",
+   "line": "What is the confidence line?\nCosa vuol dire confidence?\nWhy does it ask Run it?\nPerche chiede conferma?\nHow do I turn off the confidence question?\nCome disattivo la domanda di conferma?\nWhat does the 0.80 threshold mean?\nCosa significa il valore 0.80?",
+   "shared": 0,
+   "prompt": 264,
+   "out": 74,
+   "s": 28.02
+  },
+  "man:Speed and benchmarks": {
+   "pool": "manual",
+   "line": "how fast is it\nquanto e veloce\nbenchmark\ntokens per second\nspeculative decoding\n!set spec off",
+   "shared": 0,
+   "prompt": 185,
+   "out": 26,
+   "s": 11.36
+  },
+  "man:What ringzero is": {
+   "pool": "manual",
+   "line": "What is ringzero?\nWhat model does ringzero use?\nWho is RingZero?\nWhat edition does the boot banner show?\nWhat language model runs inside the kernel?\nWhat is the memory index model?",
+   "shared": 0,
+   "prompt": 172,
+   "out": 48,
+   "s": 18.69
+  },
+  "f:/notes/todo.txt#0": {
+   "pool": "files",
+   "line": "This file contains a to-do list with tasks like buying milk, calling a dentist, and renewing a TLS certificate.",
+   "shared": 0,
+   "prompt": 168,
+   "out": 27,
+   "s": 11.32
+  },
+  "f:/notes/spesa.txt#0": {
+   "pool": "files",
+   "line": "This text is a grocery list containing items like milk, eggs, and ham.",
+   "shared": 0,
+   "prompt": 141,
+   "out": 19,
+   "s": 8.69
+  },
+  "f:/notes/idee.md#0": {
+   "pool": "files",
+   "line": "This file contains game ideas for RingZero, including a Lua card game, an electric consumption dashboard using SQLite, and an Italian translation of the manual.",
+   "shared": 0,
+   "prompt": 150,
+   "out": 33,
+   "s": 13.33
+  },
+  "f:/home/todo.md#0": {
+   "pool": "files",
+   "line": "This file is a TODO list containing tasks like booking a dentist and updating router firmware.",
+   "shared": 0,
+   "prompt": 142,
+   "out": 20,
+   "s": 9.01
+  },
+  "f:/home/ricetta_carbonara.txt#0": {
+   "pool": "files",
+   "line": "This file contains a recipe for Carbonara, and the chunk lists ingredients and cooking steps.",
+   "shared": 0,
+   "prompt": 247,
+   "out": 21,
+   "s": 10.27
+  },
+  "f:/home/meeting_acme.md#0": {
+   "pool": "files",
+   "line": "This file is a weekly meeting agenda for Acme, detailing a CSV export request, a December 10 deadline, and a next call scheduled for Tuesday at 10:00 CET.",
+   "shared": 0,
+   "prompt": 193,
+   "out": 43,
+   "s": 17.32
+  },
+  "f:/home/viaggio_giappone.md#0": {
+   "pool": "files",
+   "line": "This file outlines a 14-day Japan trip from Bologna to Kyoto and Osaka, including a Tokyo stay and JR Pass.",
+   "shared": 0,
+   "prompt": 192,
+   "out": 28,
+   "s": 12.13
+  },
+  "f:/etc/hostname#0": {
+   "pool": "files",
+   "line": "This file contains system configuration data, specifically listing the hostname as \"ringzero\" found in the /etc/hostname directory.",
+   "shared": 0,
+   "prompt": 92,
+   "out": 28,
+   "s": 11.0
+  },
+  "f:/etc/os-release#0": {
+   "pool": "files",
+   "line": "This file contains ringzero system metadata, and the chunk lists its name, version, ID, and description.",
+   "shared": 0,
+   "prompt": 144,
+   "out": 25,
+   "s": 10.57
+  },
+  "f:/demo/data.json#0": {
+   "pool": "files",
+   "line": "This ringzero file configures Qwen3.5-2B and Qwen3-Embedding models, listing coreutils, python3, and qjs as available apps.",
+   "shared": 0,
+   "prompt": 366,
+   "out": 40,
+   "s": 18.1
+  },
+  "f:/demo/hello.js#0": {
+   "pool": "files",
+   "line": "This file contains a JavaScript demo calculating Fibonacci numbers and processing a list of people's names and ages.",
+   "shared": 0,
+   "prompt": 455,
+   "out": 23,
+   "s": 12.7
+  },
+  "f:/demo/hello.lua#0": {
+   "pool": "files",
+   "line": "This Lua script demonstrates sorting words by frequency and calculating Fibonacci numbers.",
+   "shared": 0,
+   "prompt": 717,
+   "out": 16,
+   "s": 13.01
+  },
+  "f:/demo/people.csv#0": {
+   "pool": "files",
+   "line": "This CSV file lists five people with names, cities, ages, and emails.",
+   "shared": 0,
+   "prompt": 258,
+   "out": 19,
+   "s": 9.62
+  },
+  "f:/demo/stats.py#0": {
+   "pool": "files",
+   "line": "This script processes CSV data to generate a JSON report with statistics like mean age, city counts, and oldest person.",
+   "shared": 0,
+   "prompt": 556,
+   "out": 26,
+   "s": 14.68
+  },
+  "f:/home/stampante.txt#0": {
+   "pool": "files",
+   "line": "This file contains printer configuration details for a Brother HL-L2350DW, including its IP address and toner status.",
+   "shared": 0,
+   "prompt": 166,
+   "out": 29,
+   "s": 12.06
+  },
+  "f:/home/spese_novembre.csv#0": {
+   "pool": "files",
+   "line": "This CSV file lists November 2026 household expenses including fuel, groceries, and utilities.",
+   "shared": 0,
+   "prompt": 354,
+   "out": 23,
+   "s": 11.84
+  },
+  "f:/demo/people.csv#r0": {
+   "pool": "files",
+   "line": "This CSV file contains contact details for five individuals in Italy, and the chunk lists Anna Rossi's name, city, age, and email address.",
+   "shared": 0,
+   "prompt": 194,
+   "out": 32,
+   "s": 13.52
+  },
+  "f:/demo/people.csv#r1": {
+   "pool": "files",
+   "line": "This CSV file contains contact details for five individuals in Italy, and the chunk lists Marco Bianchi from Milano.",
+   "shared": 0,
+   "prompt": 194,
+   "out": 25,
+   "s": 11.01
+  },
+  "f:/demo/people.csv#r2": {
+   "pool": "files",
+   "line": "This CSV file contains contact details for five individuals in Italy, and the chunk lists Giulia Verdi's name, city, age, and email address.",
+   "shared": 0,
+   "prompt": 195,
+   "out": 32,
+   "s": 13.66
+  },
+  "f:/demo/people.csv#r3": {
+   "pool": "files",
+   "line": "This CSV file contains contact details for five individuals in Italy, and the chunk lists Luca Neri from Torino.",
+   "shared": 0,
+   "prompt": 197,
+   "out": 25,
+   "s": 11.03
+  },
+  "f:/demo/people.csv#r4": {
+   "pool": "files",
+   "line": "This CSV file contains contact details for five individuals in Italy, and the chunk lists Sara Gallo from Milano.",
+   "shared": 0,
+   "prompt": 194,
+   "out": 25,
+   "s": 11.05
+  },
+  "f:/home/spese_novembre.csv#r0": {
+   "pool": "files",
+   "line": "This CSV file lists November 2026 household expenses, including a specific entry for 'spesa Coop' totaling 54.20 euros.",
+   "shared": 0,
+   "prompt": 250,
+   "out": 35,
+   "s": 14.96
+  },
+  "f:/home/spese_novembre.csv#r1": {
+   "pool": "files",
+   "line": "This CSV file lists November 2026 household expenses, including fuel and groceries, with the current chunk showing a single entry for 60.00 euros in benzina.",
+   "shared": 0,
+   "prompt": 250,
+   "out": 41,
+   "s": 17.09
+  },
+  "f:/home/spese_novembre.csv#r2": {
+   "pool": "files",
+   "line": "This CSV file lists November 2026 household expenses, including a specific entry for a 38.50 euro dinner out.",
+   "shared": 0,
+   "prompt": 249,
+   "out": 32,
+   "s": 14.3
+  },
+  "f:/home/spese_novembre.csv#r3": {
+   "pool": "files",
+   "line": "This CSV file lists November 2026 household expenses, including a specific line item for the 2026-11-14 bolletta luce at 72.10 euros.",
+   "shared": 0,
+   "prompt": 251,
+   "out": 47,
+   "s": 19.04
+  },
+  "f:/home/spese_novembre.csv#r4": {
+   "pool": "files",
+   "line": "This CSV file lists November 2026 household expenses, including a specific entry for books costing 24.90 euros.",
+   "shared": 0,
+   "prompt": 249,
+   "out": 31,
+   "s": 13.65
+  },
+  "f:/home/spese_novembre.csv#r5": {
+   "pool": "files",
+   "line": "This CSV file lists November 2026 household expenses, including a specific entry for 'spesa Coop' totaling \u20ac61.35 on November 25.",
+   "shared": 0,
+   "prompt": 250,
+   "out": 39,
+   "s": 16.51
+  }
+ }
+}

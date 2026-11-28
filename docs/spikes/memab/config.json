@@ -1,0 +1,65 @@
+{
+ "baseline": {
+  "view": "base",
+  "cfg": {},
+  "floor": 0.5,
+  "tune_top1": 59,
+  "tune_top3": 87,
+  "tune_n": 120
+ },
+ "A": {
+  "view": "rows",
+  "cfg": {
+   "man": 0.06,
+   "sib": 0,
+   "hub": 0.5,
+   "own1": 0.03,
+   "own2": 0.06,
+   "ptr": null,
+   "sup": [
+    0.6,
+    0.2
+   ],
+   "hop": 0
+  },
+  "floor": 0.5,
+  "tune_top1": 81,
+  "tune_top3": 101,
+  "tune_n": 120
+ },
+ "B": {
+  "view": "ctx",
+  "cfg": {
+   "own_ctx": "only",
+   "bm25": "gate",
+   "own1": 0.06,
+   "own2": 0.03
+  },
+  "floor": 0.55,
+  "tune_top1": 62,
+  "tune_top3": 88,
+  "tune_n": 120
+ },
+ "A+B": {
+  "view": "ctx_rows",
+  "cfg": {
+   "own_ctx": "both",
+   "man": 0.06,
+   "sib": 0,
+   "hub": 1.0,
+   "own1": 0.03,
+   "own2": 0.1,
+   "ptr": null,
+   "sup": [
+    0.6,
+    0.1
+   ],
+   "hop": 0,
+   "bm25": "gate"
+  },
+  "floor": 0.55,
+  "tune_top1": 83,
+  "tune_top3": 102,
+  "tune_n": 120
+ }
+}

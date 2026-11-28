@@ -450,7 +450,7 @@ def search(q, keys, texts, cos, gate=True):
     rank_e = {d: r for r, d in enumerate(ord_e)}
     bm, strong = bm25(q, texts)
     order = ord_e
-    if gate and (identifier_like(q) or strong):
+    if gate == "always" or (gate and (identifier_like(q) or strong)):  # T70 B: the BM25 view always fused
         rb = sorted((d for d in range(n) if bm[d] > 0), key=lambda d: (-bm[d], d))
         rrf = {d: 1 / (61 + rank_e[d]) for d in range(n)}
         for r, d in enumerate(rb):
@@ -534,5 +534,437 @@ def report(path):
                 print(f"  [{r['cls']}] {r['q'][:58]:58} -> {top}")
 
 
+# ---- T70: design A (ranking rules, no model call) and design B (write-time enrichment) ----
+#
+#   memeval.py ctx CTX.json                host only: the stock 2B writes a context line per entry, questions per section
+#   memeval.py embed VEC.json [CTX.json]   host only: queries, probes and each corpus view embedded; cosines stored
+#   memeval.py tune VEC.json CFG.json      rules and thresholds picked on the TUNE split only; writes the frozen config
+#   memeval.py ab VEC.json CFG.json OUT    the frozen configs scored once on held-out and all; per-query JSON to OUT
+
+# Generic questions for the hub score (CSLS-style): written for T70, none taken from the eval set.
+PROBES = [
+    "what's up?", "tell me something", "can you help me?", "I have a question", "what do you know?",
+    "what did we talk about?", "remind me", "what happened?", "is everything ok?", "what should I do?",
+    "what is this?", "show me", "anything new?", "what did you do?", "can you check?", "did it work?",
+    "what was that?", "tell me more", "explain", "what's the status?", "how are things?", "any news?",
+    "what did I say?", "what do I have?", "where is it?", "when is it?", "who is it?", "how much?",
+    "come va?", "dimmi qualcosa", "mi aiuti?", "ho una domanda", "cosa sai?", "di cosa abbiamo parlato?",
+    "ricordami", "cosa e' successo?", "va tutto bene?", "cosa devo fare?", "cos'e' questo?", "fammi vedere",
+    "novita'?", "cosa hai fatto?", "puoi controllare?", "ha funzionato?", "cos'era?", "dimmi di piu'",
+    "spiegami", "a che punto siamo?", "cosa ho detto?", "cosa ho?", "dov'e'?", "quando?", "chi e'?",
+    "quanto?",
+]
+HUB_K = 10  # hub = mean cosine of an entry to its HUB_K nearest probes
+# relation words (IT/EN), also read in fact keys (sister_dog, mom_city): whose record an entry is
+REL = {r: set(w.split()) for r, w in {
+    "sister": "sorella sister", "brother": "fratello brother", "mother": "madre mamma mother mum mom",
+    "father": "padre papa father dad", "colleague": "collega colleague coworker", "friend": "amico amica friend",
+    "partner": "ragazza fidanzata ragazzo fidanzato partner girlfriend boyfriend moglie marito wife husband"}.items()}
+CAPSTOP = set("User User's The Il La Lo Le Gli Un Una Task Tool Past Promemoria Errore Default Checking Acme".split())
+CSV_ROWS = True  # A.3: a .csv file is chunked by rows, the header repeated in each chunk
+
+
+def corpus_rows():
+    """rr.corpus() with every .csv file chunked by rows ("[PATH] header\\nrow"), keys f:PATH#r<i>."""
+    out = [c for c in rr.corpus() if not (c[0].startswith("f:") and c[0].split("#")[0].endswith(".csv"))]
+    for p, txt in rr.FILES.items():
+        if p.endswith(".csv"):
+            head, *rows = [l for l in txt.splitlines() if l.strip()]
+            out += [(f"f:{p}#r{i}", "files", f"[{p}] {head}\n{row}") for i, row in enumerate(rows)]
+    return out
+
+
+def file_doc(key):
+    return rr.FILES[key[2:].split("#")[0]]
+
+
+def ctx(out):
+    """The stock Qwen3.5-2B (thinking off, greedy) writes, as agentd would in idle time: one context line per
+    memory (the known facts first, a shared prefix the kernel would snapshot once) and per file chunk (the whole
+    file first, Contextual Retrieval), and 6 questions per manual section (offline, build time). Tokens and host
+    seconds per call are stored; OUT.partial resumes a stop."""
+    import copy, time, torch
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    assert rr.free_gb() >= 12, f"MemAvailable {rr.free_gb()} GB, want 12"
+    torch.set_num_threads(10)
+    name = "Qwen/Qwen3.5-2B"
+    tok = AutoTokenizer.from_pretrained(name)
+    lm = AutoModelForCausalLM.from_pretrained(name, dtype=torch.float32).eval()
+    ids = lambda s: tok(s, add_special_tokens=False)["input_ids"]
+    head, tail = "<|im_start|>user\n", "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+    C = {k: (p, t) for k, p, t in rr.corpus() + corpus_rows()}
+    facts = [t for k, (p, t) in C.items() if p == "memory" and (k not in OLD_KEYS or int(k[1:]) < 40)
+             and (t.startswith("[fact] ") or not t.startswith("["))]  # agentd's facts; T63's plain memories stand in
+    pre_mem = ids(head + "Known facts about the user (Ada):\n" + "\n".join("- " + f for f in facts) + "\n\n")
+    ask_mem = ("Write one line in English, at most 25 words, for a search index: what this record is about, and "
+               "whose it is (the user's own, or which relative, friend or pet, by relation and name from the known "
+               "facts). Start with the topic. Example: for the record \"[said] mio cugino Piero ha comprato una moto\" "
+               "the line is \"Motorbike bought by the user's cousin Piero.\" Write the line only.")
+    ask_file = ("Write one line in English, at most 30 words, that situates this chunk within the file for search: "
+                "what the file is and what this chunk says or lists (names, values). Write the line only.")
+    ask_man = ("Write 6 short questions a user could type that this section of the ringzero manual answers, 3 in "
+               "Italian and 3 in English, one per line, nothing else.")
+    done = json.load(open(out + ".partial")) if os.path.exists(out + ".partial") else {}
+    with torch.no_grad():
+        pc = lm(input_ids=torch.tensor([pre_mem]), use_cache=True).past_key_values
+    for k, (pool, t) in C.items():
+        if k in done:
+            continue
+        assert rr.free_gb() >= 3, "MemAvailable under 3 GB, stopped (rerun to resume)"
+        if pool == "memory":
+            d = DATE.get(k, "")
+            pre, body, cache, n_new = pre_mem, ids(f"{ask_mem}\n\nRecord{' (' + d + ')' if d else ''}: {t}" + tail), pc, 48
+        elif pool == "files":
+            pre, cache, n_new = [], None, 56
+            body = ids(head + f"<document>\n{file_doc(k)}</document>\nHere is a chunk of it:\n<chunk>\n{t}\n</chunk>\n\n{ask_file}" + tail)
+        else:
+            pre, cache, n_new = [], None, 120
+            body = ids(head + f"{t}\n\n{ask_man}" + tail)
+        t0 = time.perf_counter()
+        with torch.no_grad():
+            g = lm.generate(input_ids=torch.tensor([pre + body]), past_key_values=copy.deepcopy(cache) if cache else None,
+                            max_new_tokens=n_new, do_sample=False)
+        new = g[0, len(pre) + len(body):].tolist()
+        txt = tok.decode(new, skip_special_tokens=True).strip()
+        done[k] = {"pool": pool, "line": txt, "shared": len(pre), "prompt": len(body), "out": len(new),
+                   "s": round(time.perf_counter() - t0, 2)}
+        json.dump(done, open(out + ".partial", "w"))
+        print(len(done), k, done[k]["prompt"], done[k]["out"], f"{done[k]['s']}s", f"free {rr.free_gb()} GB",
+              txt.replace("\n", " | ")[:90], flush=True)
+    json.dump({"model": name, "shared_prefix": len(pre_mem), "facts": len(facts), "entries": done}, open(out, "w"), indent=1)
+    os.remove(out + ".partial")
+
+
+def views(cx=None):
+    """Corpus views as [(key, pool, index text, embedded/BM25 text)]. base = T69; rows = CSV by rows (A.3);
+    ctx and ctx_rows = the same with the 2B's line before each memory and file chunk, plus one entry per generated
+    manual question pointing at its section (several vectors, one section)."""
+    V = {"base": [(k, p, t, t) for k, p, t in rr.corpus()], "rows": [(k, p, t, t) for k, p, t in corpus_rows()]}
+    if cx:
+        E = cx["entries"]
+        for name in ("base", "rows"):
+            v = [(k, p, t, f"{E[k]['line']}\n{t}" if p != "manual" else t) for k, p, t, _ in V[name]]
+            for k, p, t, _ in V[name]:
+                if p == "manual":
+                    v += [(k, p, t, l.strip(" -*0123456789.")) for l in E[k]["line"].splitlines() if len(l.strip()) > 8]
+            V["ctx" if name == "base" else "ctx_rows"] = v
+    return V
+
+
+def embed_views(out, ctx_path=None):
+    """Host: every query, every probe and every entry of every view embedded once (fp32, CPU); stored are the
+    query cosines, the entry-entry cosines (supersession) and the probe cosines (hub)."""
+    import torch
+    assert rr.free_gb() >= 8, f"MemAvailable {rr.free_gb()} GB, want 8"
+    emb = rr.embedder()
+    qv = lambda q: emb(f"Instruct: {rr.TASK}\nQuery:{q}")[0]
+    Qv = torch.stack([qv(r["q"]) for r in queries()])
+    Pv = torch.stack([qv(p) for p in PROBES])
+    cache, R = {}, {"task": rr.TASK, "queries": [r["q"] for r in queries()], "views": {}}
+    for name, v in views(json.load(open(ctx_path)) if ctx_path else None).items():
+        for *_, e in v:
+            if e not in cache:
+                cache[e] = emb(e)
+        D = torch.stack([cache[e][0] for *_, e in v])
+        rnd = lambda M: [[round(x, 4) for x in row] for row in M.tolist()]
+        R["views"][name] = {"keys": [x[0] for x in v], "tokens": [cache[e][1] for *_, e in v],
+                            "cos": rnd(Qv @ D.T), "dd": rnd(D @ D.T), "probe": rnd(Pv @ D.T)}
+        print(name, len(v), "entries", f"free {rr.free_gb()} GB", flush=True)
+    json.dump(R, open(out, "w"))
+
+
+def rel_words(s):
+    """Relations named in s; a capitalized word is a name, not a relation (the printer brand Brother)."""
+    return {r for w in re.findall(r"[A-Za-z]+", s) for r, ws in REL.items() if w in ws}
+
+
+def aliases(texts):
+    """Name -> relation: in a memory with a relation word, the capitalized word nearest to it (5 words either
+    side) is that person's or pet's name ("mia sorella Chiara", "il cane di mia sorella si chiama Rocco")."""
+    al = {}
+    for t in texts:
+        w = re.findall(r"[^\W\d_]+'?[^\W\d_]*", t.split("] ", 1)[-1])
+        for i, x in enumerate(w):
+            r = rel_words(x)
+            if not r:
+                continue
+            near = [(abs(j - i), w[j]) for j in range(max(0, i - 5), min(len(w), i + 6))
+                    if w[j][:1].isupper() and w[j] not in CAPSTOP and not rel_words(w[j])]
+            if near:
+                al.setdefault(min(near)[1].lower(), set()).update(r)
+    return al
+
+
+def owner(s, al):
+    return rel_words(s) | {r for w in re.findall(r"[^\W\d_]+", s.lower()) for r in al.get(w, ())}
+
+
+NAMESTOP = CAPSTOP | set("Instruct Query January February March April May June July August September October November "
+                         "December Monday Tuesday Wednesday Thursday Friday Saturday Sunday CSV JSON Wi Fi".split())
+
+
+def names(s):
+    return {w.lower() for w in re.findall(r"\b[A-Z][a-z]{2,}\b", s.split("] ", 1)[-1]) if w not in NAMESTOP}
+
+
+PATHS = re.compile(r"(?<![\w/])(/[\w./-]*\w|[\w-]+\.(?:txt|md|csv|py|lua|js|json))")
+
+
+class View:
+    """One corpus view, ready to rank: texts, pools, dates, the hub score, the alias table and the named files."""
+    def __init__(self, V, name, cx=None):
+        x = V["views"][name]
+        v = views(cx)[name]
+        self.keys, self.cos, self.dd = x["keys"], x["cos"], x["dd"]
+        assert self.keys == [k for k, *_ in v], f"view {name}: stored keys differ, re-embed"
+        self.n = len(self.keys)
+        self.text, self.etext = [t for _, _, t, _ in v], [e for *_, e in v]
+        self.line = [cx["entries"][k]["line"] if cx and p != "manual" else "" for k, p, _, _ in v]
+        self.pool = ["manual" if k.startswith("man:") else "files" if k.startswith("f:") else "memory" for k in self.keys]
+        self.hub = [sum(sorted(col, reverse=True)[:HUB_K]) / HUB_K for col in zip(*x["probe"])]
+        base = lambda k: k.split("#")[0]
+        self.date = [DATE.get(k, DATE.get(base(k), "")) for k in self.keys]
+        self.order = [int(k[1:]) if re.fullmatch(r"m\d+", k) else 0 for k in self.keys]  # append order breaks a same-day tie
+        self.files = {}
+        for i, k in enumerate(self.keys):
+            if self.pool[i] == "files":
+                self.files.setdefault(base(k)[2:], []).append(i)
+        self.named = []  # per entry: indices of the chunks of the files it names (full path or basename)
+        for i, t in enumerate(self.text):
+            hit = set()
+            if self.pool[i] == "memory":
+                for p in PATHS.findall(t):
+                    hit |= {j for f, js in self.files.items() if f == p or f.rsplit("/", 1)[-1] == p for j in js}
+            self.named.append(sorted(hit))
+        mem = [t for t, p in zip(self.text, self.pool) if p == "memory"]
+        self.al_text = aliases(mem)
+        self.al_ctx = aliases(mem + [l for l, p in zip(self.line, self.pool) if p == "memory"])
+
+    def own_src(self, d, use_ctx):
+        """Text read for the owner: the index text (A), the 2B line only (B), or both (A+B)."""
+        return {None: self.text[d], "only": self.line[d]}.get(use_ctx, self.text[d] + " " + self.line[d])
+
+
+def rank(view, r, qi, cfg):
+    """The answer list for query r under cfg (a dict of rules; missing = off): [(key, score, via, index)]."""
+    g = cfg.get
+    al = view.al_ctx if g("own_ctx") else view.al_text
+    q_own = owner(r["q"], al)
+    s = list(view.cos[qi])
+    for d in range(view.n):
+        s[d] -= g("hub", 0) * view.hub[d]
+        if view.pool[d] == "memory" and (g("own1") or g("own2")):
+            e_own = owner(view.own_src(d, g("own_ctx")), al)
+            if e_own - q_own:
+                s[d] -= g("own1", 0)
+            if q_own and not e_own & q_own:
+                s[d] -= g("own2", 0)
+    h = search(r["q"], list(range(view.n)), view.etext, s, "always" if g("bm25") == "always" else True)
+    seen, lst = set(), []
+    for d, sc, via in h:  # several vectors of one manual section: the best one stands for it
+        k = view.keys[d]
+        if k in seen:
+            continue
+        seen.add(k)
+        lst.append((k, sc, via, d))
+    man = [x for x in lst if view.pool[x[3]] == "manual"]
+    own = [x for x in lst if view.pool[x[3]] != "manual"]
+    if g("ptr") is not None and own:  # A.1: a memory naming a file loses to that file's best chunk
+        for i, x in enumerate(own[:3]):
+            js = view.named[x[3]]
+            if js:
+                j = max(js, key=lambda j: s[j])
+                if s[j] >= x[1] - g("ptr"):
+                    rest = [y for y in own if y[3] != j]
+                    own = rest[:i] + [(view.keys[j], s[j], "emb", j)] + rest[i:]
+                break
+    if g("sup") and own:  # supersession: of near-same records near the top, the newest wins
+        tau, m = g("sup")
+        t = own[0]
+        grp = [y for y in own[:8] if view.date[y[3]] and view.date[t[3]] and y[1] >= t[1] - m
+               and (y is t or view.dd[t[3]][y[3]] >= tau)]
+        if grp:
+            w = max(grp, key=lambda y: (view.date[y[3]], view.order[y[3]]))
+            own = [w] + [y for y in own if y is not w]
+    if g("hop") and own:  # second hop: a name the top entry adds (not in the query) lifts entries holding it
+        nm = names(view.text[own[0][3]]) - set(re.findall(r"[a-z]+", r["q"].lower()))
+        cand = [y for y in own[1:8] if nm & set(re.findall(r"[a-z]+", view.text[y[3]].lower()))]
+        if cand:
+            b = max(cand, key=lambda y: y[1])
+            if b[1] + g("hop") > own[0][1]:
+                own = [b] + [y for y in own if y is not b]
+    if g("sib") and len(man) > 1:  # sibling sections: within the margin, most query words in title + Asked as
+        qw = set(words(r["q"]))
+        near = [x for x in man if x[1] >= man[0][1] - g("sib")]
+        lex = lambda x: len(qw & set(words(view.text[x[3]].split("] ", 1)[0] + " " + " ".join(
+            l for l in view.text[x[3]].split("\n") if l.startswith("Asked as:")))))
+        b = max(near, key=lambda x: (lex(x), x[1]))
+        man = [b] + [x for x in man if x is not b]
+    if g("mode") == "split":
+        return man if r["pool"] == "manual" else own
+    first = man[:1] if man and ((howto(r["q"]) and man[0][1] >= RECALL_MIN) or
+                                (g("man") is not None and own and man[0][1] >= own[0][1] + g("man"))) else []
+    return first + own
+
+
+
+# ---- T70: tune on the tune split, then score the frozen configs once ----
+
+FLOORS = (0.50, 0.55, 0.60, 0.65, 0.70)
+# design -> (view, rules it may use, grid per rule); "None" = rule off
+GRID = {
+    "hub": (0, 0.25, 0.5, 1.0), "own1": (0, 0.03, 0.06, 0.1), "own2": (0, 0.03, 0.06, 0.1),
+    "ptr": (None, 0.0, 0.03, 0.06, 0.1), "sup": (None, (0.5, 0.05), (0.5, 0.1), (0.5, 0.15), (0.5, 0.2), (0.6, 0.05), (0.6, 0.1), (0.6, 0.15),
+            (0.6, 0.2), (0.7, 0.05), (0.7, 0.1), (0.7, 0.2)),
+    "hop": (0, 0.03, 0.06), "sib": (0, 0.02, 0.04), "man": (None, 0.0, 0.03, 0.06, 0.1), "bm25": ("gate", "always"),
+}
+A_RULES = ("man", "sib", "hub", "own1", "own2", "ptr", "sup", "hop")
+B_RULES = ("bm25", "own1", "own2")
+DESIGNS = {  # baseline = T69's kernel ranking; B's owner view reads the 2B line only, A+B's both texts
+    "baseline": ("base", (), {}),
+    "A": ("rows", A_RULES, {}),
+    "B": ("ctx", B_RULES, {"own_ctx": "only"}),
+    "A+B": ("ctx_rows", A_RULES + ("bm25",), {"own_ctx": "both"}),
+}
+
+
+def evaluate(view, cfg, rows, floor=RECALL_MIN):
+    """[(row, (t1, t3, slot))]: answerable rows by rank; no-answer by the floor on the first RECALL_K."""
+    out = []
+    for qi, r in rows:
+        lst = [(k, s, v) for k, s, v, _ in rank(view, r, qi, cfg)]
+        if r["cls"] == "noanswer":
+            a = not any(x[1] >= (floor if x[2] == "emb" else RECALL_MIN_BM25) for x in lst[:RECALL_K])
+            out.append((r, (a, a, a), lst))
+        else:
+            t1, t3, _ = score(r, lst)
+            out.append((r, (t1, t3, t1 and lst[0][1] >= (floor if lst[0][2] == "emb" else RECALL_MIN_BM25)), lst))
+    return out
+
+
+def load_views(vec, cx_path=None):
+    V = json.load(open(vec))
+    assert V["queries"] == [r["q"] for r in queries()], "vectors are from another query set: re-embed"
+    cx = json.load(open(cx_path)) if cx_path else None
+    return {n: View(V, n, cx) for n in V["views"]}
+
+
+def tune(vec, cfg_out, cx_path=None):
+    """Greedy coordinate ascent over each design's rules, two passes, on the TUNE split only: objective =
+    answerable top-1, then top-3, then fewer rules on (the first grid value wins a tie). Then the no-answer
+    floor: most right abstentions + answerable top-1 hits above the floor. Held-out rows are never scored here."""
+    Vs = load_views(vec, cx_path)
+    rows = [(i, r) for i, r in enumerate(queries()) if r["split"] == "tune"]
+    ans = [x for x in rows if x[1]["cls"] != "noanswer"]
+    obj = lambda S: (sum(s[1][0] for s in S), sum(s[1][1] for s in S))
+    out = {}
+    for d, (vn, rules, fixed) in DESIGNS.items():
+        if vn not in Vs:
+            print(f"{d}: view {vn} missing (no CTX.json), skipped")
+            continue
+        cfg = dict(fixed, **{k: GRID[k][0] for k in rules})
+        best = obj(evaluate(Vs[vn], cfg, ans))
+        for _ in range(2):
+            for k in rules:
+                for v in GRID[k]:
+                    c = dict(cfg, **{k: v})
+                    o = obj(evaluate(Vs[vn], c, ans))
+                    if o > best:
+                        best, cfg = o, c
+        fl = max(FLOORS, key=lambda f: (sum(s[1][2] for s in evaluate(Vs[vn], cfg, rows, f)), f == RECALL_MIN))
+        out[d] = {"view": vn, "cfg": cfg, "floor": fl, "tune_top1": best[0], "tune_top3": best[1], "tune_n": len(ans)}
+        print(f"{d}: tune top-1 {best[0]}/{len(ans)}, top-3 {best[1]}, floor {fl}, cfg {cfg}", flush=True)
+    json.dump(out, open(cfg_out, "w"), indent=1)
+
+
+def wilson(a, n, z=1.96):
+    if not n:
+        return (0.0, 0.0)
+    p, d = a / n, 1 + z * z / n
+    c, h = (p + z * z / (2 * n)) / d, z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return (round(100 * (c - h), 1), round(100 * (c + h), 1))
+
+
+def ab(vec, cfg_path, out, cx_path=None):
+    """The frozen configs of CFG, scored once on every query: per class, split and design; raw per-query JSON."""
+    Vs, F = load_views(vec, cx_path), json.load(open(cfg_path))
+    for f in F.values():
+        f["cfg"] = {k: tuple(v) if isinstance(v, list) else v for k, v in f["cfg"].items()}
+    F = {"baseline": {"view": "base", "cfg": {}, "floor": RECALL_MIN}, **{k: v for k, v in F.items() if k != "baseline"}}
+    rows = list(enumerate(queries()))
+    S = {d: evaluate(Vs[f["view"]], f["cfg"], rows, f["floor"]) for d, f in F.items()}
+    D = list(S)
+    cnt = lambda d, f, j: (sum(s[1][j] for s in S[d] if f(s[0])), sum(1 for s in S[d] if f(s[0])))
+    res = {"configs": F, "summary": {}, "queries": []}
+    for sp in ("held-out", "all"):
+        print(f"\n== {sp}: top-1 (top-3) per class ==")
+        print("| class | n | " + " | ".join(D) + " |")
+        print("|---|---|" + "---|" * len(D))
+        for c in CLASSES + ("answerable",):
+            f = lambda r, c=c: sp in ("all", r["split"]) and (r["cls"] == c or c == "answerable" and r["cls"] != "noanswer")
+            cells = []
+            for d in D:
+                (a1, n), (a3, _) = cnt(d, f, 0), cnt(d, f, 1)
+                cells.append(f"{a1}/{n}" + ("" if c == "noanswer" else f" ({a3})"))
+                res["summary"][f"{sp}|{c}|{d}"] = {"top1": a1, "top3": a3, "n": n, "slot": cnt(d, f, 2)[0]}
+            print(f"| {c} | {n} | " + " | ".join(cells) + " |")
+        for d in D:
+            a, n = cnt(d, lambda r: sp in ("all", r["split"]) and r["cls"] != "noanswer", 0)
+            print(f"  {d}: answerable top-1 {a}/{n} = {100 * a / n:.1f}%, 95% Wilson CI {wilson(a, n)}; "
+                  f"slot (top-1 above floor) {cnt(d, lambda r: sp in ('all', r['split']) and r['cls'] != 'noanswer', 2)[0]}")
+    for i, r in rows:
+        res["queries"].append({"q": r["q"], "cls": r["cls"], "split": r["split"], "gold": sorted(r["gold"]),
+                               **{d: {"t1": S[d][i][1][0], "t3": S[d][i][1][1],
+                                      "top3": [[k, round(s, 4)] for k, s, _ in S[d][i][2][:3]]} for d in D}})
+    print("\nablation (frozen config minus one rule): answerable top-1 held-out / all")
+    res["ablation"] = {}
+    for d, f in F.items():
+        for k, v in f["cfg"].items():
+            if k in GRID and v != GRID[k][0]:
+                A = evaluate(Vs[f["view"]], dict(f["cfg"], **{k: GRID[k][0]}), rows, f["floor"])
+                h = sum(s[1][0] for s in A if s[0]["split"] == "held-out" and s[0]["cls"] != "noanswer")
+                al = sum(s[1][0] for s in A if s[0]["cls"] != "noanswer")
+                res["ablation"][f"{d} -{k}"] = {"held-out": h, "all": al}
+                print(f"  {d} without {k}: {h} / {al}")
+    print("\nheld-out misses of the last design:")
+    for i, r in rows:
+        if r["split"] == "held-out" and not S[D[-1]][i][1][0]:
+            print(f"  [{r['cls']}] {r['q'][:56]:56} -> {S[D[-1]][i][2][0][0] if S[D[-1]][i][2] else '-'}")
+    if cx_path:
+        res["cost"] = cost(vec, cx_path)
+    json.dump(res, open(out, "w"), indent=1)
+
+
+PREFILL_2B, DECODE_2B, EMB_MS = 213.0, 36.0, 6.0  # tok/s, tok/s, ms/token: M45_RESULT.md, EMBEDDER_RESULT.md (ring 0)
+
+
+def cost(vec, cx_path):
+    """Write cost of B: tokens and host seconds of the 2B per entry, ring 0 [E] from the engine numbers, and the
+    re-embedding of the longer texts. Returns a dict (also printed)."""
+    import statistics as st
+    E, V = json.load(open(cx_path)), json.load(open(vec))
+    out = {"shared_prefix": E["shared_prefix"], "facts_in_prefix": E["facts"]}
+    for pool in ("memory", "files", "manual"):
+        x = [e for e in E["entries"].values() if e["pool"] == pool]
+        ring = [e["prompt"] / PREFILL_2B + e["out"] / DECODE_2B for e in x]
+        out[pool] = {"n": len(x), "prompt_med": st.median(e["prompt"] for e in x), "out_med": st.median(e["out"] for e in x),
+                     "host_s_med": st.median(e["s"] for e in x), "host_s_sum": round(sum(e["s"] for e in x)),
+                     "ring0_s_med_E": round(st.median(ring), 2), "ring0_s_sum_E": round(sum(ring))}
+    out["prefix_once_ring0_s_E"] = round(E["shared_prefix"] / PREFILL_2B, 1)
+    for a, b in (("base", "ctx"), ("rows", "ctx_rows")):
+        ta = dict(zip(V["views"][a]["keys"], V["views"][a]["tokens"]))
+        tb = [t for k, t, in zip(V["views"][b]["keys"], V["views"][b]["tokens"]) if not k.startswith("man:")]
+        extra = sum(tb) - sum(t for k, t in ta.items() if not k.startswith("man:"))
+        nq = sum(k.startswith("man:") for k in V["views"][b]["keys"]) - sum(k.startswith("man:") for k in ta)
+        out[f"reembed_{b}"] = {"extra_tokens": extra, "per_entry": round(extra / len(tb), 1),
+                               "ring0_s_per_entry_E": round(extra / len(tb) * EMB_MS / 1000, 2), "manual_question_rows": nq}
+    print(json.dumps(out, indent=1))
+    return out
+
+
 if __name__ == "__main__":
-    {"run": lambda: run(sys.argv[2]), "report": lambda: report(sys.argv[2]), "check": check}[sys.argv[1]]()
+    a = sys.argv
+    {"run": lambda: run(a[2]), "report": lambda: report(a[2]), "check": check, "ctx": lambda: ctx(a[2]),
+     "embed": lambda: embed_views(a[2], a[3] if len(a) > 3 else None),
+     "tune": lambda: tune(a[2], a[3], a[4] if len(a) > 4 else None),
+     "ab": lambda: ab(a[2], a[3], a[4], a[5] if len(a) > 5 else None), "cost": lambda: cost(a[2], a[3])}[a[1]]()
